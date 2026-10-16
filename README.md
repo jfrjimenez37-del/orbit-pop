@@ -1,11 +1,11 @@
 # ORBIT POP
 
-Arcade de un solo toque para Android (Godot 4.3, GDScript). Un bichito gira alrededor de un planeta;
+Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7+ (minSdk 24), targetSdk 36 (Android 16), como exige Google Play. Un bichito gira alrededor de un planeta;
 **cada toque invierte el giro**. Esquiva meteoritos, estrellas espinosas y barreras eléctricas,
 revienta burbujas y supera tu récord.
 
 ## Ejecutar en PC
-1. Instala Godot **4.3 stable** (https://godotengine.org/download/archive/4.3-stable/).
+1. Instala Godot **4.7.2 stable** (https://godotengine.org/download/archive/4.7.2-stable/).
 2. Abre `project.godot` y pulsa F5. O por consola: `godot --path .`
 3. Controles: clic izquierdo, Espacio, Enter o flecha ↑ = invertir giro.
 
@@ -25,8 +25,8 @@ sucesivos y un bot "humano" (0,35 s de reacción) que estima la duración de par
 con `apksigner`, arm64-v8a + armeabi-v7a). Instalar: `adb install -r build/orbit-pop-debug.apk`.
 
 Para regenerarlo en tu PC:
-1. Godot ▸ Editor ▸ Manage Export Templates ▸ descargar 4.3.
-2. Instala Android Studio (o command-line tools) con *platform-tools* y *build-tools 34*, y JDK 17.
+1. Godot ▸ Editor ▸ Manage Export Templates ▸ descargar 4.7.2.
+2. Instala Android Studio (incluye SDK, platform-tools, build-tools y Java/JBR).
 3. Editor Settings ▸ Export ▸ Android: ruta del SDK, del JDK y keystore debug
    (`keytool -genkeypair -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -validity 10000 -dname "CN=Android Debug,O=Android,C=US"`).
 4. `godot --headless --path . --export-debug "Android APK (debug/test)" build/orbit-pop-debug.apk`
