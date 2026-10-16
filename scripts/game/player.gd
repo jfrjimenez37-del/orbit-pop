@@ -17,6 +17,9 @@ var skin := 0
 var face_right := true
 var happy := false
 var shield := 0.0   # seconds of continue-shield left (blinking bubble)
+var shield_boost := false  # SHIELD boost armed: steady bubble until it absorbs a hit
+var trail_style := "classic"
+const RAINBOW := [Color8(255, 90, 90), Color8(255, 170, 60), Color8(255, 230, 70), Color8(110, 220, 110), Color8(90, 170, 255), Color8(170, 110, 255)]
 
 var _t := 0.0
 var _blink := 2.5
@@ -85,12 +88,30 @@ func _draw() -> void:
 		return
 	var col: Color = SKIN_COLORS[skin]
 	for i in range(_trail.size() - 1, 1, -1):
-		var p := _trail[i] - position
+		var p := (_trail[i] - position).round()
 		var k := 1.0 - float(i) / TRAIL_LEN
 		var s := maxf(1.0, roundf(4.0 * k))
 		var c := col if i % 2 == 0 else Color(1, 1, 1)
-		c.a = 0.75 * k
-		draw_rect(Rect2((p - Vector2(s, s) * 0.5).round(), Vector2(s, s)), c)
+		match trail_style:
+			"sparkle":
+				c = Color(1, 1, 1) if (i + int(_t * 20.0)) % 3 else Color8(255, 240, 140)
+			"rainbow":
+				c = RAINBOW[i % RAINBOW.size()]
+			"hearts":
+				c = Color8(255, 100, 150)
+			"stars":
+				c = Color8(255, 220, 60)
+		c.a = 0.8 * k
+		if (trail_style == "hearts" or trail_style == "stars") and i % 3 == 0:
+			var shape := [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, 1)] \
+				if trail_style == "hearts" else [Vector2(0, -1), Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, 1)]
+			for o in shape:
+				draw_rect(Rect2(p + o, Vector2(1, 1)), c)
+		elif trail_style == "sparkle" and i % 2 == 0:
+			draw_rect(Rect2(p + Vector2(-1, 0), Vector2(3, 1)), c)
+			draw_rect(Rect2(p + Vector2(0, -1), Vector2(1, 3)), c)
+		elif trail_style == "classic" or trail_style == "rainbow":
+			draw_rect(Rect2((p - Vector2(s, s) * 0.5).round(), Vector2(s, s)), c)
 	var frame := 1
 	if not alive:
 		frame = 4
@@ -103,6 +124,8 @@ func _draw() -> void:
 	var sx := 1.0 + 0.35 * _squash
 	var sy := 1.0 - 0.3 * _squash
 	var flipx := 1.0 if face_right else -1.0
+	if shield_boost and alive:
+		draw_arc(Vector2(0, -1), 10.0 + roundf(sin(_t * 6.0)), 0.0, TAU, 20, Color(0.55, 0.9, 1.0, 0.95), 1.0)
 	if shield > 0.0 and alive:
 		if shield > 0.6 or fmod(shield, 0.2) < 0.1:
 			draw_arc(Vector2(0, -1), 10.0, 0.0, TAU, 20, Color(0.7, 0.95, 1.0, 0.9), 1.0)

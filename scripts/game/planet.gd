@@ -2,7 +2,7 @@ class_name Planet
 extends Node2D
 ## The cute central planet (with a reactive face) and the dotted orbit track.
 
-const BODY := preload("res://assets/sprites/planet.png")
+var BODY: Texture2D = preload("res://assets/sprites/planet.png")
 const FACE := preload("res://assets/sprites/planet_face.png")
 
 enum Mood { SMILE, OH, WORRY }
@@ -55,3 +55,7 @@ func _draw() -> void:
 		m = 3
 	draw_texture_rect_region(FACE, Rect2(Vector2(-4, -1) + e * 0.5, Vector2(8, 8)), Rect2(m * 8, 0, 8, 8))
 	draw_set_transform(Vector2.ZERO)
+
+
+func set_world(tex_name: String) -> void:
+	BODY = load("res://assets/sprites/%s.png" % tex_name)

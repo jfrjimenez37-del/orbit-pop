@@ -19,6 +19,7 @@ var _ids: Array = []
 var _prices := {}
 var _connected := false
 var _pending_buy := ""
+var _consuming := {}   # purchase token -> product id
 
 
 static func plugin_script() -> Script:
@@ -41,6 +42,7 @@ func start(ids: Array) -> void:
 	_client.connect("query_purchases_response", _on_purchases.bind(true))
 	_client.connect("on_purchase_updated", _on_purchases.bind(false))
 	_client.connect("acknowledge_purchase_response", func(_r): pass)
+	_client.connect("consume_purchase_response", _on_consumed)
 	_client.call("start_connection")
 
 
@@ -99,15 +101,34 @@ func _on_purchases(res: Dictionary, is_restore: bool) -> void:
 	var owned: Array = []
 	for p in res.get("purchases", []):
 		var state := int(p.get("purchase_state", 0))
+		var token := str(p.get("purchase_token", ""))
+		var consumable := false
 		for id in p.get("product_ids", []):
+			if MonetizationConfig.CONSUMABLES.has(String(id)):
+				consumable = true
+				if state == PURCHASED and not _consuming.has(token):
+					_consuming[token] = String(id)
+					_client.call("consume_purchase", token)
+				elif state == PENDING and not is_restore:
+					purchase_done.emit(String(id), false, "PENDING")
+				continue
 			if state == PURCHASED:
 				owned.append(String(id))
 				if not is_restore:
 					purchase_done.emit(String(id), true, "THANK YOU!")
 			elif state == PENDING and not is_restore:
 				purchase_done.emit(String(id), false, "PENDING")
-		if state == PURCHASED and not bool(p.get("is_acknowledged", false)):
+		if state == PURCHASED and not consumable and not bool(p.get("is_acknowledged", false)):
 			_client.call("acknowledge_purchase", p.get("purchase_token", ""))
 	_pending_buy = ""
 	if is_restore:
 		restored.emit(owned)
+
+
+## Consumables are granted only once Google confirms the consumption.
+func _on_consumed(res: Dictionary) -> void:
+	var token := str(res.get("token", ""))
+	var id: String = _consuming.get(token, "")
+	_consuming.erase(token)
+	if id != "" and int(res.get("response_code", -1)) == OK_CODE:
+		purchase_done.emit(id, true, "+%d COINS" % MonetizationConfig.CONSUMABLES[id])

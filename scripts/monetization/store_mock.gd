@@ -26,7 +26,10 @@ func buy(id: String) -> void:
 		fail_next = false
 		purchase_done.emit.call_deferred(id, false, "CANCELLED")
 		return
-	purchase_done.emit.call_deferred(id, true, "TEST PURCHASE")
+	var msg := "TEST PURCHASE"
+	if MonetizationConfig.CONSUMABLES.has(id):
+		msg = "+%d COINS (TEST)" % MonetizationConfig.CONSUMABLES[id]
+	purchase_done.emit.call_deferred(id, true, msg)
 
 
 func restore() -> void:

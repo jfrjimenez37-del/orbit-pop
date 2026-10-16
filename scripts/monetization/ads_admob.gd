@@ -12,6 +12,8 @@ var _rewarded_loaded := false
 var _interstitial_loaded := false
 var _earned := false
 var _ready_init := false
+var _banner_wanted := false
+var _banner_loaded := false
 
 
 static func plugin_script() -> Script:
@@ -30,6 +32,8 @@ func start() -> void:
 	_admob.set("android_real_application_id", MonetizationConfig.ADMOB_APP_ID)
 	_admob.set("android_real_interstitial_id", MonetizationConfig.ADMOB_INTERSTITIAL_ID)
 	_admob.set("android_real_rewarded_id", MonetizationConfig.ADMOB_REWARDED_ID)
+	_admob.set("android_real_banner_id", MonetizationConfig.ADMOB_BANNER_ID)
+	_admob.set("banner_position", 1)  # LoadAdRequest.AdPosition.BOTTOM
 	add_child(_admob)
 	_admob.connect("initialization_completed", func(_s): _on_init())
 	_admob.connect("consent_info_updated", _on_consent_info)
@@ -39,6 +43,7 @@ func start() -> void:
 	_admob.connect("rewarded_ad_user_earned_reward", func(_a, _r): _earned = true)
 	_admob.connect("rewarded_ad_dismissed_full_screen_content", func(_a): _rewarded_closed())
 	_admob.connect("rewarded_ad_failed_to_show_full_screen_content", func(_a, _e): _rewarded_closed())
+	_admob.connect("banner_ad_loaded", func(_a, _r): _on_banner_loaded())
 	_admob.connect("interstitial_ad_loaded", func(_a, _r): _interstitial_loaded = true)
 	_admob.connect("interstitial_ad_failed_to_load", func(_a, _e): _retry_load("interstitial"))
 	_admob.connect("interstitial_ad_dismissed_full_screen_content", func(_a): _interstitial_closed())
@@ -61,6 +66,30 @@ func _on_init() -> void:
 	_admob.call("load_rewarded_ad")
 	if not Save.owns("no_ads"):
 		_admob.call("load_interstitial_ad")
+
+
+func _on_banner_loaded() -> void:
+	_banner_loaded = true
+	if _banner_wanted:
+		_admob.call("show_banner_ad")
+	else:
+		_admob.call("hide_banner_ad")
+
+
+func show_banner() -> void:
+	_banner_wanted = true
+	if _admob == null:
+		return
+	if _banner_loaded:
+		_admob.call("show_banner_ad")
+	else:
+		_admob.call("load_banner_ad")
+
+
+func hide_banner() -> void:
+	_banner_wanted = false
+	if _admob != null and _banner_loaded:
+		_admob.call("hide_banner_ad")
 
 
 func _retry_load(kind: String) -> void:

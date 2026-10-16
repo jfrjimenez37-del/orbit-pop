@@ -80,6 +80,11 @@ SKINS = [
     ("goldie", (255, 204, 44),  (206, 120, 22),  (255, 244, 160), (255, 236, 90), "crown"),
     ("neon",   (64, 232, 226),  (20, 150, 196),  (206, 255, 252), (255, 80, 200), "bolt"),
     ("panda",  (246, 246, 252), (186, 192, 216), (255, 255, 255), (60, 52, 80),   "ears"),
+    # coin skins
+    ("cookie", (230, 172, 108), (178, 110, 66),  (252, 216, 160), (255, 120, 150), "chips"),
+    ("bubbly", (255, 172, 232), (218, 100, 190), (255, 224, 248), (140, 230, 255), "bubble"),
+    ("robo",   (190, 202, 220), (118, 130, 162), (238, 244, 252), (255, 70, 70),   "rivets"),
+    ("drake",  (112, 204, 92),  (48, 142, 62),   (196, 242, 160), (255, 250, 230), "horns"),
 ]
 WING_UP = [(2, 8), (1, 7), (2, 7), (1, 6), (0, 6), (0, 5), (1, 5)]
 WING_MID = [(2, 9), (1, 9), (0, 9), (1, 8), (2, 8), (0, 8), (1, 10)]
@@ -93,7 +98,7 @@ def draw_char(skin, wing, eyes):
     cx, cy, r = 8.5, 9.6, 5.5
     shaded_disc(im, cx, cy, r, base, shade, light)
     # antenna
-    if acc not in ("crown", "ears"):
+    if acc not in ("crown", "ears", "horns"):
         put(im, 9, 3, shade); put(im, 10, 2, shade)
     if acc == "ball":
         for p in [(10, 0), (11, 0), (10, 1), (11, 1)]:
@@ -127,6 +132,26 @@ def draw_char(skin, wing, eyes):
     elif acc == "ears":
         for p in [(5, 3), (6, 3), (5, 4), (11, 3), (12, 3), (12, 4)]:
             put(im, *p, tip)
+    elif acc in ("chips", "rivets"):
+        for p in [(10, 0), (11, 0), (10, 1), (11, 1)]:
+            put(im, *p, tip)
+        put(im, 10, 0, (255, 255, 255))
+    elif acc == "bubble":
+        for p in [(10, 0), (11, 0), (9, 1), (12, 1), (10, 2), (11, 2)]:
+            put(im, *p, tip)
+        put(im, 10, 1, (255, 255, 255))
+    elif acc == "horns":
+        for p in [(6, 3), (6, 2), (5, 1), (11, 3), (11, 2), (12, 1)]:
+            put(im, *p, tip)
+    if acc == "chips":
+        for p in [(5, 8), (6, 12), (11, 13), (4, 11)]:
+            put(im, *p, (110, 60, 40))
+    if acc == "rivets":
+        for p in [(4, 9), (5, 13), (12, 13)]:
+            put(im, *p, (90, 96, 130))
+    if acc == "horns":
+        for p in [(4, 12), (5, 13), (6, 13)]:
+            put(im, *p, (230, 250, 170))
     if acc == "ears":    # panda eye patches
         for p in [(7, 7), (7, 8), (7, 9), (10, 8), (10, 9), (13, 8), (13, 9)]:
             put(im, *p, (90, 80, 110))
@@ -615,4 +640,101 @@ for y in range(108):
         t = y / 108
         put(bg, x, y, (int(80 + 90 * t), int(168 + 60 * t), 255))
 bg.resize((432, 432), Image.NEAREST).save(os.path.join(ICO, "icon_bg_432.png"))
+# ---------------------------------------------------------------- economy / cosmetics
+import colorsys
+def hue_shift(img, deg, sat=1.0, val=1.0):
+    out = img.copy(); px = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = px[x, y]
+            if a == 0 or (r, g, b, a) == OUT or (r, g, b) == (255, 255, 255):
+                continue
+            h, s_, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            h = (h + deg / 360.0) % 1.0
+            r2, g2, b2 = colorsys.hsv_to_rgb(h, min(1, s_ * sat), min(1, v * val))
+            px[x, y] = (int(r2 * 255), int(g2 * 255), int(b2 * 255), a)
+    return out
+
+base_planet = planet()
+for name, deg, sat in [("violet", 255, 0.9), ("mint", 140, 0.85), ("gold", 30, 1.1)]:
+    hue_shift(base_planet, deg, sat).save(os.path.join(SPR, "planet_%s.png" % name))
+
+def trail_icon(kind):
+    im = new(16, 16)
+    rainbow = [(255, 90, 90), (255, 170, 60), (255, 230, 70), (110, 220, 110), (90, 170, 255), (170, 110, 255)]
+    for i in range(6):
+        x, y = 2 + i * 2, 12 - i * 2
+        if kind == "classic":
+            c = (255, 212, 60) if i % 2 == 0 else (255, 255, 255)
+            for dx in range(max(1, i // 2) + 1):
+                put(im, x + dx, y, c); put(im, x + dx, y + 1, c)
+        elif kind == "sparkle":
+            c = (255, 255, 255) if i % 2 else (255, 240, 140)
+            put(im, x, y, c); put(im, x + 1, y, c); put(im, x, y - 1, c); put(im, x - 1, y, c); put(im, x, y + 1, c)
+        elif kind == "rainbow":
+            for dy in range(2):
+                for dx in range(2):
+                    put(im, x + dx, y + dy, rainbow[i])
+        elif kind == "hearts" and i % 2 == 0:
+            for (dx, dy) in [(0, 0), (2, 0), (0, 1), (1, 1), (2, 1), (1, 2)]:
+                put(im, x + dx - 1, y + dy - 1, (255, 100, 150))
+        elif kind == "stars" and i % 2 == 0:
+            for (dx, dy) in [(1, 0), (0, 1), (1, 1), (2, 1), (1, 2)]:
+                put(im, x + dx - 1, y + dy - 1, (255, 220, 60))
+    outline(im)
+    return im
+
+for k in ["classic", "sparkle", "rainbow", "hearts", "stars"]:
+    save(trail_icon(k), "trail_%s.png" % k)
+
+WORLD_ICON = {"sky": ((70, 152, 255), (176, 230, 255), (255, 142, 108)),
+              "sunset": ((255, 120, 110), (255, 214, 140), (176, 120, 255)),
+              "candy": ((255, 150, 200), (255, 222, 240), (120, 226, 180)),
+              "night": ((30, 40, 110), (90, 90, 180), (255, 206, 80)),
+              "lagoon": ((40, 190, 200), (170, 250, 230), (255, 142, 108))}
+for k, (top, bot, pc) in WORLD_ICON.items():
+    im = new(16, 16)
+    for y in range(1, 15):
+        t = (y - 1) / 13
+        c = tuple(int(top[j] + (bot[j] - top[j]) * t) for j in range(3))
+        for x in range(1, 15):
+            put(im, x, y, c)
+    if k == "night":
+        for p in [(3, 3), (12, 2), (10, 5), (4, 11)]:
+            put(im, *p, (255, 255, 255))
+    for y in range(16):
+        for x in range(16):
+            if in_disc(x, y, 8, 9, 4.2):
+                put(im, x, y, pc)
+    put(im, 6, 7, tuple(min(255, v + 60) for v in pc))
+    outline(im)
+    save(im, "world_%s.png" % k)
+
+MORE_ICONS = {
+    "coin": ["..###..", ".#####.", "##.####", "##.####", "##.####", ".#####.", "..###..", "......."],
+    "gift": ["..#.#....", "...#.....", "#########", "#########", ".###.###.", ".###.###.", ".###.###.", ".#######."],
+    "shield": ["#########", "#########", "#########", ".#######.", ".#######.", "..#####..", "...###...", "....#...."],
+    "rush": ["..###....", ".#...#...", "#.#...#..", "#.....#..", ".#...#.#.", "..###.###", "......###", "........."],
+    "trail": [".........", "......##.", "....####.", "..######.", "######...", "####.....", "##.......", "........."],
+    "world": ["..#####..", ".##...##.", "##.#...##", "#...##..#", "#..#....#", "##....###", ".##..###.", "..#####.."],
+    "left": ["...#.....", "..##.....", ".###.....", "####.....", ".###.....", "..##.....", "...#.....", "........."],
+    "right": ["#........", "##.......", "###......", "####.....", "###......", "##.......", "#........", "........."],
+}
+MORE_COL = {"coin": (255, 206, 50), "gift": (255, 110, 160), "shield": (120, 220, 255), "rush": (140, 230, 255),
+            "trail": (255, 230, 90), "world": (120, 220, 140), "left": (255, 255, 255), "right": (255, 255, 255)}
+for name, rows in MORE_ICONS.items():
+    im = new(len(rows[0]) + 2, len(rows) + 2)
+    for y, row in enumerate(rows):
+        for x, v in enumerate(row):
+            if v == "#":
+                put(im, x + 1, y + 1, MORE_COL[name])
+    if name == "coin":
+        put(im, 3, 2, (255, 250, 200)); put(im, 2, 3, (255, 250, 200))
+    if name == "shield":
+        put(im, 3, 2, (230, 250, 255)); put(im, 3, 3, (230, 250, 255))
+    if name == "gift":
+        for yy in range(3, 9):
+            put(im, 5, yy, (255, 230, 90))
+    outline(im, OUT, diag=True)
+    save(im, "icon_%s.png" % name)
 print("art ok")

@@ -13,6 +13,7 @@ var instant := false   # tests: resolve immediately without UI
 var fill_rate := 1.0   # tests: probability an ad is "loaded"
 
 var _box: Control
+var _banner: Label
 var _title: Label
 var _timer_lbl: Label
 var _close: Button
@@ -50,6 +51,29 @@ func start() -> void:
 	_close.position = Vector2(-60, 6)
 	_close.pressed.connect(_finish)
 	_box.add_child(_close)
+	_banner = Label.new()
+	_banner.text = "TEST BANNER AD"
+	_banner.theme = th
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var bs := StyleBoxFlat.new()
+	bs.bg_color = Color8(24, 18, 44)
+	_banner.add_theme_stylebox_override("normal", bs)
+	_banner.anchor_left = 0.0; _banner.anchor_right = 1.0
+	_banner.anchor_top = 1.0; _banner.anchor_bottom = 1.0
+	_banner.offset_top = -MonetizationConfig.BANNER_HEIGHT
+	_banner.visible = false
+	add_child(_banner)
+
+
+func show_banner() -> void:
+	if _banner:
+		_banner.visible = true
+
+
+func hide_banner() -> void:
+	if _banner:
+		_banner.visible = false
 
 
 func rewarded_ready() -> bool:

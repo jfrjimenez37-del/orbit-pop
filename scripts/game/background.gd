@@ -10,8 +10,10 @@ const CLOUDS := [
 const ISLANDS := [preload("res://assets/sprites/island_a.png"), preload("res://assets/sprites/island_b.png")]
 const SUN := preload("res://assets/sprites/sun.png")
 const FLOOR := preload("res://assets/sprites/cloud_floor.png")
-const TOP := Color8(70, 152, 255)
-const BOTTOM := Color8(176, 230, 255)
+var TOP := Color8(70, 152, 255)
+var BOTTOM := Color8(176, 230, 255)
+var cloud_tint := Color(1, 1, 1)
+var stars := false
 
 var size := Vector2(180, 320)
 var _t := 0.0
@@ -66,14 +68,22 @@ func _draw() -> void:
 			while x < size.x:
 				draw_rect(Rect2(x, i * bh, 1, 1), prev)
 				x += 2
-	draw_texture(SUN, Vector2(size.x - 40, 14))
+	if stars:
+		for i in 40:
+			var sx := fmod(i * 73.0 + _t * 0.5, size.x)
+			var sy := fmod(i * 131.0, size.y * 0.8)
+			if (i + int(_t * 2.0)) % 7 != 0:
+				draw_rect(Rect2(Vector2(sx, sy).floor(), Vector2(1, 1)), Color(1, 1, 1, 0.8))
+	draw_texture(SUN, Vector2(size.x - 40, 14), Color(1, 1, 1, 0.55) if stars else Color.WHITE)
 	for isl in _islands:
 		var y: float = size.y * isl[2] + roundf(sin(_t * 0.6 + isl[1]) * 1.0)
 		draw_texture(ISLANDS[isl[0]], Vector2(roundf(isl[1]), roundf(y)), Color(1, 1, 1, 0.75))
 	for c in _clouds:
 		var tex: Texture2D = CLOUDS[c[0]]
 		var a := 0.75 if c[0] == 2 else 0.95
-		draw_texture(tex, Vector2(roundf(c[1]), roundf(c[2])), Color(1, 1, 1, a))
+		var tint := cloud_tint
+		tint.a *= a
+		draw_texture(tex, Vector2(roundf(c[1]), roundf(c[2])), tint)
 	# cloud sea at the bottom
 	var fw := FLOOR.get_width()
 	var off := fmod(_t * 6.0, fw)
@@ -81,3 +91,11 @@ func _draw() -> void:
 	while x2 < size.x:
 		draw_texture(FLOOR, Vector2(roundf(x2), size.y - 20))
 		x2 += fw
+
+
+func apply_world(w: Dictionary) -> void:
+	TOP = w["top"]
+	BOTTOM = w["bottom"]
+	cloud_tint = w["cloud"]
+	stars = w["stars"]
+	RenderingServer.set_default_clear_color(BOTTOM)

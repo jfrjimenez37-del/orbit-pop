@@ -28,6 +28,8 @@ func _initialize() -> void:
 	test_difficulty()
 	print("== monetization")
 	await test_monetization(save)
+	print("== economy")
+	await test_economy(save)
 	print("== gameplay simulation with fair bot")
 	await test_simulation(save)
 	print("\n%d checks, %d failed" % [checks, fails])
@@ -234,6 +236,98 @@ func test_monetization(save) -> void:
 	await process_frame
 	save.reset_all()
 	mon.clock = func() -> float: return Time.get_ticks_msec() / 1000.0
+
+
+func test_economy(save) -> void:
+	var mon = get_root().get_node("Monetization")
+	mon.use_test_providers()
+	save.reset_all()
+	# daily gift streak
+	var day0 := 1_800_000_000.0
+	save.clock_override = day0
+	ok(save.daily_available(), "daily gift available on first day")
+	var g: Dictionary = save.claim_daily()
+	ok(g["day"] == 1 and save.coins == 30, "day 1 gives 30 coins (%d)" % save.coins)
+	ok(not save.daily_available() and save.claim_daily().is_empty(), "only once per day")
+	save.clock_override = day0 + 86400
+	ok(save.daily_preview()["day"] == 2, "next day continues the streak")
+	save.claim_daily(2)
+	ok(save.coins == 30 + 80, "x2 doubles the gift")
+	save.clock_override = day0 + 86400 * 4
+	ok(save.daily_preview()["day"] == 1, "missing a day resets the streak")
+	save.clock_override = -1.0
+	# coin cosmetics
+	save.coins = 100
+	var robo := Catalog.find("skins", "robo")
+	ok(not save.buy_item("skins", robo), "cannot buy without enough coins")
+	save.coins = 900
+	ok(save.buy_item("skins", robo) and save.coins == 100 and save.is_unlocked(robo), "coin skin bought")
+	ok(not save.buy_item("skins", robo), "cannot buy twice")
+	ok(not save.buy_item("skins", Catalog.find("skins", "goldie")), "shop items not buyable with coins")
+	# boosts
+	save.coins = 200
+	ok(mon.buy_boost("shield") and save.boosts["shield"] == 1 and save.coins == 50, "boost bought with coins")
+	ok(not mon.buy_boost("shield"), "boost refused without coins")
+	# bundles & consumables
+	save.coins = 0
+	mon.buy("starter")
+	await process_frame
+	ok(save.owns("no_ads") and save.coins == 500 and save.boosts["shield"] == 3, "starter: no ads + 500 coins + 2 shields")
+	save.grant("starter")
+	ok(save.coins == 500, "bundle bonus only once (restore safe)")
+	mon.buy("coins_1500")
+	await process_frame
+	mon.buy("coins_1500")
+	await process_frame
+	ok(save.coins == 3500, "coin bag is consumable (%d)" % save.coins)
+	ok(not save.unlocked("worlds", Catalog.find("worlds", "night")), "world pack not owned yet")
+	mon.buy("supporter")
+	await process_frame
+	ok(save.unlocked("worlds", Catalog.find("worlds", "night")) and save.unlocked("trails", Catalog.find("trails", "rainbow")), "supporter unlocks all packs")
+	# banner never shown to NO ADS owners
+	mon.show_banner()
+	ok(not mon.ads._banner.visible, "no banner for NO ADS owners")
+	save.purchases = []
+	mon.show_banner()
+	ok(mon.ads._banner.visible, "banner shown in shop otherwise")
+	mon.hide_banner()
+	ok(not mon.ads._banner.visible, "banner hidden when leaving shop")
+	# in-game: coins, free continue, shield boost
+	save.reset_all()
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	save.boosts["shield"] = 1
+	main.armed["shield"] = true
+	main.start_run()
+	ok(main.shield_hit and save.boosts["shield"] == 0, "shield boost consumed at run start")
+	var m := Meteor.new().setup(main.player.angle, main.gt - 0.5, 0.0, 200.0)
+	# force a meteor right on the player now
+	m.t_danger_start = main.gt; m.t_danger_end = main.gt + 0.05
+	m.t_launch = main.gt - (Meteor.R0 - Orbit.R) / 200.0
+	main.hazards.append(m); main.hazards_root.add_child(m)
+	main._process(1.0 / 120.0)
+	ok(main.state == main.S.PLAYING and not main.shield_hit, "shield absorbed the hit")
+	main.score = 30
+	main.bubbles_popped = 2
+	main._die()
+	for f in 60:
+		main._process(1.0 / 60.0)
+	ok(save.coins == 12, "coins = score/3 + bubbles (%d)" % save.coins)
+	save.purchases = ["no_ads"]
+	ok(mon.can_continue(30, false) and mon.continue_is_free(), "NO ADS gives a free continue")
+	main._on_continue_pressed()
+	ok(main.state == main.S.PLAYING, "free continue revives without an ad")
+	main.score = 36
+	main._die()
+	for f in 60:
+		main._process(1.0 / 60.0)
+	ok(save.coins == 14, "continued run only pays the new coins (%d)" % save.coins)
+	main.queue_free()
+	await process_frame
+	save.reset_all()
 
 
 func test_simulation(save) -> void:

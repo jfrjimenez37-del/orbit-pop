@@ -10,6 +10,7 @@ var offset := 0.0          # adaptive difficulty shift (s), from recent performa
 var rejected := 0          # stats for tests / tuning
 var committed := 0
 var spawned_first := false
+var bubble_rate := 1.0     # BUBBLE RUSH boost: 2.0 = twice as many bubbles
 
 # name, unlock time (effective seconds), base weight
 const PATTERNS := [
@@ -54,7 +55,7 @@ func omega(t: float) -> float:
 func update(t: float, angle: float, dir: int, active: Array) -> Dictionary:
 	var out := {"hazards": [], "bubbles": []}
 	if t >= next_bubble:
-		next_bubble = t + rng.randf_range(5.0, 8.5)
+		next_bubble = t + rng.randf_range(5.0, 8.5) / bubble_rate
 		var b := Bubble.new().setup(angle + PI + rng.randf_range(-0.7, 0.7), t, 5.0)
 		out["bubbles"].append(b)
 	if t < next_t:

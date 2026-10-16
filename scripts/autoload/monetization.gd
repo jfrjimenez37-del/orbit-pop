@@ -75,9 +75,29 @@ func ads_removed() -> bool:
 	return Save.owns("no_ads")
 
 
+## NO ADS owners get their continue for free (no video).
+func continue_is_free() -> bool:
+	return Save.owns("no_ads")
+
+
 func can_continue(score: int, already_used: bool) -> bool:
-	return not run_active and not already_used and ads != null \
-		and score >= MonetizationConfig.CONTINUE_MIN_SCORE and ads.rewarded_ready()
+	if run_active or already_used or score < MonetizationConfig.CONTINUE_MIN_SCORE:
+		return false
+	return continue_is_free() or rewarded_ready()
+
+
+func rewarded_ready() -> bool:
+	return ads != null and ads.rewarded_ready()
+
+
+func show_banner() -> void:
+	if ads != null and not ads_removed():
+		ads.show_banner()
+
+
+func hide_banner() -> void:
+	if ads != null:
+		ads.hide_banner()
 
 
 func show_rewarded(placement: String) -> bool:
@@ -139,7 +159,7 @@ func price(id: String) -> String:
 
 
 func buy(id: String) -> void:
-	if Save.owns(id):
+	if Save.owns(id) and not MonetizationConfig.CONSUMABLES.has(id):
 		purchase_result.emit(id, true, "OWNED")
 		return
 	if not store_available():
@@ -155,7 +175,12 @@ func restore() -> void:
 
 func _on_purchase_done(id: String, ok: bool, message: String) -> void:
 	if ok:
-		Save.grant(id)
+		if MonetizationConfig.CONSUMABLES.has(id):
+			Save.add_coins(MonetizationConfig.CONSUMABLES[id])
+		else:
+			Save.grant(id)
+		if id == "no_ads" or id == "starter" or id == "supporter":
+			hide_banner()
 	purchase_result.emit(id, ok, message)
 	store_changed.emit()
 
@@ -165,3 +190,21 @@ func _on_restored(owned: Array) -> void:
 		Save.grant(id)
 	purchase_result.emit("restore", true, "RESTORED")
 	store_changed.emit()
+
+
+func should_offer_starter() -> bool:
+	return not Save.starter_seen and Save.games >= MonetizationConfig.STARTER_AFTER_GAMES \
+		and not Save.owns("no_ads") and store_available()
+
+
+func starter_listed() -> bool:
+	return not Save.owns("starter") and not Save.owns("no_ads")
+
+
+## Coin shop for boosts. Returns true on success.
+func buy_boost(id: String) -> bool:
+	var price: int = MonetizationConfig.BOOSTS[id]["price"]
+	if not Save.spend(price):
+		return false
+	Save.add_boost(id)
+	return true

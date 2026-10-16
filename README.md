@@ -73,7 +73,7 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 48 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
+| 74 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
 | Guardado local, récords, estadísticas, 6 skins | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
@@ -88,24 +88,46 @@ en `scripts/monetization/`:
 | `ads_mock.gd` / `store_mock.gd` | PC y builds **debug** sin plugins (anuncio "TEST AD", compras sin cobro) |
 | ninguno | build release sin plugins: botones de anuncio ocultos, tienda "STORE OFFLINE" |
 
-Qué incluye (configurable en `scripts/monetization/config.gd`):
-- **CONTINUE (anuncio recompensado):** en Game Over, 1 vez por partida, desde 5 puntos. Revive con
-  la misma puntuación, campo limpio y 1,8 s de escudo. La partida no se cuenta dos veces.
-- **Intersticiales con ritmo:** solo al pulsar RETRY/MENU; nunca en las 5 primeras partidas; máx. 1
-  cada 3 partidas y 150 s; ver un recompensado cuenta como pausa. **Nunca durante una partida.**
-- **Compras únicas:** `no_ads` (quita intersticiales; el CONTINUE opcional sigue), `star_pack`
-  (3 skins premium: GOLDIE, NEON, PANDA), `supporter` (todo). Botón RESTORE. Precios localizados
-  desde Google Play.
+Qué incluye (todo configurable en `scripts/monetization/config.gd`):
+
+**Anuncios (nunca durante una partida)**
+- CONTINUE recompensado en Game Over (1 por partida, desde 5 puntos; con NO ADS es gratis y sin vídeo).
+- x2 MONEDAS recompensado en Game Over; x2 del regalo diario; FREE COINS (+60, máx. 3/día) en la tienda.
+- Intersticial solo al pulsar RETRY/MENU: nunca en las 5 primeras partidas, máx. 1 cada 3 partidas y 150 s.
+- Banner solo en la pantalla de tienda (oculto con NO ADS).
+
+**Monedas (moneda blanda, sin compra obligatoria)**
+- Se ganan: puntuación/3 + 1 por burbuja en cada partida, regalo diario y anuncios opcionales.
+- Regalo diario con racha de 7 días: 30, 40, 50 (+RUSH), 60, 80, 100 (+SHIELD), 250 (+SHIELD).
+  Si se salta un día, vuelve al día 1.
+- Se gastan en: 4 skins (COOKIE 300, BUBBLY 500, ROBO 800, DRAKE 1200), estela SPARKLE (200),
+  mundo LAGOON (600) y boosts.
+
+**Boosts (ventaja limitada)**: SHIELD (aguanta 1 golpe, 150) y BUBBLE RUSH (2x burbujas, 100).
+Máximo uno de cada por partida; se activan con los botones junto a PLAY. Solo cuestan monedas, para
+que los récords sigan siendo justos (las monedas pueden comprarse con la bolsa de 1500).
+
+**Compras (Google Play)**
+
+| ID | Tipo | Contenido | Precio sugerido |
+|---|---|---|---|
+| `starter` | único | NO ADS + 500 monedas + 2 SHIELD (oferta emergente tras 8 partidas) | $1.99 |
+| `no_ads` | único | sin intersticiales ni banner + CONTINUE gratis | $2.99 |
+| `star_pack` | único | skins GOLDIE, NEON, PANDA | $1.99 |
+| `trail_pack` | único | estelas RAINBOW, HEARTS, STARS | $0.99 |
+| `world_pack` | único | mundos SUNSET, CANDY, NIGHT (cielo + planeta) | $1.49 |
+| `supporter` | único | todos los packs + NO ADS + 1000 monedas | $4.99 |
+| `coins_1500` | consumible | 1500 monedas | $0.99 |
 
 Activar lo real (requiere build Gradle, ver sección AAB):
 1. Plugins (Godot ▸ AssetLib o GitHub, carpeta `addons/`) y actívalos en Project Settings ▸ Plugins:
    - AdMob: https://github.com/godot-sdk-integrations/godot-admob
    - Billing: https://github.com/godot-sdk-integrations/godot-google-play-billing (rama master, Godot 4.2+)
    El juego los detecta solo (clases `Admob` y `BillingClient`); sin ellos compila igual.
-2. AdMob: crea la app y 2 bloques (intersticial, recompensado) y pega los IDs en `config.gd`.
+2. AdMob: crea la app y 3 bloques (intersticial, recompensado, banner) y pega los IDs en `config.gd`.
    En debug se usan los IDs de prueba de Google. Configura el formulario de consentimiento (UMP/GDPR):
    el adaptador lo pide antes de inicializar.
-3. Play Console: crea los productos `no_ads`, `star_pack`, `supporter` (únicos, no consumibles),
+3. Play Console: crea los productos de la tabla (todos únicos salvo `coins_1500`, consumible),
    sube una build a prueba interna y añade testers de licencia.
 4. Política de privacidad (obligatoria con anuncios) y formulario "Seguridad de los datos".
 

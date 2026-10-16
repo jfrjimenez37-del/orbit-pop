@@ -26,6 +26,12 @@ var bubbles: Array = []
 var tapped_once := false
 var near_count := 0
 var continued := false        # rewarded continue already used this run
+var bubbles_popped := 0
+var coins_awarded := 0        # coins already paid out for this run (continue-safe)
+var run_coins := 0            # coins shown on game over (doubled by a rewarded ad)
+var coins_doubled := false
+var armed := {"shield": false, "rush": false}
+var shield_hit := false       # SHIELD boost still unused in this run
 var shield_until := 0.0
 var _death_angle := 0.0
 
@@ -42,6 +48,7 @@ var _tween: Tween
 func _ready() -> void:
 	randomize()
 	player.set_skin(Save.skin)
+	apply_style()
 	player.reset()
 	ui.play_pressed.connect(start_run)
 	ui.retry_pressed.connect(func(): Monetization.between_runs(start_run))
@@ -54,6 +61,23 @@ func _ready() -> void:
 	ui.shop_pressed.connect(open_shop)
 	ui.skin_selected.connect(_on_skin_selected)
 	ui.continue_pressed.connect(_on_continue_pressed)
+	ui.double_pressed.connect(func():
+		if not Monetization.show_rewarded("double_coins"):
+			ui.toast("NO AD AVAILABLE", Color8(255, 150, 160)))
+	ui.style_changed.connect(apply_style)
+	ui.boost_toggled.connect(_on_boost_toggled)
+	ui.daily_claim.connect(_on_daily_claim)
+	ui.free_coins_pressed.connect(func():
+		if Save.free_ads_left() > 0 and not Monetization.show_rewarded("free_coins"):
+			ui.toast("NO AD AVAILABLE", Color8(255, 150, 160)))
+	ui.boost_buy.connect(func(id):
+		if Monetization.buy_boost(id):
+			Sfx.play("unlock")
+			ui.toast("+1 " + MonetizationConfig.BOOSTS[id]["name"], Color8(120, 255, 200))
+		else:
+			Sfx.play("deny")
+			ui.toast("NOT ENOUGH COINS", Color8(255, 150, 160))
+		ui.refresh_shop())
 	ui.buy_pressed.connect(func(id): Monetization.buy(id))
 	ui.restore_pressed.connect(func(): Monetization.restore())
 	Monetization.rewarded_finished.connect(_on_rewarded)
@@ -77,6 +101,8 @@ func _layout() -> void:
 func go_menu() -> void:
 	state = S.MENU
 	Monetization.run_active = false
+	Monetization.hide_banner()
+	apply_style()
 	_state_t = 0.0
 	_clear_field()
 	player.reset(player.angle)
@@ -84,7 +110,16 @@ func go_menu() -> void:
 	player.happy = true
 	planet.mood = Planet.Mood.SMILE
 	_layout()
-	ui.show_menu()
+	for k in armed:
+		if int(Save.boosts.get(k, 0)) <= 0:
+			armed[k] = false
+	ui.show_menu(armed)
+	if Save.daily_available():
+		ui.show_daily()
+	elif Monetization.should_offer_starter():
+		Save.starter_seen = true
+		Save.save_data()
+		ui.show_starter()
 
 
 func open_skins() -> void:
@@ -92,9 +127,49 @@ func open_skins() -> void:
 	ui.show_skins()
 
 
-func open_shop() -> void:
+func open_shop(tab := "packs") -> void:
 	state = S.SHOP
-	ui.show_shop()
+	ui.show_shop(tab)
+	Monetization.show_banner()
+
+
+func apply_style() -> void:
+	player.set_skin(Save.skin)
+	player.trail_style = Save.trail
+	var w := Save.world_data()
+	bg.apply_world(w)
+	planet.set_world(w["planet"])
+
+
+func _on_boost_toggled(id: String) -> void:
+	if int(Save.boosts.get(id, 0)) <= 0:
+		armed[id] = false
+		open_shop("boosts")
+		return
+	armed[id] = not armed[id]
+	Sfx.play("select")
+	ui.refresh_boosts(armed)
+
+
+func _on_daily_claim(doubled: bool) -> void:
+	if doubled:
+		if not Monetization.show_rewarded("daily_double"):
+			ui.toast("NO AD AVAILABLE", Color8(255, 150, 160))
+		return
+	_give_daily(1)
+
+
+func _give_daily(mult: int) -> void:
+	var g := Save.claim_daily(mult)
+	if g.is_empty():
+		return
+	var msg := "+%d COINS" % (int(g["coins"]) * mult)
+	if g["boost"] != "":
+		msg += " +1 " + MonetizationConfig.BOOSTS[g["boost"]]["name"]
+	ui.toast(msg, Color8(255, 222, 70))
+	Sfx.play("unlock")
+	ui.hide_popup()
+	ui.refresh_menu()
 
 
 func _on_purchase_result(id: String, ok: bool, message: String) -> void:
@@ -102,14 +177,40 @@ func _on_purchase_result(id: String, ok: bool, message: String) -> void:
 	Sfx.play("unlock" if ok and id != "restore" else ("select" if ok else "deny"))
 	if state == S.SHOP:
 		ui.refresh_shop()
+	elif state == S.MENU:
+		ui.refresh_menu()
 
 
 func _on_continue_pressed() -> void:
+	if Monetization.continue_is_free():
+		revive()
+		return
 	if not Monetization.show_rewarded("continue"):
 		ui.toast("NO AD AVAILABLE", Color8(255, 150, 160))
 
 
 func _on_rewarded(placement: String, granted: bool) -> void:
+	match placement:
+		"double_coins":
+			if granted and not coins_doubled:
+				coins_doubled = true
+				Save.add_coins(run_coins)
+				run_coins *= 2
+				ui.set_over_coins(run_coins, false)
+				Sfx.play("unlock")
+			return
+		"daily_double":
+			if granted:
+				_give_daily(2)
+			return
+		"free_coins":
+			if granted:
+				Save.note_free_ad()
+				Save.add_coins(MonetizationConfig.FREE_COIN_AD_REWARD)
+				ui.toast("+%d COINS" % MonetizationConfig.FREE_COIN_AD_REWARD, Color8(255, 222, 70))
+				Sfx.play("unlock")
+				ui.refresh_shop()
+			return
 	if placement == "continue" and state == S.OVER:
 		if granted:
 			revive()
@@ -157,9 +258,21 @@ func start_run() -> void:
 	record_announced = false
 	continued = false
 	shield_until = 0.0
+	bubbles_popped = 0
+	coins_awarded = 0
+	run_coins = 0
+	coins_doubled = false
 	Monetization.run_active = true
+	Monetization.hide_banner()
+	shield_hit = bool(armed["shield"]) and Save.use_boost("shield")
+	player.shield_boost = shield_hit
+	var rush: bool = armed["rush"] and Save.use_boost("rush")
+	for k in armed:
+		if int(Save.boosts.get(k, 0)) <= 0:
+			armed[k] = false
 	best_at_start = Save.best
 	director.reset(randi(), Save.recent_average())
+	director.bubble_rate = 2.0 if rush else 1.0
 	player.reset(-PI * 0.5)
 	player.happy = false
 	player.omega = director.omega(0.0)
@@ -199,7 +312,13 @@ func _game_over() -> void:
 	state = S.OVER
 	var res := Save.submit_run(score)
 	Monetization.on_game_over()
-	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], Monetization.can_continue(score, continued))
+	var earned := int(floor(score * MonetizationConfig.COINS_PER_SCORE)) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE
+	Save.add_coins(earned - coins_awarded)
+	run_coins = earned - coins_awarded
+	coins_awarded = earned
+	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], Monetization.can_continue(score, continued),
+		Monetization.continue_is_free())
+	ui.set_over_coins(run_coins, run_coins > 0 and not coins_doubled and Monetization.rewarded_ready())
 	if res["record"] and score > 0:
 		Sfx.play("record")
 	elif not res["unlocked"].is_empty():
@@ -331,6 +450,10 @@ func _sim(dt: float) -> void:
 	for h in hazards:
 		var c: float = h.clearance(gt, player.angle)
 		if c < 0.0 and not shielded:
+			if shield_hit:
+				_break_shield()
+				shielded = true
+				continue
 			_die()
 			return
 		if c < INF:
@@ -345,12 +468,25 @@ func _sim(dt: float) -> void:
 		if b.t_end > gt and b.touches(player.angle):
 			b.t_end = -1.0
 			_add_score(2)
+			bubbles_popped += 1
 			var p := Orbit.on_ring(b.theta)
 			fx.burst(p, 14, [Color.WHITE, Color8(120, 220, 255), Color8(255, 222, 70)], 70.0, 0.4, 2.0)
 			fx.ring(p, Color8(180, 240, 255), 4.0, 18.0, 0.3)
 			fx.text("POP! +2", p + Vector2(0, -12), Color8(255, 236, 90))
 			Sfx.play("pop")
 	bg.speed_mul = 1.0 + director.level(gt) * 1.5
+
+
+func _break_shield() -> void:
+	shield_hit = false
+	player.shield_boost = false
+	shield_until = gt + 1.0
+	_shake = 3.0
+	fx.burst(player.position, 16, [Color8(140, 230, 255), Color.WHITE], 90.0, 0.4, 2.0)
+	fx.ring(player.position, Color8(140, 230, 255), 8.0, 26.0, 0.3)
+	fx.text("SHIELD!", player.position + Vector2(0, -16), Color8(140, 230, 255))
+	Sfx.play("pop", 0.8)
+	Input.vibrate_handheld(30)
 
 
 func _award(h) -> void:

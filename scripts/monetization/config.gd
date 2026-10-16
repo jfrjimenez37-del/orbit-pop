@@ -1,14 +1,41 @@
 class_name MonetizationConfig
 ## Every business knob in one place. Product ids must match Google Play Console.
 
-const PRODUCTS := ["no_ads", "star_pack", "supporter"]
+const PRODUCTS := ["starter", "no_ads", "star_pack", "trail_pack", "world_pack", "supporter", "coins_1500"]
+## Consumables: product id -> coins granted every purchase.
+const CONSUMABLES := {"coins_1500": 1500}
 const PRODUCT_INFO := {
-	"no_ads": {"name": "NO ADS", "desc": "NO BREAKS"},
-	"star_pack": {"name": "STAR PACK", "desc": "+3 SKINS"},
-	"supporter": {"name": "SUPPORTER", "desc": "ALL ITEMS"},
+	"starter": {"name": "STARTER", "desc": "NO ADS+500", "icon": "gift"},
+	"no_ads": {"name": "NO ADS", "desc": "+FREE CONTINUE", "icon": "noads"},
+	"star_pack": {"name": "STAR PACK", "desc": "+3 SKINS", "icon": "star"},
+	"trail_pack": {"name": "TRAILS", "desc": "+3 TRAILS", "icon": "trail"},
+	"world_pack": {"name": "WORLDS", "desc": "+3 WORLDS", "icon": "world"},
+	"supporter": {"name": "SUPPORTER", "desc": "ALL PACKS", "icon": "crown"},
+	"coins_1500": {"name": "1500 COINS", "desc": "COIN BAG", "icon": "coin"},
 }
 ## Shown until the store returns localized prices.
-const FALLBACK_PRICES := {"no_ads": "$1.99", "star_pack": "$1.99", "supporter": "$2.99"}
+const FALLBACK_PRICES := {"starter": "$1.99", "no_ads": "$2.99", "star_pack": "$1.99", "trail_pack": "$0.99",
+	"world_pack": "$1.49", "supporter": "$4.99", "coins_1500": "$0.99"}
+## Extra goodies granted once when a bundle is first bought.
+const BUNDLE_BONUS := {"starter": {"coins": 500, "boosts": {"shield": 2}}, "supporter": {"coins": 1000}}
+## Starter offer pops up once after this many runs (then stays in the shop until bought).
+const STARTER_AFTER_GAMES := 8
+
+## Coins: earned every run, doubled with a rewarded ad.
+const COINS_PER_SCORE := 1.0 / 3.0
+const COINS_PER_BUBBLE := 1
+const FREE_COIN_ADS_PER_DAY := 3
+const FREE_COIN_AD_REWARD := 60
+## Daily gift streak (resets if a day is missed). Day 7 is the big one.
+const DAILY_REWARDS := [
+	{"coins": 30}, {"coins": 40}, {"coins": 50, "boost": "rush"}, {"coins": 60},
+	{"coins": 80}, {"coins": 100, "boost": "shield"}, {"coins": 250, "boost": "shield"},
+]
+## Boosts: bought with coins, max one of each per run.
+const BOOSTS := {
+	"shield": {"name": "SHIELD", "desc": "SURVIVE 1 HIT", "price": 150, "icon": "shield"},
+	"rush": {"name": "BUBBLE RUSH", "desc": "2X BUBBLES", "price": 100, "icon": "rush"},
+}
 
 ## Interstitial pacing (only ever between runs, never during one).
 const INTERSTITIAL_GRACE_GAMES := 5     # new players see no interstitials at first
@@ -23,3 +50,5 @@ const CONTINUE_SHIELD := 1.8            # seconds of invulnerability after reviv
 const ADMOB_APP_ID := ""
 const ADMOB_INTERSTITIAL_ID := ""
 const ADMOB_REWARDED_ID := ""
+const ADMOB_BANNER_ID := ""          # shown only on the shop screen
+const BANNER_HEIGHT := 28            # logical px kept free at the bottom of the shop
