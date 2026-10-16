@@ -76,6 +76,10 @@ SKINS = [
     ("frosty", (172, 226, 255), (90, 156, 232),  (244, 252, 255), (255, 255, 255), "flake"),
     ("ember",  (255, 122, 58),  (198, 48, 44),   (255, 204, 120), (255, 220, 60), "flame"),
     ("cosmo",  (152, 104, 255), (88, 58, 196),   (214, 186, 255), (255, 224, 70), "star"),
+    # premium (STAR PACK)
+    ("goldie", (255, 204, 44),  (206, 120, 22),  (255, 244, 160), (255, 236, 90), "crown"),
+    ("neon",   (64, 232, 226),  (20, 150, 196),  (206, 255, 252), (255, 80, 200), "bolt"),
+    ("panda",  (246, 246, 252), (186, 192, 216), (255, 255, 255), (60, 52, 80),   "ears"),
 ]
 WING_UP = [(2, 8), (1, 7), (2, 7), (1, 6), (0, 6), (0, 5), (1, 5)]
 WING_MID = [(2, 9), (1, 9), (0, 9), (1, 8), (2, 8), (0, 8), (1, 10)]
@@ -89,7 +93,8 @@ def draw_char(skin, wing, eyes):
     cx, cy, r = 8.5, 9.6, 5.5
     shaded_disc(im, cx, cy, r, base, shade, light)
     # antenna
-    put(im, 9, 3, shade); put(im, 10, 2, shade)
+    if acc not in ("crown", "ears"):
+        put(im, 9, 3, shade); put(im, 10, 2, shade)
     if acc == "ball":
         for p in [(10, 0), (11, 0), (10, 1), (11, 1)]:
             put(im, *p, tip)
@@ -112,6 +117,19 @@ def draw_char(skin, wing, eyes):
     elif acc == "star":
         for p in [(10, 0), (9, 1), (10, 1), (11, 1), (10, 2)]:
             put(im, *p, tip)
+    elif acc == "crown":
+        for p in [(7, 3), (8, 2), (9, 3), (10, 2), (11, 3), (7, 2), (11, 2), (7, 4), (8, 4), (9, 4), (10, 4), (11, 4), (8, 3), (10, 3)]:
+            put(im, *p, tip)
+        put(im, 9, 3, (255, 90, 120)); put(im, 9, 2, (255, 255, 255))
+    elif acc == "bolt":
+        for p in [(11, 0), (10, 1), (11, 1), (10, 2), (9, 2)]:
+            put(im, *p, tip)
+    elif acc == "ears":
+        for p in [(5, 3), (6, 3), (5, 4), (11, 3), (12, 3), (12, 4)]:
+            put(im, *p, tip)
+    if acc == "ears":    # panda eye patches
+        for p in [(7, 7), (7, 8), (7, 9), (10, 8), (10, 9), (13, 8), (13, 9)]:
+            put(im, *p, (90, 80, 110))
     if acc == "flake":   # little red scarf
         for x in range(4, 13):
             if in_disc(x, 13, cx, cy, r):
@@ -382,7 +400,7 @@ def glyph_w(ch):
         return 4
     return 5
 
-def build_font():
+def build_font(name="pixel", outlined=True):
     chars = list(G.keys())
     cols = 16
     cw, ch_ = 7, 9
@@ -399,20 +417,21 @@ def build_font():
             for xx, v in enumerate(row):
                 if v == "#":
                     put(cell, xx + 1 - x0, yy + 1, WHITE)
-        if c != " ":
+        if c != " " and outlined:
             outline(cell, OUT, diag=True)
         im.paste(cell, (gx, gy))
         lines.append("char id=%d x=%d y=%d width=%d height=%d xoffset=-1 yoffset=-1 xadvance=%d page=0 chnl=15"
                      % (ord(c), gx, gy, gw + 2, ch_, gw + 1))
-    im.save(os.path.join(FNT, "pixel.png"))
-    with open(os.path.join(FNT, "pixel.fnt"), "w") as f:
+    im.save(os.path.join(FNT, name + ".png"))
+    with open(os.path.join(FNT, name + ".fnt"), "w") as f:
         f.write('info face="OrbitPop" size=8 bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=0 aa=0 padding=0,0,0,0 spacing=0,0\n')
         f.write("common lineHeight=10 base=7 scaleW=%d scaleH=%d pages=1 packed=0\n" % (im.width, im.height))
-        f.write('page id=0 file="pixel.png"\n')
+        f.write('page id=0 file="%s.png"\n' % name)
         f.write("chars count=%d\n" % len(chars))
         f.write("\n".join(lines) + "\n")
 
 build_font()
+build_font("pixel_plain", outlined=False)   # for dark text on light panels / buttons
 
 def text_img(s, k, fill_top, fill_bot, out_w=2, shadow=(30, 18, 60)):
     """Big chunky logo text rendered from the pixel glyphs."""
@@ -534,6 +553,9 @@ ICONS = {
     "lock": ["..###....", ".#...#...", ".#...#...", "#######..", "###.###..", "###.###..", "#######..", "........."],
     "skins": ["..#.#....", "..###....", ".#####...", "##.#.##..", "#######..", "#######..", ".#####...", "........."],
     "star": ["....#....", "...###...", "#########", ".#######.", "..#####..", ".###.###.", ".#.....#.", "........."],
+    "cart": ["#........", "########.", ".#######.", ".######..", ".#####...", ".........", "..#..#...", "........."],
+    "noads": ["#.......#", ".#.###.#.", "..#...#..", ".#.#.#.#.", ".#..#..#.", ".#.#.#.#.", "..#...#..", "#..###..#"],
+    "video": ["#######..", "#.....#.#", "#..#..###", "#..##.###", "#..#..###", "#.....#.#", "#######..", "........."],
     "crown": ["#...#...#", "##.###.##", "#########", "#########", ".#######.", ".........", ".........", "........."],
 }
 
@@ -549,6 +571,8 @@ for name, rows in ICONS.items():
                     col = (255, 210, 50)
                 if name == "lock":
                     col = (255, 210, 90)
+                if name == "noads":
+                    col = (255, 110, 120)
                 put(im, x + 1, y + 1, col)
     outline(im, OUT, diag=True)
     save(im, "icon_%s.png" % name)

@@ -14,8 +14,10 @@ func ok(cond: bool, msg: String) -> void:
 
 
 func _initialize() -> void:
+	await process_frame   # let autoloads run their _ready() first
 	var save = get_root().get_node("Save")
 	save.path = "user://test_save.cfg"
+	save.reset_all()
 	print("== geometry: danger() matches real distances")
 	test_geometry()
 	print("== survival checker")
@@ -24,6 +26,8 @@ func _initialize() -> void:
 	test_save(save)
 	print("== difficulty curve")
 	test_difficulty()
+	print("== monetization")
+	await test_monetization(save)
 	print("== gameplay simulation with fair bot")
 	await test_simulation(save)
 	print("\n%d checks, %d failed" % [checks, fails])
@@ -149,6 +153,87 @@ func test_difficulty() -> void:
 	var easy := Director.new(); easy.reset(1, 2.0)
 	var hard := Director.new(); hard.reset(1, 60.0)
 	ok(easy.level(20.0) < base.level(20.0) and hard.level(20.0) > base.level(20.0), "adaptive offset works")
+
+
+func test_monetization(save) -> void:
+	var mon = get_root().get_node("Monetization")
+	mon.use_test_providers()
+	save.reset_all()
+	var now := [1000.0]
+	mon.clock = func() -> float: return now[0]
+	# interstitials: never for new players, never during a run, paced by runs and time
+	save.games = 2
+	for i in 5:
+		mon.on_game_over()
+	ok(not mon.should_show_interstitial(), "no interstitial during grace games")
+	save.games = 10
+	ok(mon.should_show_interstitial(), "interstitial allowed after grace + 3 runs")
+	mon.run_active = true
+	ok(not mon.should_show_interstitial(), "never an interstitial during a run")
+	ok(not mon.show_rewarded("continue"), "never a rewarded ad during a run")
+	mon.run_active = false
+	var called := [0]
+	mon.between_runs(func(): called[0] += 1)
+	await process_frame
+	await process_frame
+	ok(called[0] == 1, "between_runs continues after the interstitial")
+	mon.on_game_over(); mon.on_game_over(); mon.on_game_over()
+	ok(not mon.should_show_interstitial(), "cooldown blocks a second interstitial")
+	now[0] += 200.0
+	ok(mon.should_show_interstitial(), "allowed again after cooldown")
+	save.grant("no_ads")
+	ok(not mon.should_show_interstitial(), "NO ADS removes interstitials")
+	ok(mon.can_continue(10, false), "rewarded continue still offered with NO ADS")
+	ok(not mon.can_continue(10, true), "only one continue per run")
+	ok(not mon.can_continue(2, false), "no continue for tiny scores")
+	# purchases
+	save.reset_all()
+	ok(not save.is_unlocked(6), "premium skin locked before purchase")
+	var results: Array = []
+	var cb := func(id, okk, _m): results.append([id, okk])
+	mon.purchase_result.connect(cb)
+	mon.store.fail_next = true
+	mon.buy("star_pack")
+	await process_frame
+	ok(not save.owns("star_pack"), "cancelled purchase grants nothing")
+	mon.buy("star_pack")
+	await process_frame
+	ok(save.owns("star_pack") and save.is_unlocked(6) and save.is_unlocked(8), "STAR PACK unlocks premium skins")
+	mon.buy("supporter")
+	await process_frame
+	ok(save.owns("no_ads"), "SUPPORTER includes NO ADS")
+	save.load_data()
+	ok(save.owns("supporter") and save.owns("star_pack"), "purchases persisted")
+	mon.purchase_result.disconnect(cb)
+	# continue flow inside the real game loop
+	save.reset_all()
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.start_run()
+	for f in 120:
+		main._process(1.0 / 60.0)
+	main.score = 12
+	main._die()
+	for f in 60:
+		main._process(1.0 / 60.0)
+	ok(main.state == main.S.OVER and save.games == 1, "game over registered")
+	main._on_continue_pressed()
+	await process_frame
+	await process_frame
+	ok(main.state == main.S.PLAYING and main.score == 12 and main.continued, "continue revives with same score")
+	ok(save.games == 0, "continued run is not double counted")
+	ok(main.hazards.is_empty() and main.shield_until > main.gt, "field cleared + shield after continue")
+	main._die()
+	for f in 60:
+		main._process(1.0 / 60.0)
+	ok(save.games == 1 and save.best == 12, "final run counted once")
+	ok(not mon.can_continue(main.score, main.continued), "second continue refused")
+	main.queue_free()
+	await process_frame
+	save.reset_all()
+	mon.clock = func() -> float: return Time.get_ticks_msec() / 1000.0
 
 
 func test_simulation(save) -> void:

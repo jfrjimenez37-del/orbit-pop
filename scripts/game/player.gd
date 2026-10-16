@@ -5,7 +5,8 @@ extends Node2D
 
 const TRAIL_LEN := 12
 const SKIN_COLORS := [Color8(255, 212, 60), Color8(110, 230, 160), Color8(255, 128, 178),
-	Color8(172, 226, 255), Color8(255, 122, 58), Color8(152, 104, 255)]
+	Color8(172, 226, 255), Color8(255, 122, 58), Color8(152, 104, 255),
+	Color8(255, 204, 44), Color8(64, 232, 226), Color8(246, 246, 252)]
 
 var angle := -PI * 0.5
 var dir := 1
@@ -15,6 +16,7 @@ var tex: Texture2D
 var skin := 0
 var face_right := true
 var happy := false
+var shield := 0.0   # seconds of continue-shield left (blinking bubble)
 
 var _t := 0.0
 var _blink := 2.5
@@ -101,6 +103,9 @@ func _draw() -> void:
 	var sx := 1.0 + 0.35 * _squash
 	var sy := 1.0 - 0.3 * _squash
 	var flipx := 1.0 if face_right else -1.0
+	if shield > 0.0 and alive:
+		if shield > 0.6 or fmod(shield, 0.2) < 0.1:
+			draw_arc(Vector2(0, -1), 10.0, 0.0, TAU, 20, Color(0.7, 0.95, 1.0, 0.9), 1.0)
 	draw_set_transform(Vector2.ZERO, _dead_rot, Vector2(sx * flipx, sy))
 	draw_texture_rect_region(tex, Rect2(-8, -9, 16, 16), Rect2(frame * 16, 0, 16, 16))
 	draw_set_transform(Vector2.ZERO)

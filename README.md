@@ -73,10 +73,42 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 26 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
+| 48 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
-| Guardado local, récords, estadísticas, 6 skins | Anuncios/compras: solo existe el stub `monetization.gd` |
+| Guardado local, récords, estadísticas, 6 skins | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
 
-Monetización futura: implementar en `scripts/autoload/monetization.gd` (plugin AdMob/Play Billing);
-la UI de Game Over es el único punto de llamada. Nunca se llama durante una partida activa.
+## Monetización
+Arquitectura: `scripts/autoload/monetization.gd` (fachada + reglas) con proveedores intercambiables
+en `scripts/monetization/`:
+
+| Proveedor | Cuándo se usa |
+|---|---|
+| `ads_admob.gd` / `store_play.gd` | Android con los plugins oficiales instalados |
+| `ads_mock.gd` / `store_mock.gd` | PC y builds **debug** sin plugins (anuncio "TEST AD", compras sin cobro) |
+| ninguno | build release sin plugins: botones de anuncio ocultos, tienda "STORE OFFLINE" |
+
+Qué incluye (configurable en `scripts/monetization/config.gd`):
+- **CONTINUE (anuncio recompensado):** en Game Over, 1 vez por partida, desde 5 puntos. Revive con
+  la misma puntuación, campo limpio y 1,8 s de escudo. La partida no se cuenta dos veces.
+- **Intersticiales con ritmo:** solo al pulsar RETRY/MENU; nunca en las 5 primeras partidas; máx. 1
+  cada 3 partidas y 150 s; ver un recompensado cuenta como pausa. **Nunca durante una partida.**
+- **Compras únicas:** `no_ads` (quita intersticiales; el CONTINUE opcional sigue), `star_pack`
+  (3 skins premium: GOLDIE, NEON, PANDA), `supporter` (todo). Botón RESTORE. Precios localizados
+  desde Google Play.
+
+Activar lo real (requiere build Gradle, ver sección AAB):
+1. Plugins (Godot ▸ AssetLib o GitHub, carpeta `addons/`) y actívalos en Project Settings ▸ Plugins:
+   - AdMob: https://github.com/godot-sdk-integrations/godot-admob
+   - Billing: https://github.com/godot-sdk-integrations/godot-google-play-billing (rama master, Godot 4.2+)
+   El juego los detecta solo (clases `Admob` y `BillingClient`); sin ellos compila igual.
+2. AdMob: crea la app y 2 bloques (intersticial, recompensado) y pega los IDs en `config.gd`.
+   En debug se usan los IDs de prueba de Google. Configura el formulario de consentimiento (UMP/GDPR):
+   el adaptador lo pide antes de inicializar.
+3. Play Console: crea los productos `no_ads`, `star_pack`, `supporter` (únicos, no consumibles),
+   sube una build a prueba interna y añade testers de licencia.
+4. Política de privacidad (obligatoria con anuncios) y formulario "Seguridad de los datos".
+
+**No verificado:** los adaptadores reales siguen la API de los README/código fuente oficiales de
+ambos plugins, pero no se pudieron compilar ni probar en dispositivo aquí. Probar en "prueba
+interna" de Play antes de publicar.

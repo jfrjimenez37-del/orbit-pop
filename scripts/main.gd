@@ -1,7 +1,7 @@
 extends Node2D
 ## ORBIT POP — game state machine and core loop.
 
-enum S { MENU, PLAYING, DYING, OVER, SKINS, PAUSED, RESUMING }
+enum S { MENU, PLAYING, DYING, OVER, SKINS, PAUSED, RESUMING, SHOP }
 
 const SUBSTEP := 1.0 / 120.0
 const HIT_STOP := 0.09
@@ -25,6 +25,9 @@ var hazards: Array = []
 var bubbles: Array = []
 var tapped_once := false
 var near_count := 0
+var continued := false        # rewarded continue already used this run
+var shield_until := 0.0
+var _death_angle := 0.0
 
 var _grace := 0.0
 var _state_t := 0.0
@@ -41,10 +44,21 @@ func _ready() -> void:
 	player.set_skin(Save.skin)
 	player.reset()
 	ui.play_pressed.connect(start_run)
-	ui.retry_pressed.connect(start_run)
-	ui.menu_pressed.connect(go_menu)
+	ui.retry_pressed.connect(func(): Monetization.between_runs(start_run))
+	ui.menu_pressed.connect(func():
+		if state == S.OVER:
+			Monetization.between_runs(go_menu)
+		else:
+			go_menu())
 	ui.skins_pressed.connect(open_skins)
+	ui.shop_pressed.connect(open_shop)
 	ui.skin_selected.connect(_on_skin_selected)
+	ui.continue_pressed.connect(_on_continue_pressed)
+	ui.buy_pressed.connect(func(id): Monetization.buy(id))
+	ui.restore_pressed.connect(func(): Monetization.restore())
+	Monetization.rewarded_finished.connect(_on_rewarded)
+	Monetization.purchase_result.connect(_on_purchase_result)
+	Monetization.store_changed.connect(func(): if state == S.SHOP: ui.refresh_shop())
 	get_viewport().size_changed.connect(_layout)
 	_layout()
 	_world_y = _world_y_target
@@ -54,7 +68,7 @@ func _ready() -> void:
 
 func _layout() -> void:
 	var sz := get_viewport_rect().size
-	var cy := (sz.y + 8.0) * 0.5 if state in [S.MENU, S.SKINS] else sz.y * 0.5 + 14.0
+	var cy := (sz.y + 8.0) * 0.5 if state in [S.MENU, S.SKINS, S.SHOP] else sz.y * 0.5 + 14.0
 	_world_y_target = roundf(cy)
 
 
@@ -62,6 +76,7 @@ func _layout() -> void:
 
 func go_menu() -> void:
 	state = S.MENU
+	Monetization.run_active = false
 	_state_t = 0.0
 	_clear_field()
 	player.reset(player.angle)
@@ -75,6 +90,53 @@ func go_menu() -> void:
 func open_skins() -> void:
 	state = S.SKINS
 	ui.show_skins()
+
+
+func open_shop() -> void:
+	state = S.SHOP
+	ui.show_shop()
+
+
+func _on_purchase_result(id: String, ok: bool, message: String) -> void:
+	ui.toast(message, Color8(120, 255, 200) if ok else Color8(255, 150, 160))
+	Sfx.play("unlock" if ok and id != "restore" else ("select" if ok else "deny"))
+	if state == S.SHOP:
+		ui.refresh_shop()
+
+
+func _on_continue_pressed() -> void:
+	if not Monetization.show_rewarded("continue"):
+		ui.toast("NO AD AVAILABLE", Color8(255, 150, 160))
+
+
+func _on_rewarded(placement: String, granted: bool) -> void:
+	if placement == "continue" and state == S.OVER:
+		if granted:
+			revive()
+		else:
+			ui.toast("NO REWARD", Color8(255, 150, 160))
+			ui.show_game_over(score, Save.best, false, [], false)
+
+
+## Rewarded continue: same run, same score, field cleared and a short shield.
+func revive() -> void:
+	Save.undo_last_run()
+	for h in hazards:
+		h.queue_free()
+	hazards.clear()
+	continued = true
+	state = S.PLAYING
+	Monetization.run_active = true
+	_grace = 0.3
+	player.reset(_death_angle)
+	player.happy = false
+	shield_until = gt + MonetizationConfig.CONTINUE_SHIELD
+	director.next_t = gt + 1.0
+	planet.mood = Planet.Mood.SMILE
+	ui.show_hud_continue(score, best_at_start)
+	if record_announced:
+		ui.announce_record()
+	Sfx.play("go")
 
 
 func _on_skin_selected(i: int) -> void:
@@ -93,6 +155,9 @@ func start_run() -> void:
 	near_count = 0
 	tapped_once = false
 	record_announced = false
+	continued = false
+	shield_until = 0.0
+	Monetization.run_active = true
 	best_at_start = Save.best
 	director.reset(randi(), Save.recent_average())
 	player.reset(-PI * 0.5)
@@ -117,6 +182,8 @@ func _clear_field() -> void:
 
 func _die() -> void:
 	state = S.DYING
+	Monetization.run_active = false
+	_death_angle = player.angle
 	_state_t = 0.0
 	player.die()
 	planet.mood = Planet.Mood.WORRY
@@ -131,12 +198,12 @@ func _die() -> void:
 func _game_over() -> void:
 	state = S.OVER
 	var res := Save.submit_run(score)
-	ui.show_game_over(score, Save.best, res["record"], res["unlocked"])
+	Monetization.on_game_over()
+	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], Monetization.can_continue(score, continued))
 	if res["record"] and score > 0:
 		Sfx.play("record")
 	elif not res["unlocked"].is_empty():
 		Sfx.play("unlock")
-	Monetization.on_game_over(Save.games)
 
 
 # ------------------------------------------------------------------ input
@@ -187,7 +254,7 @@ func _notification(what: int) -> void:
 		match state:
 			S.PLAYING, S.RESUMING:
 				_pause()
-			S.PAUSED, S.OVER, S.SKINS:
+			S.PAUSED, S.OVER, S.SKINS, S.SHOP:
 				go_menu()
 			S.MENU:
 				get_tree().quit()
@@ -210,7 +277,7 @@ func _process(delta: float) -> void:
 	var sh := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
 	world.position = Vector2(roundf(get_viewport_rect().size.x * 0.5), roundf(_world_y)) + sh.round()
 	match state:
-		S.MENU, S.SKINS:
+		S.MENU, S.SKINS, S.SHOP:
 			_menu_flip -= delta
 			if _menu_flip <= 0.0:
 				_menu_flip = randf_range(1.6, 3.6)
@@ -259,9 +326,11 @@ func _sim(dt: float) -> void:
 	_tick_objects()
 	# collisions + near misses
 	var worry := false
+	var shielded := gt < shield_until
+	player.shield = maxf(0.0, shield_until - gt)
 	for h in hazards:
 		var c: float = h.clearance(gt, player.angle)
-		if c < 0.0:
+		if c < 0.0 and not shielded:
 			_die()
 			return
 		if c < INF:
