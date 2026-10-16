@@ -5,3 +5,5 @@ build/
 *.idsig
 *.keystore
 android/
+*.bundle
+orbit-pop-source.zip
