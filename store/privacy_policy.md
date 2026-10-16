@@ -2,7 +2,7 @@
 
 Última actualización: [FECHA]
 
-ORBIT POP ("el juego") es desarrollado por [TU NOMBRE O ESTUDIO] ("nosotros"). Esta política explica qué datos se tratan cuando juegas.
+ORBIT POP ("el juego") es desarrollado por Barrio Games ("nosotros"). Esta política explica qué datos se tratan cuando juegas.
 
 ## Datos que guardamos nosotros
 El juego guarda tu progreso (récords, monedas, skins, ajustes) **solo en tu dispositivo**. No tenemos servidores propios ni creamos cuentas de usuario.
