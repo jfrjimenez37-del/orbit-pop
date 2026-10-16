@@ -26,16 +26,16 @@ const TRAILS := [
 	{"id": "stars", "name": "STARS", "need": ["shop", "trail_pack"]},
 ]
 
-## top/bottom sky colors, planet sprite, cloud tint, starfield
+## In-run worlds (free, see Stages): top/bottom sky colors, planet sprite, cloud tint, starfield
 const WORLDS := [
 	{"id": "sky", "name": "SKY", "need": ["best", 0], "top": Color8(70, 152, 255), "bottom": Color8(176, 230, 255), "planet": "planet", "cloud": Color(1, 1, 1), "stars": false},
-	{"id": "lagoon", "name": "LAGOON", "need": ["coins", 600], "top": Color8(40, 178, 196), "bottom": Color8(170, 250, 230), "planet": "planet", "cloud": Color(0.92, 1, 1), "stars": false},
-	{"id": "sunset", "name": "SUNSET", "need": ["shop", "world_pack"], "top": Color8(255, 118, 112), "bottom": Color8(255, 216, 146), "planet": "planet_violet", "cloud": Color(1, 0.9, 0.94), "stars": false},
-	{"id": "candy", "name": "CANDY", "need": ["shop", "world_pack"], "top": Color8(255, 150, 204), "bottom": Color8(255, 224, 242), "planet": "planet_mint", "cloud": Color(1, 1, 1), "stars": false},
-	{"id": "night", "name": "NIGHT", "need": ["shop", "world_pack"], "top": Color8(34, 44, 116), "bottom": Color8(96, 96, 186), "planet": "planet_gold", "cloud": Color(0.7, 0.74, 0.95, 0.75), "stars": true},
+	{"id": "lagoon", "name": "LAGOON", "need": ["best", 0], "top": Color8(40, 178, 196), "bottom": Color8(170, 250, 230), "planet": "planet", "cloud": Color(0.92, 1, 1), "stars": false},
+	{"id": "sunset", "name": "SUNSET", "need": ["best", 0], "top": Color8(255, 118, 112), "bottom": Color8(255, 216, 146), "planet": "planet_violet", "cloud": Color(1, 0.9, 0.94), "stars": false},
+	{"id": "candy", "name": "CANDY", "need": ["best", 0], "top": Color8(255, 150, 204), "bottom": Color8(255, 224, 242), "planet": "planet_mint", "cloud": Color(1, 1, 1), "stars": false},
+	{"id": "night", "name": "NIGHT", "need": ["best", 0], "top": Color8(34, 44, 116), "bottom": Color8(96, 96, 186), "planet": "planet_gold", "cloud": Color(0.7, 0.74, 0.95, 0.75), "stars": true},
 ]
 
-const CATEGORIES := {"skins": SKINS, "trails": TRAILS, "worlds": WORLDS}
+const CATEGORIES := {"skins": SKINS, "trails": TRAILS, "worlds": WORLDS}  # worlds: not sold
 
 
 static func items(cat: String) -> Array:

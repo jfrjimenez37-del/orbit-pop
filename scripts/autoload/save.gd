@@ -20,12 +20,19 @@ var seen_unlocks: Array = [0] # skin indices the player was already told about
 var purchases: Array = []     # owned non-consumable product ids (mirrors the store)
 var coins := 0
 var owned_items: Array = []   # "cat:id" bought with coins
-var boosts := {"shield": 0, "rush": 0}
+var boosts := {"shield": 0, "rush": 0, "teleport": 0}
 var daily_day := 0            # last claimed streak day (1..7)
 var daily_last := ""          # local date of the last claim (YYYY-MM-DD)
 var free_ads_date := ""
 var free_ads_used := 0
 var starter_seen := false
+var vibration := true
+var lang := ""                # "" = follow the device
+var stats := {}               # near_total, bubbles_total, switch_total, teleport_total, missions_done, best_world
+var achievements: Array = []  # unlocked achievement ids
+var top_scores: Array = []    # [{"s": score, "w": world, "d": "YYYY-MM-DD"}] best 10
+var mission := {"day": -1, "progress": 0, "done": false}
+var saved_at := 0
 var path := PATH
 var clock_override := -1.0    # tests: fake unix time
 var _snapshot := {}
@@ -50,7 +57,9 @@ func load_data() -> void:
 	purchases = cfg.get_value("shop", "purchases", [])
 	coins = int(cfg.get_value("shop", "coins", 0))
 	owned_items = cfg.get_value("shop", "owned_items", [])
-	boosts = cfg.get_value("shop", "boosts", {"shield": 0, "rush": 0})
+	boosts = cfg.get_value("shop", "boosts", {"shield": 0, "rush": 0, "teleport": 0})
+	if not boosts.has("teleport"):
+		boosts["teleport"] = 0
 	starter_seen = bool(cfg.get_value("shop", "starter_seen", false))
 	daily_day = int(cfg.get_value("daily", "day", 0))
 	daily_last = str(cfg.get_value("daily", "last", ""))
@@ -58,12 +67,17 @@ func load_data() -> void:
 	free_ads_used = int(cfg.get_value("daily", "free_ads_used", 0))
 	sound = bool(cfg.get_value("settings", "sound", true))
 	music = bool(cfg.get_value("settings", "music", true))
+	vibration = bool(cfg.get_value("settings", "vibration", true))
+	lang = str(cfg.get_value("settings", "lang", ""))
+	stats = cfg.get_value("progress", "stats", {})
+	achievements = cfg.get_value("progress", "achievements", [])
+	top_scores = cfg.get_value("progress", "top_scores", [])
+	mission = cfg.get_value("progress", "mission", {"day": -1, "progress": 0, "done": false})
+	saved_at = int(cfg.get_value("meta", "saved_at", 0))
 	if skin < 0 or skin >= SKINS.size() or not is_unlocked(skin):
 		skin = 0
 	if not unlocked("trails", Catalog.find("trails", trail)):
 		trail = "classic"
-	if not unlocked("worlds", Catalog.find("worlds", world)):
-		world = "sky"
 
 
 func save_data() -> void:
@@ -88,6 +102,14 @@ func save_data() -> void:
 	cfg.set_value("daily", "free_ads_used", free_ads_used)
 	cfg.set_value("settings", "sound", sound)
 	cfg.set_value("settings", "music", music)
+	cfg.set_value("settings", "vibration", vibration)
+	cfg.set_value("settings", "lang", lang)
+	cfg.set_value("progress", "stats", stats)
+	cfg.set_value("progress", "achievements", achievements)
+	cfg.set_value("progress", "top_scores", top_scores)
+	cfg.set_value("progress", "mission", mission)
+	saved_at = int(_now())
+	cfg.set_value("meta", "saved_at", saved_at)
 	cfg.save(path)
 	changed.emit()
 
@@ -269,6 +291,74 @@ func _day_string(offset_days := 0) -> String:
 	return Time.get_date_string_from_unix_time(int(_now()) + bias + offset_days * 86400)
 
 
+## Local day counter (days since epoch), used to rotate daily missions.
+func day_number() -> int:
+	var bias := int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+	return int(floor((_now() + bias) / 86400.0))
+
+
+func add_top_score(score: int, world_no: int) -> void:
+	top_scores.append({"s": score, "w": world_no, "d": _day_string()})
+	top_scores.sort_custom(func(a, b): return int(a["s"]) > int(b["s"]))
+	if top_scores.size() > 10:
+		top_scores.resize(10)
+
+
+func vibrate(ms: int) -> void:
+	if vibration:
+		Input.vibrate_handheld(ms)
+
+
+# ------------------------------------------------------------------ cloud save
+
+const _CLOUD_KEYS := ["best", "games", "total", "coins", "owned_items", "purchases", "boosts", "stats",
+	"achievements", "top_scores", "seen_unlocks", "skin", "trail", "daily_day", "daily_last", "mission", "saved_at"]
+
+
+func export_data() -> Dictionary:
+	var d := {}
+	for k in _CLOUD_KEYS:
+		d[k] = get(k)
+	return d
+
+
+## Merges a cloud snapshot: records and unlocks are combined, wallet/boosts follow the newer save.
+## Returns true if anything changed.
+func merge(d: Dictionary) -> bool:
+	var before := JSON.stringify(export_data())
+	var newer := int(d.get("saved_at", 0)) > saved_at
+	best = maxi(best, int(d.get("best", 0)))
+	games = maxi(games, int(d.get("games", 0)))
+	total = maxi(total, int(d.get("total", 0)))
+	for key in ["owned_items", "purchases", "achievements", "seen_unlocks"]:
+		var mine: Array = get(key)
+		for v in d.get(key, []):
+			if not mine.has(v):
+				mine.append(v)
+	var st: Dictionary = d.get("stats", {})
+	for k in st:
+		stats[k] = maxi(int(stats.get(k, 0)), int(st[k]))
+	for e in d.get("top_scores", []):
+		if not top_scores.has(e):
+			top_scores.append(e)
+	top_scores.sort_custom(func(a, b): return int(a["s"]) > int(b["s"]))
+	if top_scores.size() > 10:
+		top_scores.resize(10)
+	if newer:
+		coins = int(d.get("coins", coins))
+		boosts = d.get("boosts", boosts)
+		daily_day = int(d.get("daily_day", daily_day))
+		daily_last = str(d.get("daily_last", daily_last))
+		mission = d.get("mission", mission)
+		skin = int(d.get("skin", skin))
+		trail = str(d.get("trail", trail))
+	if skin < 0 or skin >= SKINS.size() or not is_unlocked(skin):
+		skin = 0
+	var changed_any := JSON.stringify(export_data()) != before
+	save_data()
+	return changed_any
+
+
 func daily_available() -> bool:
 	return daily_last != _day_string()
 
@@ -313,7 +403,9 @@ func reset_all() -> void:
 	best = 0; games = 0; total = 0; skin = 0
 	trail = "classic"; world = "sky"
 	recent = []; seen_unlocks = [0]; purchases = []
-	coins = 0; owned_items = []; boosts = {"shield": 0, "rush": 0}
+	coins = 0; owned_items = []; boosts = {"shield": 0, "rush": 0, "teleport": 0}
 	daily_day = 0; daily_last = ""; free_ads_date = ""; free_ads_used = 0
 	starter_seen = false
+	stats = {}; achievements = []; top_scores = []
+	mission = {"day": -1, "progress": 0, "done": false}
 	save_data()

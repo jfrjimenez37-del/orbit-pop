@@ -18,6 +18,8 @@ config/quit_on_go_back=false
 Save="*res://scripts/autoload/save.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
 Monetization="*res://scripts/autoload/monetization.gd"
+L="*res://scripts/autoload/l10n.gd"
+Progress="*res://scripts/autoload/progress.gd"
 
 [display]
 

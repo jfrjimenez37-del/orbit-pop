@@ -10,6 +10,8 @@ const SKIN_COLORS := [Color8(255, 212, 60), Color8(110, 230, 160), Color8(255, 1
 
 var angle := -PI * 0.5
 var dir := 1
+var orbit := 0      # which orbit (0/1) when two orbits cross
+var _r_smooth := -1.0
 var omega := 2.4
 var alive := true
 var tex: Texture2D
@@ -41,7 +43,28 @@ func reset(a := -PI * 0.5) -> void:
 	alive = true
 	_trail.clear()
 	_dead_rot = 0.0
-	position = Orbit.on_ring(angle)
+	orbit = 0
+	_r_smooth = -1.0
+	position = Orbit.pos(orbit, angle)
+
+
+## Tap: reverse, or switch orbit when inside a crossing window. Returns true on switch.
+func tap() -> bool:
+	var res := Orbit.tap_result(angle, orbit, dir)
+	var switched: bool = res[0] != orbit
+	orbit = res[0]
+	if switched:
+		_squash = 1.0
+	else:
+		flip()
+	return switched
+
+
+func teleport() -> void:
+	angle = wrapf(angle + PI, -PI, PI)
+	_trail.clear()
+	_r_smooth = -1.0
+	position = Orbit.pos(orbit, angle)
 
 
 func flip() -> void:
@@ -66,7 +89,9 @@ func _process(delta: float) -> void:
 		_blink = randf_range(1.5, 3.5)
 	_squash = maxf(0.0, _squash - delta * 8.0)
 	if alive:
-		position = Orbit.on_ring(angle)
+		var r := Orbit.radius(orbit, angle)
+		_r_smooth = r if _r_smooth < 0.0 else lerpf(_r_smooth, r, minf(1.0, delta * 25.0))
+		position = Vector2(cos(angle), sin(angle)) * _r_smooth
 		var tangent_x := -sin(angle) * dir
 		if absf(tangent_x) > 0.25:
 			face_right = tangent_x > 0.0

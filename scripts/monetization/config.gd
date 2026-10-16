@@ -1,21 +1,21 @@
 class_name MonetizationConfig
 ## Every business knob in one place. Product ids must match Google Play Console.
 
-const PRODUCTS := ["starter", "no_ads", "star_pack", "trail_pack", "world_pack", "supporter", "coins_1500"]
+const PRODUCTS := ["starter", "no_ads", "star_pack", "trail_pack", "supporter", "coins_1500"]
 ## Consumables: product id -> coins granted every purchase.
 const CONSUMABLES := {"coins_1500": 1500}
+## name/desc are localization keys (see l10n.gd)
 const PRODUCT_INFO := {
-	"starter": {"name": "STARTER", "desc": "NO ADS+500", "icon": "gift"},
-	"no_ads": {"name": "NO ADS", "desc": "+FREE CONTINUE", "icon": "noads"},
-	"star_pack": {"name": "STAR PACK", "desc": "+3 SKINS", "icon": "star"},
-	"trail_pack": {"name": "TRAILS", "desc": "+3 TRAILS", "icon": "trail"},
-	"world_pack": {"name": "WORLDS", "desc": "+3 WORLDS", "icon": "world"},
-	"supporter": {"name": "SUPPORTER", "desc": "ALL PACKS", "icon": "crown"},
-	"coins_1500": {"name": "1500 COINS", "desc": "COIN BAG", "icon": "coin"},
+	"starter": {"name": "P_STARTER", "desc": "P_STARTER_D", "icon": "gift"},
+	"no_ads": {"name": "P_NOADS", "desc": "P_NOADS_D", "icon": "noads"},
+	"star_pack": {"name": "P_STAR", "desc": "P_STAR_D", "icon": "star"},
+	"trail_pack": {"name": "P_TRAILS", "desc": "P_TRAILS_D", "icon": "trail"},
+	"supporter": {"name": "P_SUPPORTER", "desc": "P_SUPPORTER_D", "icon": "crown"},
+	"coins_1500": {"name": "P_COINS", "desc": "P_COINS_D", "icon": "coin"},
 }
 ## Shown until the store returns localized prices.
 const FALLBACK_PRICES := {"starter": "$1.99", "no_ads": "$2.99", "star_pack": "$1.99", "trail_pack": "$0.99",
-	"world_pack": "$1.49", "supporter": "$4.99", "coins_1500": "$0.99"}
+	"supporter": "$3.99", "coins_1500": "$0.99"}
 ## Extra goodies granted once when a bundle is first bought.
 const BUNDLE_BONUS := {"starter": {"coins": 500, "boosts": {"shield": 2}}, "supporter": {"coins": 1000}}
 ## Starter offer pops up once after this many runs (then stays in the shop until bought).
@@ -33,8 +33,9 @@ const DAILY_REWARDS := [
 ]
 ## Boosts: bought with coins, max one of each per run.
 const BOOSTS := {
-	"shield": {"name": "SHIELD", "desc": "SURVIVE 1 HIT", "price": 150, "icon": "shield"},
-	"rush": {"name": "BUBBLE RUSH", "desc": "2X BUBBLES", "price": 100, "icon": "rush"},
+	"shield": {"name": "B_SHIELD", "desc": "B_SHIELD_D", "price": 150, "icon": "shield"},
+	"rush": {"name": "B_RUSH", "desc": "B_RUSH_D", "price": 100, "icon": "rush"},
+	"teleport": {"name": "B_TELEPORT", "desc": "B_TELEPORT_D", "price": 120, "icon": "teleport"},
 }
 
 ## Interstitial pacing (only ever between runs, never during one).

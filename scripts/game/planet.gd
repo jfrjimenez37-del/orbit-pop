@@ -14,6 +14,7 @@ var _blink := 2.0
 var _oh_time := 0.0
 var _squash := 0.0
 var ring_alpha := 0.85
+var player_angle := 0.0
 
 
 func _process(delta: float) -> void:
@@ -34,10 +35,24 @@ func bump() -> void:
 func _draw() -> void:
 	# orbit dots
 	var n := 44
-	for i in n:
-		var a := TAU * i / n + _t * 0.15
-		var p := (Vector2(cos(a), sin(a)) * Orbit.R).floor()
-		draw_rect(Rect2(p, Vector2(2, 2) if i % 2 == 0 else Vector2(1, 1)), Color(1, 1, 1, ring_alpha))
+	for k in Orbit.count():
+		var tint := Color(1, 1, 1, ring_alpha) if k == 0 else Color(1, 0.95, 0.7, ring_alpha)
+		for i in n:
+			var a := TAU * i / n + _t * 0.15 * (1 if k == 0 else -1)
+			var p := Orbit.pos(k, a).floor()
+			var sz := Vector2(2, 2) if i % 2 == 0 else Vector2(1, 1)
+			draw_rect(Rect2(p + Vector2(0, 1), sz), Color(0.15, 0.1, 0.3, 0.3))  # contrast on light skies
+			draw_rect(Rect2(p, sz), tint)
+	# crossing points: glowing diamonds, brighter when the player can switch there
+	if Orbit.count() >= 2 and not Orbit.morphing():
+		for c in Orbit.crossings:
+			var p2 := Orbit.pos(0, c).round()
+			var hot := absf(Orbit.ang_diff(player_angle, c)) <= Orbit.CROSS_WINDOW
+			var col := Color8(255, 236, 90) if hot else Color(1, 1, 1, 0.7)
+			var s := 3 + (1 if hot and fmod(_t, 0.2) < 0.1 else 0)
+			for dy in range(-s, s + 1):
+				var w := s - absi(dy)
+				draw_rect(Rect2(p2 + Vector2(-w, dy), Vector2(w * 2 + 1, 1)), col)
 	var bob := roundf(sin(_t * 1.6) * 1.0)
 	var sq := 1.0 + 0.06 * _squash * sin(_t * 40.0)
 	draw_set_transform(Vector2(0, bob), 0.0, Vector2(sq, 2.0 - sq))

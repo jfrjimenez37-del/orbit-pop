@@ -208,3 +208,11 @@ func buy_boost(id: String) -> bool:
 		return false
 	Save.add_boost(id)
 	return true
+
+
+## GDPR: re-open the consent / privacy options form. Returns false when there is no real form (PC/test).
+func show_privacy_options() -> bool:
+	if ads != null and ads.has_method("show_privacy"):
+		ads.show_privacy()
+		return true
+	return false

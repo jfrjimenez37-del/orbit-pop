@@ -93,9 +93,13 @@ func _draw() -> void:
 		x2 += fw
 
 
-func apply_world(w: Dictionary) -> void:
-	TOP = w["top"]
-	BOTTOM = w["bottom"]
-	cloud_tint = w["cloud"]
+func apply_world(w: Dictionary, animated := false) -> void:
 	stars = w["stars"]
-	RenderingServer.set_default_clear_color(BOTTOM)
+	RenderingServer.set_default_clear_color(w["bottom"])
+	if not animated:
+		TOP = w["top"]; BOTTOM = w["bottom"]; cloud_tint = w["cloud"]
+		return
+	var tw := create_tween().set_parallel()
+	tw.tween_property(self, "TOP", w["top"], 1.2)
+	tw.tween_property(self, "BOTTOM", w["bottom"], 1.2)
+	tw.tween_property(self, "cloud_tint", w["cloud"], 1.2)

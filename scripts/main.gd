@@ -1,7 +1,7 @@
 extends Node2D
 ## ORBIT POP — game state machine and core loop.
 
-enum S { MENU, PLAYING, DYING, OVER, SKINS, PAUSED, RESUMING, SHOP }
+enum S { MENU, PLAYING, DYING, OVER, SKINS, PAUSED, RESUMING, SHOP, RANKING }
 
 const SUBSTEP := 1.0 / 120.0
 const HIT_STOP := 0.09
@@ -30,8 +30,14 @@ var bubbles_popped := 0
 var coins_awarded := 0        # coins already paid out for this run (continue-safe)
 var run_coins := 0            # coins shown on game over (doubled by a rewarded ad)
 var coins_doubled := false
-var armed := {"shield": false, "rush": false}
+var armed := {"shield": false, "rush": false, "teleport": false}
 var shield_hit := false       # SHIELD boost still unused in this run
+var teleports := 0            # TELEPORT boost charges left in this run
+var stage := 0                # current world (Stages index)
+var world_no := 1             # world number shown to the player
+var _stage_pending := -1
+var _morph_t := -1.0
+const MORPH_TIME := 1.3
 var shield_until := 0.0
 var _death_angle := 0.0
 
@@ -63,21 +69,27 @@ func _ready() -> void:
 	ui.continue_pressed.connect(_on_continue_pressed)
 	ui.double_pressed.connect(func():
 		if not Monetization.show_rewarded("double_coins"):
-			ui.toast("NO AD AVAILABLE", Color8(255, 150, 160)))
+			ui.toast(L.t("NO_AD"), Color8(255, 150, 160)))
+	ui.teleport_pressed.connect(use_teleport)
+	ui.share_pressed.connect(_share)
+	ui.ranking_pressed.connect(open_ranking)
+	ui.language_changed.connect(func(): get_tree().reload_current_scene())
 	ui.style_changed.connect(apply_style)
 	ui.boost_toggled.connect(_on_boost_toggled)
 	ui.daily_claim.connect(_on_daily_claim)
 	ui.free_coins_pressed.connect(func():
 		if Save.free_ads_left() > 0 and not Monetization.show_rewarded("free_coins"):
-			ui.toast("NO AD AVAILABLE", Color8(255, 150, 160)))
+			ui.toast(L.t("NO_AD"), Color8(255, 150, 160)))
 	ui.boost_buy.connect(func(id):
 		if Monetization.buy_boost(id):
 			Sfx.play("unlock")
-			ui.toast("+1 " + MonetizationConfig.BOOSTS[id]["name"], Color8(120, 255, 200))
+			ui.toast("+1 " + L.t(MonetizationConfig.BOOSTS[id]["name"]), Color8(120, 255, 200))
 		else:
 			Sfx.play("deny")
-			ui.toast("NOT ENOUGH COINS", Color8(255, 150, 160))
-		ui.refresh_shop())
+			ui.toast(L.t("NOT_ENOUGH"), Color8(255, 150, 160))
+		if state == S.SHOP:
+			ui.refresh_shop()
+		ui.refresh_menu())
 	ui.buy_pressed.connect(func(id): Monetization.buy(id))
 	ui.restore_pressed.connect(func(): Monetization.restore())
 	Monetization.rewarded_finished.connect(_on_rewarded)
@@ -92,7 +104,7 @@ func _ready() -> void:
 
 func _layout() -> void:
 	var sz := get_viewport_rect().size
-	var cy := (sz.y + 8.0) * 0.5 if state in [S.MENU, S.SKINS, S.SHOP] else sz.y * 0.5 + 14.0
+	var cy := (sz.y + 8.0) * 0.5 if state in [S.MENU, S.SKINS, S.SHOP, S.RANKING] else sz.y * 0.5 + 14.0
 	_world_y_target = roundf(cy)
 
 
@@ -102,6 +114,11 @@ func go_menu() -> void:
 	state = S.MENU
 	Monetization.run_active = false
 	Monetization.hide_banner()
+	stage = 0
+	world_no = 1
+	_stage_pending = -1
+	_morph_t = -1.0
+	Orbit.reset()
 	apply_style()
 	_state_t = 0.0
 	_clear_field()
@@ -127,6 +144,18 @@ func open_skins() -> void:
 	ui.show_skins()
 
 
+func open_ranking() -> void:
+	state = S.RANKING
+	ui.show_ranking()
+
+
+func _share() -> void:
+	var img := get_viewport().get_texture().get_image()
+	img.resize(img.get_width() * 4, img.get_height() * 4, Image.INTERPOLATE_NEAREST)
+	if not Progress.share(score, img):
+		ui.toast(L.t("COPIED"), Color8(120, 255, 200))
+
+
 func open_shop(tab := "packs") -> void:
 	state = S.SHOP
 	ui.show_shop(tab)
@@ -136,15 +165,18 @@ func open_shop(tab := "packs") -> void:
 func apply_style() -> void:
 	player.set_skin(Save.skin)
 	player.trail_style = Save.trail
-	var w := Save.world_data()
-	bg.apply_world(w)
+	_apply_world(stage, false)
+
+
+func _apply_world(i: int, animated: bool) -> void:
+	var w := Stages.world(i)
+	bg.apply_world(w, animated)
 	planet.set_world(w["planet"])
 
 
 func _on_boost_toggled(id: String) -> void:
 	if int(Save.boosts.get(id, 0)) <= 0:
 		armed[id] = false
-		open_shop("boosts")
 		return
 	armed[id] = not armed[id]
 	Sfx.play("select")
@@ -154,7 +186,7 @@ func _on_boost_toggled(id: String) -> void:
 func _on_daily_claim(doubled: bool) -> void:
 	if doubled:
 		if not Monetization.show_rewarded("daily_double"):
-			ui.toast("NO AD AVAILABLE", Color8(255, 150, 160))
+			ui.toast(L.t("NO_AD"), Color8(255, 150, 160))
 		return
 	_give_daily(1)
 
@@ -163,17 +195,24 @@ func _give_daily(mult: int) -> void:
 	var g := Save.claim_daily(mult)
 	if g.is_empty():
 		return
-	var msg := "+%d COINS" % (int(g["coins"]) * mult)
+	var msg := L.t("PLUS_COINS", int(g["coins"]) * mult)
 	if g["boost"] != "":
-		msg += " +1 " + MonetizationConfig.BOOSTS[g["boost"]]["name"]
+		msg += " +1 " + L.t(MonetizationConfig.BOOSTS[g["boost"]]["name"])
 	ui.toast(msg, Color8(255, 222, 70))
 	Sfx.play("unlock")
 	ui.hide_popup()
 	ui.refresh_menu()
 
 
+const _STORE_MSG := {"TEST PURCHASE": "TEST_PURCHASE", "THANK YOU!": "THANKS", "CANCELLED": "CANCELLED", "PENDING": "PENDING",
+	"FAILED": "FAILED", "RESTORED": "RESTORED", "OWNED": "OWNED", "STORE OFFLINE": "STORE_OFFLINE", "STORE ERROR": "STORE_ERROR"}
+
+
 func _on_purchase_result(id: String, ok: bool, message: String) -> void:
-	ui.toast(message, Color8(120, 255, 200) if ok else Color8(255, 150, 160))
+	var text := L.t(_STORE_MSG[message]) if _STORE_MSG.has(message) else message
+	if MonetizationConfig.CONSUMABLES.has(id) and ok:
+		text = L.t("PLUS_COINS", MonetizationConfig.CONSUMABLES[id])
+	ui.toast(text, Color8(120, 255, 200) if ok else Color8(255, 150, 160))
 	Sfx.play("unlock" if ok and id != "restore" else ("select" if ok else "deny"))
 	if state == S.SHOP:
 		ui.refresh_shop()
@@ -186,7 +225,7 @@ func _on_continue_pressed() -> void:
 		revive()
 		return
 	if not Monetization.show_rewarded("continue"):
-		ui.toast("NO AD AVAILABLE", Color8(255, 150, 160))
+		ui.toast(L.t("NO_AD"), Color8(255, 150, 160))
 
 
 func _on_rewarded(placement: String, granted: bool) -> void:
@@ -207,7 +246,7 @@ func _on_rewarded(placement: String, granted: bool) -> void:
 			if granted:
 				Save.note_free_ad()
 				Save.add_coins(MonetizationConfig.FREE_COIN_AD_REWARD)
-				ui.toast("+%d COINS" % MonetizationConfig.FREE_COIN_AD_REWARD, Color8(255, 222, 70))
+				ui.toast(L.t("PLUS_COINS", MonetizationConfig.FREE_COIN_AD_REWARD), Color8(255, 222, 70))
 				Sfx.play("unlock")
 				ui.refresh_shop()
 			return
@@ -215,7 +254,7 @@ func _on_rewarded(placement: String, granted: bool) -> void:
 		if granted:
 			revive()
 		else:
-			ui.toast("NO REWARD", Color8(255, 150, 160))
+			ui.toast(L.t("NO_REWARD"), Color8(255, 150, 160))
 			ui.show_game_over(score, Save.best, false, [], false)
 
 
@@ -229,7 +268,9 @@ func revive() -> void:
 	state = S.PLAYING
 	Monetization.run_active = true
 	_grace = 0.3
+	var k := player.orbit
 	player.reset(_death_angle)
+	player.orbit = mini(k, Orbit.count() - 1)
 	player.happy = false
 	shield_until = gt + MonetizationConfig.CONTINUE_SHIELD
 	director.next_t = gt + 1.0
@@ -267,6 +308,14 @@ func start_run() -> void:
 	shield_hit = bool(armed["shield"]) and Save.use_boost("shield")
 	player.shield_boost = shield_hit
 	var rush: bool = armed["rush"] and Save.use_boost("rush")
+	teleports = 1 if bool(armed.get("teleport", false)) and Save.use_boost("teleport") else 0
+	stage = 0
+	world_no = 1
+	_stage_pending = -1
+	_morph_t = -1.0
+	Orbit.reset()
+	_apply_world(0, false)
+	Progress.run_started()
 	for k in armed:
 		if int(Save.boosts.get(k, 0)) <= 0:
 			armed[k] = false
@@ -280,6 +329,7 @@ func start_run() -> void:
 	bg.speed_mul = 1.0
 	_layout()
 	ui.show_hud(best_at_start, Save.games < 5)
+	ui.set_teleport(teleports)
 	Sfx.play("go")
 
 
@@ -305,13 +355,14 @@ func _die() -> void:
 	fx.ring(player.position, Color.WHITE, 4.0, 26.0, 0.35)
 	ui.flash()
 	Sfx.play("hit")
-	Input.vibrate_handheld(70)
+	Save.vibrate(70)
 
 
 func _game_over() -> void:
 	state = S.OVER
 	var res := Save.submit_run(score)
 	Monetization.on_game_over()
+	Progress.run_finished(score, world_no, gt)
 	var earned := int(floor(score * MonetizationConfig.COINS_PER_SCORE)) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE
 	Save.add_coins(earned - coins_awarded)
 	run_coins = earned - coins_awarded
@@ -319,6 +370,8 @@ func _game_over() -> void:
 	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], Monetization.can_continue(score, continued),
 		Monetization.continue_is_free())
 	ui.set_over_coins(run_coins, run_coins > 0 and not coins_doubled and Monetization.rewarded_ready())
+	for msg in Progress.take_pending():
+		ui.toast(msg, Color8(255, 236, 140))
 	if res["record"] and score > 0:
 		Sfx.play("record")
 	elif not res["unlocked"].is_empty():
@@ -329,6 +382,12 @@ func _game_over() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	var tap := false
+	if (event is InputEventScreenTouch or event is InputEventMouseButton) and state == S.PLAYING \
+			and ui.blocks_tap(event.position):
+		return
+	if event is InputEventKey and event.pressed and event.keycode == KEY_T and state == S.PLAYING:
+		use_teleport()
+		return
 	if event is InputEventScreenTouch and event.pressed:
 		tap = true
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
@@ -357,10 +416,17 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _flip() -> void:
-	player.flip()
+	var switched := player.tap()
 	if not tapped_once:
 		tapped_once = true
 		ui.hide_hint()
+	if switched:
+		fx.ring(player.position, Color8(255, 236, 90), 4.0, 16.0, 0.25)
+		fx.text(L.t("SWITCH_FX"), player.position + Vector2(0, -14), Color8(255, 236, 90))
+		Sfx.play("close", 1.3, -4.0)
+		Progress.event("switch")
+		return
+	Progress.event("flip")
 	var back := -Vector2(-sin(player.angle), cos(player.angle)) * player.dir
 	fx.burst(player.position, 5, [Color.WHITE, OrbitPlayer.SKIN_COLORS[player.skin]], 40.0, 0.25, 2.0, 0.0, back, 0.7)
 	Sfx.play("flip", randf_range(0.95, 1.08))
@@ -373,7 +439,7 @@ func _notification(what: int) -> void:
 		match state:
 			S.PLAYING, S.RESUMING:
 				_pause()
-			S.PAUSED, S.OVER, S.SKINS, S.SHOP:
+			S.PAUSED, S.OVER, S.SKINS, S.SHOP, S.RANKING:
 				go_menu()
 			S.MENU:
 				get_tree().quit()
@@ -396,7 +462,7 @@ func _process(delta: float) -> void:
 	var sh := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
 	world.position = Vector2(roundf(get_viewport_rect().size.x * 0.5), roundf(_world_y)) + sh.round()
 	match state:
-		S.MENU, S.SKINS, S.SHOP:
+		S.MENU, S.SKINS, S.SHOP, S.RANKING:
 			_menu_flip -= delta
 			if _menu_flip <= 0.0:
 				_menu_flip = randf_range(1.6, 3.6)
@@ -424,6 +490,7 @@ func _process(delta: float) -> void:
 				state = S.PLAYING
 				ui.show_hud_resume()
 	planet.look = Vector2(cos(player.angle), sin(player.angle))
+	planet.player_angle = player.angle
 	_cleanup()
 
 
@@ -431,7 +498,8 @@ func _sim(dt: float) -> void:
 	gt += dt
 	player.omega = director.omega(gt)
 	player.advance(dt)
-	var spawn := director.update(gt, player.angle, player.dir, hazards)
+	_update_world(dt)
+	var spawn := director.update(gt, player.angle, player.dir, hazards, player.orbit)
 	for h in spawn["hazards"]:
 		hazards.append(h)
 		hazards_root.add_child(h)
@@ -448,7 +516,7 @@ func _sim(dt: float) -> void:
 	var shielded := gt < shield_until
 	player.shield = maxf(0.0, shield_until - gt)
 	for h in hazards:
-		var c: float = h.clearance(gt, player.angle)
+		var c: float = h.clearance(gt, player.angle, player.orbit)
 		if c < 0.0 and not shielded:
 			if shield_hit:
 				_break_shield()
@@ -465,16 +533,32 @@ func _sim(dt: float) -> void:
 			_award(h)
 	planet.mood = Planet.Mood.OH if worry else Planet.Mood.SMILE
 	for b in bubbles:
-		if b.t_end > gt and b.touches(player.angle):
+		if b.t_end > gt and b.touches(player.angle, player.orbit):
 			b.t_end = -1.0
 			_add_score(2)
 			bubbles_popped += 1
-			var p := Orbit.on_ring(b.theta)
+			Progress.event("bubble")
+			var p := Orbit.pos(b.orbit, b.theta)
 			fx.burst(p, 14, [Color.WHITE, Color8(120, 220, 255), Color8(255, 222, 70)], 70.0, 0.4, 2.0)
 			fx.ring(p, Color8(180, 240, 255), 4.0, 18.0, 0.3)
-			fx.text("POP! +2", p + Vector2(0, -12), Color8(255, 236, 90))
+			fx.text(L.t("POP_FX"), p + Vector2(0, -12), Color8(255, 236, 90))
 			Sfx.play("pop")
 	bg.speed_mul = 1.0 + director.level(gt) * 1.5
+
+
+func use_teleport() -> void:
+	if teleports <= 0 or state != S.PLAYING:
+		return
+	teleports -= 1
+	var from := player.position
+	player.teleport()
+	shield_until = maxf(shield_until, gt + 0.5)
+	fx.burst(from, 12, [Color8(200, 140, 255), Color.WHITE], 60.0, 0.35, 2.0)
+	fx.ring(player.position, Color8(200, 140, 255), 14.0, 3.0, 0.3)
+	fx.text(L.t("WARP_FX"), player.position + Vector2(0, -14), Color8(220, 170, 255))
+	Sfx.play("pop", 1.4)
+	ui.set_teleport(teleports)
+	Progress.event("teleport")
 
 
 func _break_shield() -> void:
@@ -484,17 +568,19 @@ func _break_shield() -> void:
 	_shake = 3.0
 	fx.burst(player.position, 16, [Color8(140, 230, 255), Color.WHITE], 90.0, 0.4, 2.0)
 	fx.ring(player.position, Color8(140, 230, 255), 8.0, 26.0, 0.3)
-	fx.text("SHIELD!", player.position + Vector2(0, -16), Color8(140, 230, 255))
+	fx.text(L.t("SHIELD_FX"), player.position + Vector2(0, -16), Color8(140, 230, 255))
 	Sfx.play("pop", 0.8)
-	Input.vibrate_handheld(30)
+	Save.vibrate(30)
 
 
 func _award(h) -> void:
-	var p := Orbit.on_ring(h.label_angle(gt), Orbit.R + 14.0)
+	var la: float = h.label_angle(gt)
+	var p := Orbit.on_ring(la, Orbit.radius(0, la) + 14.0)
 	if h.min_clear < Orbit.NEAR:
 		near_count += 1
+		Progress.event("near")
 		_add_score(2)
-		fx.text("CLOSE! +2", player.position + Vector2(0, -14), Color8(120, 255, 200))
+		fx.text(L.t("CLOSE_FX"), player.position + Vector2(0, -14), Color8(120, 255, 200))
 		fx.ring(player.position, Color.WHITE, 6.0, 20.0, 0.25)
 		fx.burst(player.position, 8, [Color.WHITE, Color8(120, 255, 200)], 60.0, 0.3, 2.0)
 		Sfx.play("close")
@@ -507,11 +593,48 @@ func _award(h) -> void:
 func _add_score(n: int) -> void:
 	score += n
 	ui.set_score(score)
+	Progress.event("score_now", score)
+	var target := Stages.number_for_score(score)
+	if target > world_no and _stage_pending < 0:
+		_stage_pending = Stages.index_for_score(score)
+		director.hold = true
 	if not record_announced and best_at_start > 0 and score > best_at_start:
 		record_announced = true
 		ui.announce_record()
-		fx.text("NEW BEST!", player.position + Vector2(0, -24), Color8(255, 128, 178), 1.0, 1.2)
+		fx.text(L.t("NEW_BEST"), player.position + Vector2(0, -24), Color8(255, 128, 178), 1.0, 1.2)
 		Sfx.play("record")
+
+
+## World change: wait until the field is clear, then morph orbit + sky + planet.
+func _update_world(dt: float) -> void:
+	if _stage_pending >= 0 and _morph_t < 0.0 and hazards.is_empty():
+		_morph_t = 0.0
+		for b in bubbles:
+			b.queue_free()
+		bubbles.clear()
+		Orbit.set_shape(Stages.LIST[_stage_pending]["orbits"])
+		_apply_world(_stage_pending, true)
+		planet.bump()
+		world_no = Stages.number_for_score(score)
+		var w := Stages.world(_stage_pending)
+		var tip := L.t("CROSS_TIP") if Stages.LIST[_stage_pending]["orbits"].size() >= 2 else ""
+		ui.world_banner(world_no, L.t("WORLD_" + str(w["id"]).to_upper()), tip)
+		Sfx.play("unlock")
+		Progress.event("world", world_no)
+	if _morph_t >= 0.0:
+		_morph_t += dt
+		var k := clampf(_morph_t / MORPH_TIME, 0.0, 1.0)
+		Orbit.set_blend(k * k * (3.0 - 2.0 * k))
+		if k >= 1.0:
+			_morph_t = -1.0
+			stage = _stage_pending
+			_stage_pending = -1
+			if player.orbit >= Orbit.count():
+				player.orbit = 0
+			director.stage = stage
+			director.hold = false
+			director.next_t = gt + 0.6
+			director.next_bubble = gt + 2.0
 
 
 func _tick_objects() -> void:

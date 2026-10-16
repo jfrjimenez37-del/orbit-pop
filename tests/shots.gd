@@ -1,10 +1,11 @@
 extends SceneTree
 ## Renders screenshots of every screen (run under Xvfb):
-## xvfb-run -a godot --path . --script tests/shots.gd -- <out_dir> [width height]
+## xvfb-run -a godot --path . --script tests/shots.gd -- <out_dir> [width height] [lang]
 
 var main: Node
 var out_dir := "user://shots"
 var frame := 0
+var sv: Node
 
 
 func _initialize() -> void:
@@ -16,10 +17,15 @@ func _initialize() -> void:
 	Engine.max_fps = 60
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	await process_frame
-	var save = get_root().get_node("Save")
-	save.path = "user://shots_save.cfg"
-	save.reset_all()
-	save.best = 37; save.games = 3; save.total = 260; save.coins = 640
+	sv = get_root().get_node("Save")
+	sv.path = "user://shots_save.cfg"
+	sv.reset_all()
+	sv.best = 37; sv.games = 3; sv.total = 260; sv.coins = 640
+	sv.boosts = {"shield": 1, "rush": 0, "teleport": 2}
+	sv.daily_last = sv._day_string()   # skip the daily popup
+	sv.add_top_score(37, 2); sv.add_top_score(22, 2); sv.add_top_score(9, 1)
+	sv.achievements = ["first", "score10", "score25", "world2"]
+	get_root().get_node("L").set_lang(args[3] if args.size() > 3 else "es")
 	main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
 
@@ -30,59 +36,54 @@ func shot(name: String) -> void:
 	print("shot ", name)
 
 
+func world(i: int) -> void:
+	Orbit.set_shape(Stages.LIST[i]["orbits"], true)
+	main.stage = i
+	main.director.stage = i
+	main.world_no = i + 1
+	main._apply_world(i, false)
+	main.director.offset = 40.0
+
+
 func _process(_dt: float) -> bool:
 	if main == null:
 		return false
 	frame += 1
 	if main.state == main.S.PLAYING and TestBot.decide(main):
 		main._flip()
-	var sv = get_root().get_node("Save")
 	match frame:
-		40: shot("01_daily")
-		45: main.ui.daily_claim.emit(false)
-		60: shot("02_menu")
-		65: main.ui.skins_pressed.emit()
-		95: shot("03_skins")
-		100:
-			main.ui._style_page = 1
-			main.ui._style_focus = 11
-			main.ui._refresh_style()
-		110: shot("04_skins_p2")
-		115:
-			main.ui._style_tab = "trails"
-			main.ui._style_page = 0
-			main.ui._style_focus = 2
-			main.ui._refresh_style()
-		125: shot("05_trails")
-		130:
-			main.ui._style_tab = "worlds"
-			main.ui._style_page = 0
-			main.ui._style_focus = 4
-			main.ui._refresh_style()
-		140: shot("06_worlds")
-		145: main.open_shop()
-		175: shot("07_shop_packs")
-		180:
-			main.ui._shop_tab = "boosts"
-			main.ui.refresh_shop()
-		190: shot("08_shop_coins")
-		195:
-			sv.grant("world_pack")
-			sv.world = "night"
-			sv.trail = "rainbow"
+		40: shot("01_menu")
+		45: main.ui.show_boosts()
+		60: shot("02_boosts")
+		65: main.ui.show_mission()
+		80: shot("03_mission")
+		85: main.ui.show_settings()
+		100: shot("04_settings")
+		105:
+			main.ui.hide_popup()
+			main.open_ranking()
+		130: shot("05_ranking")
+		135:
+			main.ui._rank_tab = "achievements"
+			main.ui.refresh_ranking()
+		145: shot("06_achievements")
+		150:
 			main.go_menu()
-		200: main.start_run()
-		700: shot("09_play_night")
-		701:
-			main.score = 41
-			main.bubbles_popped = 3
+			main.armed["teleport"] = true
+			main.start_run()
+		300: shot("07_play_sky")
+		305: main.score = 20; main._add_score(0)
+		420: shot("08_world2_banner")
+		700: shot("09_lagoon")
+		705: world(3)
+		900: shot("10_candy")
+		905: world(4)
+		1000: main.ui.world_banner(5, "NOCHE", "TOCA EN LA ESTRELLA")
+		1100: shot("11_night_dual")
+		1300: shot("12_night_2")
+		1301:
+			main.score = 63
 			main._die()
-		800: shot("10_gameover")
-		805:
-			sv.games = 9
-			sv.starter_seen = false
-			sv.purchases = []
-			main.go_menu()
-		830: shot("11_starter")
-		835: return true
+		1400: shot("13_gameover")
+		1405: return true
 	return false

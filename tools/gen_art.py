@@ -419,24 +419,36 @@ save(sun(), "sun.png")
 
 # ---------------------------------------------------------------- font (BMFont)
 def glyph_w(ch):
-    if ch in ".,:!'":
+    if ch in ".,:!'\u00a1":
         return 3
     if ch == " ":
         return 4
     return 5
 
+from font5x7 import ACCENTS, ACCENTED, CEDILLA
+
+def glyph_rows(c):
+    """13-row glyph: 2 accent rows, 7 letter rows, 2 cedilla rows (outline added later)."""
+    blank = "....."
+    if c in ACCENTED:
+        base, acc = ACCENTED[c]
+        return ACCENTS[acc] + G[base] + [blank, blank]
+    if c in CEDILLA:
+        return [blank, blank] + G[CEDILLA[c]] + ["..#..", ".##.."]
+    return [blank, blank] + G[c] + [blank, blank]
+
 def build_font(name="pixel", outlined=True):
-    chars = list(G.keys())
+    chars = list(G.keys()) + list(ACCENTED.keys()) + list(CEDILLA.keys())
     cols = 16
-    cw, ch_ = 7, 9
+    cw, ch_ = 7, 13
     rows = (len(chars) + cols - 1) // cols
     im = new(cols * cw, rows * ch_)
     lines = []
     for i, c in enumerate(chars):
         gx, gy = (i % cols) * cw, (i // cols) * ch_
-        glyph = G[c]
+        glyph = glyph_rows(c)
         gw = glyph_w(c)
-        x0 = 0 if gw == 5 else (1 if c in ".,:!'" else 0)
+        x0 = 0 if gw == 5 else (1 if c in ".,:!'\u00a1" else 0)
         cell = new(cw, ch_)
         for yy, row in enumerate(glyph):
             for xx, v in enumerate(row):
@@ -445,10 +457,10 @@ def build_font(name="pixel", outlined=True):
         if c != " " and outlined:
             outline(cell, OUT, diag=True)
         im.paste(cell, (gx, gy))
-        lines.append("char id=%d x=%d y=%d width=%d height=%d xoffset=-1 yoffset=-1 xadvance=%d page=0 chnl=15"
+        lines.append("char id=%d x=%d y=%d width=%d height=%d xoffset=-1 yoffset=-3 xadvance=%d page=0 chnl=15"
                      % (ord(c), gx, gy, gw + 2, ch_, gw + 1))
     im.save(os.path.join(FNT, name + ".png"))
-    with open(os.path.join(FNT, name + ".fnt"), "w") as f:
+    with open(os.path.join(FNT, name + ".fnt"), "w", encoding="utf-8") as f:
         f.write('info face="OrbitPop" size=8 bold=0 italic=0 charset="" unicode=1 stretchH=100 smooth=0 aa=0 padding=0,0,0,0 spacing=0,0\n')
         f.write("common lineHeight=10 base=7 scaleW=%d scaleH=%d pages=1 packed=0\n" % (im.width, im.height))
         f.write('page id=0 file="%s.png"\n' % name)
@@ -640,6 +652,22 @@ for y in range(108):
         t = y / 108
         put(bg, x, y, (int(80 + 90 * t), int(168 + 60 * t), 255))
 bg.resize((432, 432), Image.NEAREST).save(os.path.join(ICO, "icon_bg_432.png"))
+def saw(frame):
+    im = new(17, 17)
+    c = 8.5
+    for i in range(10):
+        a = i * math.pi / 5 + (math.pi / 10 if frame else 0)
+        for rr in (6.0, 7.2):
+            put(im, int(math.floor(c + math.cos(a) * rr)), int(math.floor(c + math.sin(a) * rr)), (230, 236, 248))
+    shaded_disc(im, c, c, 5.6, (196, 206, 226), (126, 136, 170), (250, 252, 255))
+    shaded_disc(im, c, c, 2.0, (255, 90, 90), (200, 40, 60), (255, 180, 180))
+    outline(im)
+    return im
+
+sheet = new(34, 17)
+sheet.paste(saw(0), (0, 0)); sheet.paste(saw(1), (17, 0))
+save(sheet, "saw.png")
+
 # ---------------------------------------------------------------- economy / cosmetics
 import colorsys
 def hue_shift(img, deg, sat=1.0, val=1.0):
@@ -717,11 +745,18 @@ MORE_ICONS = {
     "rush": ["..###....", ".#...#...", "#.#...#..", "#.....#..", ".#...#.#.", "..###.###", "......###", "........."],
     "trail": [".........", "......##.", "....####.", "..######.", "######...", "####.....", "##.......", "........."],
     "world": ["..#####..", ".##...##.", "##.#...##", "#...##..#", "#..#....#", "##....###", ".##..###.", "..#####.."],
+    "teleport": ["..####...", ".#....#..", "#..##..#.", "#.#..#.#.", "#.#.#..#.", "#..#..#..", ".#....#..", "..####..."],
+    "mission": ["#######..", "#.....#..", "#.###.#..", "#.....#..", "#.##..#..", "#....##..", "#....#...", "######..."],
+    "trophy": ["#######..", "#######..", ".#####...", "..###....", "...#.....", "..###....", ".#####...", "........."],
+    "gear": ["...#.....", ".#####...", ".##.##...", "##...##..", ".##.##...", ".#####...", "...#.....", "........."],
+    "share": ["....##...", "...###...", "..#.##...", ".#...#...", "#......#.", "#......#.", "########.", "........."],
+    "globe": ["..###....", ".#.#.#...", "#..#..#..", "#######..", "#..#..#..", ".#.#.#...", "..###....", "........."],
     "left": ["...#.....", "..##.....", ".###.....", "####.....", ".###.....", "..##.....", "...#.....", "........."],
     "right": ["#........", "##.......", "###......", "####.....", "###......", "##.......", "#........", "........."],
 }
 MORE_COL = {"coin": (255, 206, 50), "gift": (255, 110, 160), "shield": (120, 220, 255), "rush": (140, 230, 255),
-            "trail": (255, 230, 90), "world": (120, 220, 140), "left": (255, 255, 255), "right": (255, 255, 255)}
+            "trail": (255, 230, 90), "teleport": (200, 140, 255), "mission": (255, 240, 200), "trophy": (255, 206, 50),
+            "gear": (220, 226, 240), "share": (140, 230, 160), "globe": (120, 200, 255), "world": (120, 220, 140), "left": (255, 255, 255), "right": (255, 255, 255)}
 for name, rows in MORE_ICONS.items():
     im = new(len(rows[0]) + 2, len(rows) + 2)
     for y, row in enumerate(rows):

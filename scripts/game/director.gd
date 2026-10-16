@@ -11,6 +11,8 @@ var rejected := 0          # stats for tests / tuning
 var committed := 0
 var spawned_first := false
 var bubble_rate := 1.0     # BUBBLE RUSH boost: 2.0 = twice as many bubbles
+var hold := false          # world change in progress: no new spawns
+var stage := 0             # current Stages index (unlocks obstacles)
 
 # name, unlock time (effective seconds), base weight
 const PATTERNS := [
@@ -25,6 +27,8 @@ const PATTERNS := [
 	["cage", 40.0, 1.6],
 	["drift", 48.0, 1.6],
 ]
+## Obstacles unlocked by reaching a world (stage index, base weight).
+const STAGE_PATTERNS := [["pulse", 1, 2.2], ["saw", 2, 2.0], ["swap", 4, 2.6], ["cross_rain", 4, 1.6]]
 
 
 func reset(seed_value: int, recent_avg: float) -> void:
@@ -35,6 +39,8 @@ func reset(seed_value: int, recent_avg: float) -> void:
 	rejected = 0
 	committed = 0
 	spawned_first = false
+	hold = false
+	stage = 0
 
 
 func eff_time(t: float) -> float:
@@ -52,22 +58,25 @@ func omega(t: float) -> float:
 
 
 ## Returns {"hazards": [...], "bubbles": [...]} to add this frame (possibly empty).
-func update(t: float, angle: float, dir: int, active: Array) -> Dictionary:
+func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictionary:
 	var out := {"hazards": [], "bubbles": []}
+	if hold:
+		return out
 	if t >= next_bubble:
 		next_bubble = t + rng.randf_range(5.0, 8.5) / bubble_rate
-		var b := Bubble.new().setup(angle + PI + rng.randf_range(-0.7, 0.7), t, 5.0)
+		var bo := rng.randi_range(0, Orbit.count() - 1)
+		var b := Bubble.new().setup(angle + PI + rng.randf_range(-0.7, 0.7), t, 5.0, bo)
 		out["bubbles"].append(b)
 	if t < next_t:
 		return out
 	var w := omega(t)
 	for attempt in 5:
 		var name: String = "lead" if not spawned_first else _pick(t)
-		var res := _build(name, t, angle, dir, w, level(t), attempt)
+		var res := _build(name, t, angle, dir, w, level(t), attempt, k)
 		var hs: Array = res["hazards"]
 		var all := active.duplicate()
 		all.append_array(hs)
-		if Survival.can_survive(all, t, angle, dir, w):
+		if Survival.can_survive(all, t, angle, dir, w, true, k):
 			spawned_first = true
 			committed += 1
 			next_t = t + float(res["length"]) + lerpf(0.55, 0.08, level(t))
@@ -94,6 +103,10 @@ func _pick(t: float) -> String:
 				w *= lerpf(1.0, 0.5, level(t))
 			pool.append([p[0], w])
 			total += w
+	for sp in STAGE_PATTERNS:
+		if stage >= sp[1] and (sp[0] != "swap" and sp[0] != "cross_rain" or Orbit.count() >= 2):
+			pool.append([sp[0], sp[2]])
+			total += sp[2]
 	var r := rng.randf() * total
 	for p in pool:
 		r -= p[1]
@@ -109,10 +122,10 @@ func _meteor(theta: float, t_spawn: float, x: float) -> Meteor:
 
 
 func _hit_time(x: float) -> float:
-	return lerpf(0.34, 0.16, x) + (Meteor.R0 - Orbit.R) / lerpf(105.0, 170.0, x)
+	return Meteor.time_to_orbit(lerpf(0.34, 0.16, x), lerpf(105.0, 170.0, x), Orbit.R)
 
 
-func _build(name: String, t: float, a: float, d: int, w: float, x: float, attempt: int) -> Dictionary:
+func _build(name: String, t: float, a: float, d: int, w: float, x: float, attempt: int, k := 0) -> Dictionary:
 	var hs: Array = []
 	var warn := lerpf(0.9, 0.58, x)
 	var th := _hit_time(x)
@@ -122,7 +135,7 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 		"lead":
 			if not spawned_first:
 				# tutorial meteor: slow, aimed exactly where the player will be
-				var m := Meteor.new().setup(a + d * w * (0.5 + (Meteor.R0 - Orbit.R) / 80.0), t, 0.5, 80.0)
+				var m := Meteor.new().setup(a + d * w * Meteor.time_to_orbit(0.5, 80.0, Orbit.R), t, 0.5, 80.0)
 				hs.append(m)
 				length = 1.6
 			else:
@@ -137,7 +150,7 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 			hs.append(_meteor(a - off, t, x))
 			length = th * 0.9
 		"mine":
-			var sp := Spiky.new().setup(a + d * rng.randf_range(0.8, 1.5), t, warn, rng.randf_range(2.2, 3.4))
+			var sp := Spiky.new().setup(a + d * rng.randf_range(0.8, 1.5), t, warn, rng.randf_range(2.2, 3.4), 0.0, k)
 			hs.append(sp)
 			length = warn + 0.6
 		"spoke":
@@ -147,8 +160,8 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 		"gate":
 			var g := rng.randf_range(0.85, 1.25)
 			var act := rng.randf_range(3.0, 3.8)
-			hs.append(Spiky.new().setup(a + g, t, warn, act))
-			hs.append(Spiky.new().setup(a - g, t, warn, act))
+			hs.append(Spiky.new().setup(a + g, t, warn, act, 0.0, k))
+			hs.append(Spiky.new().setup(a - g, t, warn, act, 0.0, k))
 			hs.append(_meteor(a + rng.randf_range(-0.3, 0.3), t + warn + 0.4, x))
 			length = warn + 1.8
 		"rain":
@@ -176,14 +189,40 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 				hs.append(_meteor(a + rng.randf_range(-0.4, 0.4), t + warn + 1.1, x))
 			length = warn + 2.0
 		"drift":
-			var dr := Spiky.new().setup(a + d * rng.randf_range(2.0, 2.6), t, warn, rng.randf_range(2.4, 3.2), -d * rng.randf_range(0.6, 0.95))
+			var dr := Spiky.new().setup(a + d * rng.randf_range(2.0, 2.6), t, warn, rng.randf_range(2.4, 3.2), -d * rng.randf_range(0.6, 0.95), k)
 			hs.append(dr)
 			if rng.randf() < 0.5 + x * 0.3:
 				hs.append(_meteor(a - d * rng.randf_range(0.6, 1.2), t + warn * 0.5, x))
 			length = warn + 1.4
+		"pulse":
+			var spd := lerpf(62.0, 90.0, x)
+			var cross_t := warn + (Orbit.R - Orbit.PLANET_R) / spd
+			var gh := lerpf(0.8, 0.5, x)
+			hs.append(Pulse.new().setup(a + d * w * cross_t * rng.randf_range(0.3, 1.0), t, warn, gh, spd))
+			length = cross_t + 0.4
+		"saw":
+			var act3 := lerpf(1.0, 0.8, x)
+			var span := rng.randf_range(2.0, 2.8)
+			hs.append(Spiky.new().setup(a + d * rng.randf_range(1.8, 2.6), t, warn + 0.15, act3, -d * span / act3, k, "saw"))
+			length = warn + act3 * 0.8
+		"swap":
+			# the player's orbit gets caged: escape by switching orbit at a crossing
+			var g3 := rng.randf_range(1.0, 1.4)
+			var act4 := rng.randf_range(2.6, 3.4)
+			hs.append(Spiky.new().setup(a + g3, t, warn, act4, 0.0, k))
+			hs.append(Spiky.new().setup(a - g3, t, warn, act4, 0.0, k))
+			hs.append(_meteor(a + rng.randf_range(-0.2, 0.2), t + warn + 0.5, x))
+			length = warn + 1.8
+		"cross_rain":
+			# mines on the other orbit + meteors on this one: pick the right orbit
+			var o := 1 - k
+			hs.append(Spiky.new().setup(a + d * rng.randf_range(1.2, 1.8), t, warn, 2.6, 0.0, o))
+			for i in 3:
+				hs.append(_meteor(a + d * w * (_hit_time(x) + i * 0.5) * 0.6 + rng.randf_range(-0.3, 0.3), t + i * 0.5, x))
+			length = warn + 1.6
 	# later attempts: simplify (drop extras) to make acceptance easier
 	if attempt >= 3 and hs.size() > 1:
-		for k in range(1, hs.size()):
-			hs[k].free()
+		for q in range(1, hs.size()):
+			hs[q].free()
 		hs = [hs[0]]
 	return {"hazards": hs, "length": length}

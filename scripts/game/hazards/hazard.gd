@@ -13,8 +13,8 @@ var min_clear := INF
 var t := 0.0  # last game time seen (for drawing)
 
 
-## Appends Vector2(center_angle, half_width) for every dangerous ring interval at time `time`.
-func danger(_time: float, _out: Array) -> void:
+## Appends Vector2(center_angle, half_width) for every dangerous interval of orbit `k` at `time`.
+func danger(_time: float, _out: Array, _k := 0) -> void:
 	pass
 
 
@@ -27,18 +27,18 @@ func is_done(time: float) -> bool:
 	return time > t_end
 
 
-## Signed-free clearance between the player and the closest danger edge (rad, <0 = hit).
-func clearance(time: float, angle: float) -> float:
+## Clearance between the player and the closest danger edge (rad, <0 = hit, INF = harmless).
+func clearance(time: float, angle: float, k := 0) -> float:
 	var iv: Array = []
-	danger(time, iv)
+	danger(time, iv, k)
 	var best := INF
 	for v in iv:
 		best = minf(best, absf(Orbit.ang_diff(angle, v.x)) - v.y)
 	return best
 
 
-func ring_pos(a: float, r := Orbit.R) -> Vector2:
-	return Vector2(cos(a), sin(a)) * r
+func ring_pos(a: float, k := 0) -> Vector2:
+	return Orbit.pos(k, a)
 
 
 ## Where to show feedback for this hazard (ring angle).

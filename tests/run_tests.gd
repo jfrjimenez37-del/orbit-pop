@@ -30,6 +30,12 @@ func _initialize() -> void:
 	await test_monetization(save)
 	print("== economy")
 	await test_economy(save)
+	print("== orbit shapes")
+	test_orbits()
+	print("== missions, achievements, cloud, l10n")
+	test_progress(save)
+	print("== fairness on every world shape")
+	await test_worlds(save)
 	print("== gameplay simulation with fair bot")
 	await test_simulation(save)
 	print("\n%d checks, %d failed" % [checks, fails])
@@ -280,10 +286,10 @@ func test_economy(save) -> void:
 	mon.buy("coins_1500")
 	await process_frame
 	ok(save.coins == 3500, "coin bag is consumable (%d)" % save.coins)
-	ok(not save.unlocked("worlds", Catalog.find("worlds", "night")), "world pack not owned yet")
+	ok(not save.unlocked("trails", Catalog.find("trails", "rainbow")), "trail pack not owned yet")
 	mon.buy("supporter")
 	await process_frame
-	ok(save.unlocked("worlds", Catalog.find("worlds", "night")) and save.unlocked("trails", Catalog.find("trails", "rainbow")), "supporter unlocks all packs")
+	ok(save.unlocked("trails", Catalog.find("trails", "rainbow")) and save.owns("star_pack"), "supporter unlocks all packs")
 	# banner never shown to NO ADS owners
 	mon.show_banner()
 	ok(not mon.ads._banner.visible, "no banner for NO ADS owners")
@@ -330,6 +336,148 @@ func test_economy(save) -> void:
 	save.reset_all()
 
 
+func test_orbits() -> void:
+	Orbit.set_shape(Stages.LIST[3]["orbits"], true)
+	var top := Orbit.radius(0, -PI * 0.5)
+	var bottom := Orbit.radius(0, PI * 0.5)
+	ok(bottom > top + 25.0, "candy orbit is off-center (top %.0f, bottom %.0f)" % [top, bottom])
+	Orbit.set_shape(Stages.LIST[4]["orbits"], true)
+	ok(Orbit.count() == 2 and Orbit.crossings.size() == 4, "night: 2 orbits, 4 crossings (%d)" % Orbit.crossings.size())
+	var c: float = Orbit.crossings[0]
+	ok(absf(Orbit.radius(0, c) - Orbit.radius(1, c)) < 1.5, "orbits meet at the crossing")
+	ok(Orbit.tap_result(c, 0, 1) == [1, 1], "tap at a crossing switches orbit, keeps direction")
+	ok(Orbit.tap_result(c + 0.6, 0, 1) == [0, -1], "tap elsewhere reverses")
+	ok(Orbit.max_radius() + 8.0 <= 90.0, "widest orbit fits a 180px screen")
+	# a closing cage ("crusher") on orbit 0: the only escape is switching orbit at the crossing
+	var a0: float = c
+	var m1 := Spiky.new().setup(c - 0.9, 0.0, 0.1, 4.0, 0.45, 0)
+	var m2 := Spiky.new().setup(c + 0.9, 0.0, 0.1, 4.0, -0.45, 0)
+	ok(Survival.can_survive([m1, m2], 0.0, a0, 1, 2.6, true, 0), "dual orbit crusher is fair (switch escapes)")
+	Orbit.set_shape(Stages.LIST[0]["orbits"], true)
+	var n1 := Spiky.new().setup(c - 0.9, 0.0, 0.1, 4.0, 0.45, 0)
+	var n2 := Spiky.new().setup(c + 0.9, 0.0, 0.1, 4.0, -0.45, 0)
+	ok(not Survival.can_survive([n1, n2], 0.0, a0, 1, 2.6, true, 0), "same crusher on a single orbit is unfair")
+	for h in [m1, m2, n1, n2]:
+		h.free()
+	# pulse: only the gap is safe
+	var pu := Pulse.new().setup(1.0, 0.0, 0.8, 0.6, 70.0)
+	var mid := (pu.t_danger_start + pu.t_danger_end) * 0.5
+	ok(pu.clearance(mid, 1.0) > 0.0 and pu.clearance(mid, 1.0 + PI) < 0.0, "pulse: gap safe, rest deadly")
+	pu.free()
+	Orbit.reset()
+
+
+func test_progress(save) -> void:
+	var prog = get_root().get_node("Progress")
+	var l10n = get_root().get_node("L")
+	save.reset_all()
+	var day0 := 1_900_000_000.0
+	var seen := {}
+	for d in 10:
+		save.clock_override = day0 + d * 86400
+		seen[prog.mission_index()] = true
+	save.clock_override = day0 + 10 * 86400
+	ok(seen.size() == 10, "10 different missions over 10 days")
+	save.clock_override = day0
+	var first: int = prog.mission_index()
+	save.clock_override = day0 + 10 * 86400
+	ok(prog.mission_index() == first, "missions repeat cyclically")
+	# complete today's mission whatever it is
+	save.clock_override = day0
+	var m: Dictionary = prog.MISSIONS[prog.mission_index()]
+	var coins0: int = save.coins
+	for i in int(m["goal"]) + 2:
+		match m["id"]:
+			"runs": prog.run_finished(1, 1, 1.0)
+			"score_run": prog.event("score_now", int(m["goal"]))
+			"near", "near_run": prog.event("near")
+			"bubble": prog.event("bubble")
+			"world": prog.event("world", int(m["goal"]))
+			"flip": prog.event("flip")
+			"score_total": prog.run_finished(int(m["goal"]), 1, 1.0)
+			"time_run": prog.run_finished(1, 1, float(m["goal"]))
+	ok(prog.mission()["done"] and save.coins >= coins0 + int(m["reward"]), "mission completes and pays %d" % m["reward"])
+	save.clock_override = day0 + 86400
+	ok(not prog.mission()["done"], "a new mission the next day")
+	save.clock_override = -1.0
+	# achievements
+	save.submit_run(30)
+	prog.run_finished(30, 3, 10.0)
+	ok(save.achievements.has("score25") and save.achievements.has("first"), "achievements unlock from stats")
+	ok(not save.achievements.has("score50"), "locked achievements stay locked")
+	# cloud merge: fresh install restores progress
+	var cloud: Dictionary = save.export_data()
+	cloud["best"] = 99; cloud["coins"] = 777; cloud["saved_at"] = save.saved_at + 100
+	cloud["owned_items"] = ["skins:robo"]
+	save.reset_all()
+	save.saved_at = 0
+	save.merge(cloud)
+	ok(save.best == 99 and save.coins == 777 and save.is_unlocked(Catalog.find("skins", "robo")), "cloud save restores after reinstall")
+	var older: Dictionary = save.export_data()
+	older["coins"] = 5; older["saved_at"] = 1; older["best"] = 10
+	save.merge(older)
+	ok(save.coins == 777 and save.best == 99, "older cloud copy never lowers progress")
+	# regions
+	ok(PlayGamesConfig.region("es_MX") == "LATAM" and PlayGamesConfig.region("pt_BR") == "BRASIL" \
+		and PlayGamesConfig.region("es_ES") == "EUROPE" and PlayGamesConfig.region("en_US") == "NORTH_AMERICA", "regional boards by locale")
+	# localization: 4 languages for every key, every glyph present in the pixel font
+	var font: FontFile = load("res://assets/font/pixel.fnt")
+	var missing := {}
+	var bad_keys := 0
+	for key in l10n.T:
+		if l10n.T[key].size() != 4:
+			bad_keys += 1
+		if key == "SHARE_TEXT":
+			continue
+		for txt in l10n.T[key]:
+			for ch in txt:
+				if ch != "%" and not font.has_char(ch.unicode_at(0)):
+					missing[ch] = true
+	ok(bad_keys == 0, "every string has EN/ES/PT/PT-BR")
+	ok(missing.is_empty(), "pixel font covers all translated text %s" % str(missing.keys()))
+	for code in l10n.LANGS:
+		l10n.set_lang(code)
+		ok(l10n.t("PLAY") != "" and l10n.t("M_RUNS", 3).contains("3"), "language %s works" % code)
+	l10n.set_lang("en")
+	save.reset_all()
+
+
+## Forces every world shape with all obstacles unlocked and checks the fair bot survives.
+func test_worlds(save) -> void:
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	var dt := 1.0 / 60.0
+	for si in Stages.LIST.size():
+		main.start_run()
+		main.director.offset = 60.0
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+		main.stage = si
+		main.director.stage = si
+		main.world_no = 99  # no further world changes during this test
+		var frames := 0
+		var switches := 0
+		while main.state == main.S.PLAYING and frames < 60 * 45:
+			if frames % 2 == 0 and TestBot.decide(main):
+				var k0: int = main.player.orbit
+				main._flip()
+				if main.player.orbit != k0:
+					switches += 1
+			main._grace = 0.0
+			main._process(dt)
+			frames += 1
+		ok(main.state == main.S.PLAYING, "fair bot survives world %s (died at %.1fs)" % [Stages.LIST[si]["world"], main.gt])
+		print("  world %s: %d patterns, %d rejected, %d orbit switches" % [Stages.LIST[si]["world"], main.director.committed, main.director.rejected, switches])
+		if main.state == main.S.DYING:
+			main._game_over()
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
+	save.reset_all()
+
+
 func test_simulation(save) -> void:
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
@@ -358,8 +506,8 @@ func test_simulation(save) -> void:
 		total_hazards += main.director.committed
 		if main.state != main.S.PLAYING:
 			deaths += 1
-		print("  run %d: survived %.1fs score %d patterns %d rejected %d omega %.2f (%.1fs real)" % [run, survived, main.score,
-			main.director.committed, main.director.rejected, main.player.omega, (Time.get_ticks_msec() - t_start) / 1000.0])
+		print("  run %d: survived %.1fs score %d world %d patterns %d rejected %d omega %.2f (%.1fs real)" % [run, survived, main.score,
+			main.world_no, main.director.committed, main.director.rejected, main.player.omega, (Time.get_ticks_msec() - t_start) / 1000.0])
 		ok(main.state == main.S.PLAYING, "fair bot survives 150s in run %d (died at %.1fs)" % [run, survived])
 		if main.state == main.S.DYING:
 			main._game_over()
@@ -373,8 +521,9 @@ func test_simulation(save) -> void:
 			if frames % 6 == 0:
 				var seen: Array = main.hazards.filter(func(h): return h.t_spawn <= main.gt - 0.35)
 				var p = main.player
-				if not Survival.can_survive(seen, main.gt, p.angle, p.dir, p.omega, false) \
-						and Survival.can_survive(seen, main.gt, p.angle, -p.dir, p.omega, false):
+				var r := Orbit.tap_result(p.angle, p.orbit, p.dir)
+				if not Survival.can_survive(seen, main.gt, p.angle, p.dir, p.omega, false, p.orbit) \
+						and Survival.can_survive(seen, main.gt, p.angle, r[1], p.omega, false, r[0]):
 					main._flip()
 			main._grace = 0.0
 			main._process(dt)
@@ -384,7 +533,7 @@ func test_simulation(save) -> void:
 			main._game_over()
 	lens.sort()
 	print("  human-like bot run lengths (s): ", lens)
-	ok(counts.size() >= 3, "all hazard types appear")
+	ok(counts.size() >= 4, "hazard types appear: %s" % str(counts.keys()))
 	# rapid restarts: no leaks of hazards
 	for i in 20:
 		main.start_run()

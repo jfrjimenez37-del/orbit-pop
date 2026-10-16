@@ -73,7 +73,7 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 74 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
+| 103 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
 | Guardado local, récords, estadísticas, 6 skins | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
@@ -103,8 +103,9 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
 - Se gastan en: 4 skins (COOKIE 300, BUBBLY 500, ROBO 800, DRAKE 1200), estela SPARKLE (200),
   mundo LAGOON (600) y boosts.
 
-**Boosts (ventaja limitada)**: SHIELD (aguanta 1 golpe, 150) y BUBBLE RUSH (2x burbujas, 100).
-Máximo uno de cada por partida; se activan con los botones junto a PLAY. Solo cuestan monedas, para
+**Boosts (ventaja limitada)**: SHIELD (aguanta 1 golpe, 150), BUBBLE RUSH (2x burbujas, 100) y
+TELEPORT (botón en partida: salta al lado opuesto de la órbita, 120). Máximo uno de cada por
+partida; se activan o compran desde el botón PODERES junto a JUGAR. Solo cuestan monedas, para
 que los récords sigan siendo justos (las monedas pueden comprarse con la bolsa de 1500).
 
 **Compras (Google Play)**
@@ -115,8 +116,7 @@ que los récords sigan siendo justos (las monedas pueden comprarse con la bolsa 
 | `no_ads` | único | sin intersticiales ni banner + CONTINUE gratis | $2.99 |
 | `star_pack` | único | skins GOLDIE, NEON, PANDA | $1.99 |
 | `trail_pack` | único | estelas RAINBOW, HEARTS, STARS | $0.99 |
-| `world_pack` | único | mundos SUNSET, CANDY, NIGHT (cielo + planeta) | $1.49 |
-| `supporter` | único | todos los packs + NO ADS + 1000 monedas | $4.99 |
+| `supporter` | único | todos los packs + NO ADS + 1000 monedas | $3.99 |
 | `coins_1500` | consumible | 1500 monedas | $0.99 |
 
 Activar lo real (requiere build Gradle, ver sección AAB):
@@ -134,3 +134,50 @@ Activar lo real (requiere build Gradle, ver sección AAB):
 **No verificado:** los adaptadores reales siguen la API de los README/código fuente oficiales de
 ambos plugins, pero no se pudieron compilar ni probar en dispositivo aquí. Probar en "prueba
 interna" de Play antes de publicar.
+
+## Mundos y órbitas (gratis, avanzan al jugar)
+| Puntos | Mundo | Órbita |
+|---|---|---|
+| 0 | 1 CIELO | círculo normal |
+| 20 | 2 LAGUNA | círculo más grande |
+| 45 | 3 ATARDECER | círculo estrecho (cerca del planeta) |
+| 75 | 4 CARAMELO | círculo descentrado: estrecha arriba, ancha abajo |
+| 110 | 5 NOCHE | 2 órbitas elípticas que se cruzan en 4 estrellas |
+| 150+ | 6, 7, … | se repiten 2–5 cada 40 puntos |
+
+Al cambiar de mundo se espera a que el campo quede libre y la órbita se transforma en 1,3 s.
+En NOCHE, tocar dentro de la ventana de una estrella de cruce (±0,16 rad) **cambia de órbita**
+en vez de invertir. Obstáculos nuevos según avanzas: PULSO (onda desde el planeta con un hueco
+seguro, mundo 2+), SIERRA (recorre un arco marcado de la órbita, mundo 3+), y patrones que
+obligan a cambiar de órbita (mundo 5). El validador de justicia simula también los cambios de
+órbita: un test hace sobrevivir al bot justo 45 s en cada forma de órbita.
+
+## Misiones, logros, ranking, nube, compartir, idiomas
+- **Misión diaria:** 10 misiones fijas, una por día en ciclo (día del año local % 10). Premio en
+  monedas automático al completarla. Botón de pergamino en el menú.
+- **Logros:** 16, funcionan sin conexión (pantalla RANKING ▸ LOGROS) y se sincronizan con Google
+  Play Games si está conectado.
+- **Ranking:** lista local de tus 10 mejores + tablas de Google Play Games **MUNDIAL** y
+  **REGIONAL** (LATAM, BRASIL, EUROPA, N. AMÉRICA, ASIA-PACÍFICO, ÁFRICA/O. MEDIO). La región
+  sale del país del idioma del teléfono (sin servidores ni permiso de ubicación).
+- **Nube:** Saved Games de Play Games. Al conectar se descarga y fusiona: récords y desbloqueos
+  se combinan (nunca bajan); monedas y boosts siguen la copia más reciente. Se sube al terminar
+  cada partida.
+- **Compartir:** botón en Game Over; comparte una captura con el texto de la puntuación (plugin
+  godot-share). Sin plugin, copia el texto al portapapeles.
+- **Idiomas:** inglés, español, portugués (Portugal) y portugués (Brasil). Detecta el del
+  teléfono; se cambia en AJUSTES. Fuente pixel con Á É Í Ó Ú Ñ Ç Ã Õ Â Ê Ô ¡ ¿.
+- **Ajustes:** sonido, música, vibración, idioma, nube (conectar) y privacidad (vuelve a abrir el
+  formulario de consentimiento de AdMob, obligatorio en la UE).
+
+### Configurar Google Play Games (pendiente, en Play Console)
+1. Instalar el plugin https://github.com/Iakobs/godot-play-game-services (v3.x) en `addons/` y
+   activarlo; pide el App ID de Play Games en su configuración del editor.
+2. En Play Console ▸ Play Games Services: crear 7 tablas (MUNDIAL + 6 regiones) y 16 logros.
+3. Pegar los IDs generados en `scripts/services/play_games_config.gd` (los vacíos se ignoran).
+4. Activar "Saved Games" en la configuración de Play Games.
+5. Compartir: instalar https://github.com/godot-sdk-integrations/godot-share.
+
+**No verificado en dispositivo:** Play Games, compartir nativo y la nube dependen de los plugins
+y de la configuración de Play Console; no pudieron probarse aquí. Toda la lógica (misiones,
+logros, fusión de la nube, regiones, idiomas) está cubierta por tests.

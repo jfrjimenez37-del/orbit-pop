@@ -128,3 +128,8 @@ func _interstitial_closed() -> void:
 	interstitial_done.emit()
 	if not Save.owns("no_ads"):
 		_admob.call("load_interstitial_ad")
+
+
+func show_privacy() -> void:
+	if _admob != null:
+		_admob.call("load_consent_form")
