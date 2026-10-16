@@ -7,4 +7,4 @@ static func decide(main: Node) -> bool:
 	if Survival.can_survive(main.hazards, main.gt, p.angle, p.dir, p.omega, false, p.orbit):
 		return false
 	var r := Orbit.tap_result(p.angle, p.orbit, p.dir)
-	return Survival.can_survive(main.hazards, main.gt, p.angle, r[1], p.omega, false, r[0])
+	return Survival.can_survive(main.hazards, main.gt, r[2], r[1], p.omega, false, r[0])

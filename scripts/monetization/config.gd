@@ -39,9 +39,9 @@ const BOOSTS := {
 }
 
 ## Interstitial pacing (only ever between runs, never during one).
-const INTERSTITIAL_GRACE_GAMES := 5     # new players see no interstitials at first
-const INTERSTITIAL_EVERY_RUNS := 3      # at most one every N finished runs
-const INTERSTITIAL_COOLDOWN := 150.0    # seconds between any two ads
+const INTERSTITIAL_GRACE_GAMES := 3     # first interstitial after the 3rd run at the earliest
+const INTERSTITIAL_EVERY_RUNS := 3      # mandatory interstitial every 3 retries
+const INTERSTITIAL_COOLDOWN := 0.0      # extra minimum seconds between two ads (0 = off)
 ## Rewarded "continue": one per run, only when it is worth it.
 const CONTINUE_MIN_SCORE := 5
 const CONTINUE_SHIELD := 1.8            # seconds of invulnerability after reviving
@@ -51,5 +51,5 @@ const CONTINUE_SHIELD := 1.8            # seconds of invulnerability after reviv
 const ADMOB_APP_ID := ""
 const ADMOB_INTERSTITIAL_ID := ""
 const ADMOB_REWARDED_ID := ""
-const ADMOB_BANNER_ID := ""          # shown only on the shop screen
-const BANNER_HEIGHT := 28            # logical px kept free at the bottom of the shop
+const ADMOB_BANNER_ID := ""          # small banner on the shop and ranking/achievements screens
+const BANNER_HEIGHT := 28            # logical px kept free at the bottom of those screens

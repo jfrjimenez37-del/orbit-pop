@@ -173,7 +173,7 @@ func test_monetization(save) -> void:
 	save.games = 2
 	for i in 5:
 		mon.on_game_over()
-	ok(not mon.should_show_interstitial(), "no interstitial during grace games")
+	ok(not mon.should_show_interstitial(), "no interstitial before the 3rd run")
 	save.games = 10
 	ok(mon.should_show_interstitial(), "interstitial allowed after grace + 3 runs")
 	mon.run_active = true
@@ -185,10 +185,10 @@ func test_monetization(save) -> void:
 	await process_frame
 	await process_frame
 	ok(called[0] == 1, "between_runs continues after the interstitial")
-	mon.on_game_over(); mon.on_game_over(); mon.on_game_over()
-	ok(not mon.should_show_interstitial(), "cooldown blocks a second interstitial")
-	now[0] += 200.0
-	ok(mon.should_show_interstitial(), "allowed again after cooldown")
+	mon.on_game_over(); mon.on_game_over()
+	ok(not mon.should_show_interstitial(), "only 2 retries since the last ad: no ad yet")
+	mon.on_game_over()
+	ok(mon.should_show_interstitial(), "mandatory ad on the 3rd retry")
 	save.grant("no_ads")
 	ok(not mon.should_show_interstitial(), "NO ADS removes interstitials")
 	ok(mon.can_continue(10, false), "rewarded continue still offered with NO ADS")
@@ -326,6 +326,17 @@ func test_economy(save) -> void:
 	ok(mon.can_continue(30, false) and mon.continue_is_free(), "NO ADS gives a free continue")
 	main._on_continue_pressed()
 	ok(main.state == main.S.PLAYING, "free continue revives without an ad")
+	# pause: time freezes, resume counts down, quitting still counts the run
+	main._pause()
+	var gt0: float = main.gt
+	for f in 30:
+		main._process(1.0 / 60.0)
+	ok(main.state == main.S.PAUSED and main.gt == gt0, "pause freezes the run")
+	main._resume()
+	for f in 90:
+		main._process(1.0 / 60.0)
+	ok(main.state == main.S.PLAYING, "resume returns to play after the countdown")
+	ok(main.ui.blocks_tap(main.ui._pause_btn.get_global_rect().get_center()), "tapping the pause button does not flip")
 	main.score = 36
 	main._die()
 	for f in 60:
@@ -343,10 +354,24 @@ func test_orbits() -> void:
 	ok(bottom > top + 25.0, "candy orbit is off-center (top %.0f, bottom %.0f)" % [top, bottom])
 	Orbit.set_shape(Stages.LIST[4]["orbits"], true)
 	ok(Orbit.count() == 2 and Orbit.crossings.size() == 4, "night: 2 orbits, 4 crossings (%d)" % Orbit.crossings.size())
-	var c: float = Orbit.crossings[0]
+	var c: float = Orbit.crossings[0]["a"][0]
 	ok(absf(Orbit.radius(0, c) - Orbit.radius(1, c)) < 1.5, "orbits meet at the crossing")
-	ok(Orbit.tap_result(c, 0, 1) == [1, 1], "tap at a crossing switches orbit, keeps direction")
-	ok(Orbit.tap_result(c + 0.6, 0, 1) == [0, -1], "tap elsewhere reverses")
+	var tr := Orbit.tap_result(c, 0, 1)
+	ok(tr[0] == 1 and tr[1] == 1, "tap at a crossing switches orbit, keeps direction")
+	ok(Orbit.tap_result(c + 0.6, 0, 1).slice(0, 2) == [0, -1], "tap elsewhere reverses")
+	# two planets: figure-eight switching keeps the player on the same spot
+	for si in [5, 6]:
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+		ok(Orbit.planets().size() == 2 and Orbit.crossings.size() == 2, "%s: 2 planets, 2 crossings" % Stages.LIST[si]["world"])
+		var cx: Dictionary = Orbit.crossings[0]
+		var r2 := Orbit.tap_result(cx["a"][0], 0, 1)
+		ok(r2[0] == 1 and Orbit.pos(1, r2[2]).distance_to(Orbit.pos(0, cx["a"][0])) < 1.0, "%s: switch lands on the same point" % Stages.LIST[si]["world"])
+		var t0: Vector2 = Orbit._tangent(0, cx["a"][0])
+		var t1: Vector2 = Orbit._tangent(1, r2[2]) * r2[1]
+		ok(t0.dot(t1) > 0.0, "%s: motion continues forward after switching" % Stages.LIST[si]["world"])
+		ok(Orbit.extent() + 8.0 <= 96.0 and absf(Orbit.pos(0, 0).x) + 8.0 <= 90.0, "%s fits the screen" % Stages.LIST[si]["world"])
+	Orbit.set_shape(Stages.LIST[4]["orbits"], true)
+	c = Orbit.crossings[0]["a"][0]
 	ok(Orbit.max_radius() + 8.0 <= 90.0, "widest orbit fits a 180px screen")
 	# a closing cage ("crusher") on orbit 0: the only escape is switching orbit at the crossing
 	var a0: float = c
@@ -523,7 +548,7 @@ func test_simulation(save) -> void:
 				var p = main.player
 				var r := Orbit.tap_result(p.angle, p.orbit, p.dir)
 				if not Survival.can_survive(seen, main.gt, p.angle, p.dir, p.omega, false, p.orbit) \
-						and Survival.can_survive(seen, main.gt, p.angle, r[1], p.omega, false, r[0]):
+						and Survival.can_survive(seen, main.gt, r[2], r[1], p.omega, false, r[0]):
 					main._flip()
 			main._grace = 0.0
 			main._process(dt)

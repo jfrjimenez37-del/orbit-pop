@@ -52,8 +52,11 @@ func reset(a := -PI * 0.5) -> void:
 func tap() -> bool:
 	var res := Orbit.tap_result(angle, orbit, dir)
 	var switched: bool = res[0] != orbit
-	orbit = res[0]
 	if switched:
+		orbit = res[0]
+		dir = res[1]
+		angle = res[2]
+		_r_smooth = -1.0
 		_squash = 1.0
 	else:
 		flip()
@@ -91,7 +94,7 @@ func _process(delta: float) -> void:
 	if alive:
 		var r := Orbit.radius(orbit, angle)
 		_r_smooth = r if _r_smooth < 0.0 else lerpf(_r_smooth, r, minf(1.0, delta * 25.0))
-		position = Vector2(cos(angle), sin(angle)) * _r_smooth
+		position = Orbit.center(orbit) + Vector2(cos(angle), sin(angle)) * _r_smooth
 		var tangent_x := -sin(angle) * dir
 		if absf(tangent_x) > 0.25:
 			face_right = tangent_x > 0.0

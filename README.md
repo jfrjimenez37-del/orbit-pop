@@ -73,7 +73,7 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 103 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
+| 116 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
 | Guardado local, récords, estadísticas, 6 skins | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
@@ -93,8 +93,10 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
 **Anuncios (nunca durante una partida)**
 - CONTINUE recompensado en Game Over (1 por partida, desde 5 puntos; con NO ADS es gratis y sin vídeo).
 - x2 MONEDAS recompensado en Game Over; x2 del regalo diario; FREE COINS (+60, máx. 3/día) en la tienda.
-- Intersticial solo al pulsar RETRY/MENU: nunca en las 5 primeras partidas, máx. 1 cada 3 partidas y 150 s.
-- Banner solo en la pantalla de tienda (oculto con NO ADS).
+- Intersticial obligatorio cada 3 reintentos (al pulsar OTRA/MENÚ, a partir de la 3.ª partida).
+- Banner pequeño solo en Tienda y en Ranking/Logros (oculto con NO ADS).
+- Pausa: botón arriba a la izquierda durante la partida (también tecla P/Esc). CONTINUAR hace
+  una cuenta atrás; MENÚ termina la partida y la cuenta igual (récord, monedas, misiones).
 
 **Monedas (moneda blanda, sin compra obligatoria)**
 - Se ganan: puntuación/3 + 1 por burbuja en cada partida, regalo diario y anuncios opcionales.
@@ -143,11 +145,15 @@ interna" de Play antes de publicar.
 | 45 | 3 ATARDECER | círculo estrecho (cerca del planeta) |
 | 75 | 4 CARAMELO | círculo descentrado: estrecha arriba, ancha abajo |
 | 110 | 5 NOCHE | 2 órbitas elípticas que se cruzan en 4 estrellas |
-| 150+ | 6, 7, … | se repiten 2–5 cada 40 puntos |
+| 150 | 6 PLANETAS GEMELOS | 2 planetas, cada uno con su órbita; se cruzan entre ambos (forma de 8) |
+| 195 | 7 SISTEMA BINARIO | 2 planetas distintos (círculo + elipse) en diagonal |
+| 240+ | 8, 9, … | se repiten 2–7 cada 40 puntos |
 
 Al cambiar de mundo se espera a que el campo quede libre y la órbita se transforma en 1,3 s.
 En NOCHE, tocar dentro de la ventana de una estrella de cruce (±0,16 rad) **cambia de órbita**
-en vez de invertir. Obstáculos nuevos según avanzas: PULSO (onda desde el planeta con un hueco
+en vez de invertir. En los mundos de 2 planetas el cambio te pasa a la órbita del otro planeta en
+el mismo punto, invirtiendo el sentido de giro para seguir hacia delante (recorrido en 8). Los
+obstáculos pertenecen a un planeta pero su geometría afecta a ambas órbitas. Obstáculos nuevos según avanzas: PULSO (onda desde el planeta con un hueco
 seguro, mundo 2+), SIERRA (recorre un arco marcado de la órbita, mundo 3+), y patrones que
 obligan a cambiar de órbita (mundo 5). El validador de justicia simula también los cambios de
 órbita: un test hace sobrevivir al bot justo 45 s en cada forma de órbita.

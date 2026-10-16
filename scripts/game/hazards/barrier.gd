@@ -12,14 +12,15 @@ var spin := 0.0
 var r_out := 80.0
 
 
-func setup(p_theta: float, p_t_spawn: float, warn: float, active: float, p_spin := 0.0) -> Barrier:
+func setup(p_theta: float, p_t_spawn: float, warn: float, active: float, p_spin := 0.0, p_home := 0) -> Barrier:
+	set_home(p_home)
 	theta0 = p_theta
 	t_spawn = p_t_spawn
 	spin = p_spin
 	t_danger_start = t_spawn + warn
 	t_danger_end = t_danger_start + active
 	t_end = t_danger_end + 0.2
-	r_out = Orbit.max_radius() + 18.0
+	r_out = Orbit.max_radius(home_k) + 18.0
 	return self
 
 
@@ -32,24 +33,36 @@ func label_angle(time: float) -> float:
 
 
 func danger(time: float, out: Array, k := 0) -> void:
-	if time >= t_danger_start and time <= t_danger_end:
-		var a := theta_at(time)
+	if time < t_danger_start or time > t_danger_end:
+		return
+	var a := theta_at(time)
+	if Orbit.center(k).distance_to(home) < 1.0:
 		out.append(Vector2(wrapf(a, -PI, PI), asin((Orbit.PLAYER_R + BEAM_HALF) / Orbit.radius(k, a))))
+		return
+	# beam of another planet: sample it as a chain of small dangerous points
+	var d := Vector2(cos(a), sin(a))
+	var mid := home + d * (R_IN + r_out) * 0.5
+	if mid.distance_to(Orbit.center(k)) > Orbit.max_radius(k) + (r_out - R_IN) * 0.5 + 8.0:
+		return
+	var r := R_IN
+	while r <= r_out:
+		point_danger(home + d * r, Orbit.PLAYER_R + BEAM_HALF + 1.5, k, out)
+		r += 3.0
 
 
 func _draw() -> void:
 	var a := theta_at(t)
 	var d := Vector2(cos(a), sin(a))
 	var n := Vector2(-d.y, d.x)
-	var p_in := d * R_IN
-	var p_out := d * r_out
+	var p_in := home + d * R_IN
+	var p_out := home + d * r_out
 	if t < t_danger_start:
 		var k := clampf((t - t_spawn) / (t_danger_start - t_spawn), 0.0, 1.0)
 		var on := fmod(t * (5.0 + 12.0 * k), 1.0) < 0.55
 		var r := R_IN
 		while r < r_out:
 			if on:
-				draw_rect(Rect2((d * r).floor(), Vector2(1, 1)), Color(1, 0.95, 0.4, 0.5 + 0.5 * k))
+				draw_rect(Rect2((home + d * r).floor(), Vector2(1, 1)), Color(1, 0.95, 0.4, 0.5 + 0.5 * k))
 			r += 4.0
 		var gc := Color(1, 1, 1, 0.4 + 0.5 * k)
 		draw_texture(NODE_TEX, (p_in - Vector2(5, 5)).round(), gc)

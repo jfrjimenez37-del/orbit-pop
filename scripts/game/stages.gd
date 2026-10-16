@@ -10,8 +10,15 @@ const LIST := [
 	{"world": "night", "score": 110, "orbits": [
 		{"kind": "ellipse", "a": 72.0, "b": 46.0, "rot": 0.0},
 		{"kind": "ellipse", "a": 72.0, "b": 46.0, "rot": PI * 0.5}]},
+	# two planets: orbits touch between them; switching there jumps to the other planet (figure eight)
+	{"world": "twin", "score": 150, "orbits": [
+		{"kind": "circle", "r": 46.0, "center": Vector2(0, -40)},
+		{"kind": "circle", "r": 46.0, "center": Vector2(0, 40)}]},
+	{"world": "binary", "score": 195, "orbits": [
+		{"kind": "circle", "r": 44.0, "center": Vector2(-15, -37)},
+		{"kind": "ellipse", "a": 40.0, "b": 47.0, "rot": 0.0, "center": Vector2(14, 37)}]},
 ]
-const LOOP_FROM := 150   # after this score, stages 1..4 repeat every LOOP_EVERY points
+const LOOP_FROM := 240   # after this score, stages 1..6 repeat every LOOP_EVERY points
 const LOOP_EVERY := 40
 
 

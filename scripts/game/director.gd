@@ -115,10 +115,13 @@ func _pick(t: float) -> String:
 	return pool[-1][0]
 
 
+var _home := 0   # orbit (planet) the pattern being built belongs to
+
+
 func _meteor(theta: float, t_spawn: float, x: float) -> Meteor:
 	var pre := lerpf(0.34, 0.16, x)
 	var v := lerpf(105.0, 170.0, x)
-	return Meteor.new().setup(theta, t_spawn, pre, v)
+	return Meteor.new().setup(theta, t_spawn, pre, v, _home)
 
 
 func _hit_time(x: float) -> float:
@@ -127,6 +130,7 @@ func _hit_time(x: float) -> float:
 
 func _build(name: String, t: float, a: float, d: int, w: float, x: float, attempt: int, k := 0) -> Dictionary:
 	var hs: Array = []
+	_home = k
 	var warn := lerpf(0.9, 0.58, x)
 	var th := _hit_time(x)
 	var j := rng.randf_range(-0.12, 0.12)
@@ -135,7 +139,7 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 		"lead":
 			if not spawned_first:
 				# tutorial meteor: slow, aimed exactly where the player will be
-				var m := Meteor.new().setup(a + d * w * Meteor.time_to_orbit(0.5, 80.0, Orbit.R), t, 0.5, 80.0)
+				var m := Meteor.new().setup(a + d * w * Meteor.time_to_orbit(0.5, 80.0, Orbit.R), t, 0.5, 80.0, k)
 				hs.append(m)
 				length = 1.6
 			else:
@@ -154,7 +158,7 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 			hs.append(sp)
 			length = warn + 0.6
 		"spoke":
-			var b := Barrier.new().setup(a + d * rng.randf_range(0.9, 1.7), t, warn, rng.randf_range(1.6, 2.4))
+			var b := Barrier.new().setup(a + d * rng.randf_range(0.9, 1.7), t, warn, rng.randf_range(1.6, 2.4), 0.0, k)
 			hs.append(b)
 			length = warn + 0.6
 		"gate":
@@ -176,14 +180,14 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 					dd = -dd
 			length = n * gap + th * 0.4
 		"sweep":
-			var sb := Barrier.new().setup(a - d * rng.randf_range(1.4, 2.0), t, warn, rng.randf_range(2.6, 3.6), d * w * rng.randf_range(0.42, 0.58))
+			var sb := Barrier.new().setup(a - d * rng.randf_range(1.4, 2.0), t, warn, rng.randf_range(2.6, 3.6), d * w * rng.randf_range(0.42, 0.58), k)
 			hs.append(sb)
 			length = warn + 2.0
 		"cage":
 			var g2 := rng.randf_range(0.8, 1.1)
 			var act2 := rng.randf_range(2.6, 3.2)
-			hs.append(Barrier.new().setup(a + g2, t, warn, act2))
-			hs.append(Barrier.new().setup(a - g2, t, warn, act2))
+			hs.append(Barrier.new().setup(a + g2, t, warn, act2, 0.0, k))
+			hs.append(Barrier.new().setup(a - g2, t, warn, act2, 0.0, k))
 			hs.append(_meteor(a + rng.randf_range(-0.25, 0.25), t + warn + 0.3, x))
 			if x > 0.6:
 				hs.append(_meteor(a + rng.randf_range(-0.4, 0.4), t + warn + 1.1, x))
@@ -198,7 +202,7 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 			var spd := lerpf(62.0, 90.0, x)
 			var cross_t := warn + (Orbit.R - Orbit.PLANET_R) / spd
 			var gh := lerpf(0.8, 0.5, x)
-			hs.append(Pulse.new().setup(a + d * w * cross_t * rng.randf_range(0.3, 1.0), t, warn, gh, spd))
+			hs.append(Pulse.new().setup(a + d * w * cross_t * rng.randf_range(0.3, 1.0), t, warn, gh, spd, k))
 			length = cross_t + 0.4
 		"saw":
 			var act3 := lerpf(1.0, 0.8, x)
@@ -216,7 +220,8 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 		"cross_rain":
 			# mines on the other orbit + meteors on this one: pick the right orbit
 			var o := 1 - k
-			hs.append(Spiky.new().setup(a + d * rng.randf_range(1.2, 1.8), t, warn, 2.6, 0.0, o))
+			var ao := Orbit.angle_of(o, Orbit.pos(k, a)) + rng.randf_range(1.2, 1.8) * (1 if rng.randf() < 0.5 else -1)
+			hs.append(Spiky.new().setup(ao, t, warn, 2.6, 0.0, o))
 			for i in 3:
 				hs.append(_meteor(a + d * w * (_hit_time(x) + i * 0.5) * 0.6 + rng.randf_range(-0.3, 0.3), t + i * 0.5, x))
 			length = warn + 1.6

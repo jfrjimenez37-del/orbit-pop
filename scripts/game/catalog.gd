@@ -33,6 +33,8 @@ const WORLDS := [
 	{"id": "sunset", "name": "SUNSET", "need": ["best", 0], "top": Color8(255, 118, 112), "bottom": Color8(255, 216, 146), "planet": "planet_violet", "cloud": Color(1, 0.9, 0.94), "stars": false},
 	{"id": "candy", "name": "CANDY", "need": ["best", 0], "top": Color8(255, 150, 204), "bottom": Color8(255, 224, 242), "planet": "planet_mint", "cloud": Color(1, 1, 1), "stars": false},
 	{"id": "night", "name": "NIGHT", "need": ["best", 0], "top": Color8(34, 44, 116), "bottom": Color8(96, 96, 186), "planet": "planet_gold", "cloud": Color(0.7, 0.74, 0.95, 0.75), "stars": true},
+	{"id": "twin", "name": "TWIN", "need": ["best", 0], "top": Color8(112, 70, 190), "bottom": Color8(255, 160, 205), "planet": "planet_mint", "planet2": "planet", "cloud": Color(1, 0.9, 1, 0.9), "stars": true},
+	{"id": "binary", "name": "BINARY", "need": ["best", 0], "top": Color8(16, 92, 120), "bottom": Color8(120, 222, 204), "planet": "planet_gold", "planet2": "planet_violet", "cloud": Color(0.85, 1, 1, 0.85), "stars": true},
 ]
 
 const CATEGORIES := {"skins": SKINS, "trails": TRAILS, "worlds": WORLDS}  # worlds: not sold

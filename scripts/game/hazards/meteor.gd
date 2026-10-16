@@ -16,16 +16,30 @@ var _impact_fx_done := false
 signal impacted(pos: Vector2)
 
 
-func setup(p_theta: float, p_t_spawn: float, pre: float, p_speed: float) -> Meteor:
+func setup(p_theta: float, p_t_spawn: float, pre: float, p_speed: float, p_home := 0) -> Meteor:
+	set_home(p_home)
 	theta = wrapf(p_theta, -PI, PI)
 	t_spawn = p_t_spawn
 	speed = p_speed
 	t_launch = t_spawn + pre
+	# distance along the fall where any orbit can be touched (sampled, conservative)
 	var r_hi := 0.0
 	var r_lo := INF
-	for k in Orbit.count():
-		r_hi = maxf(r_hi, Orbit.radius(k, theta))
-		r_lo = minf(r_lo, Orbit.radius(k, theta))
+	var dir := Vector2(cos(theta), sin(theta))
+	var r := R0
+	while r > Orbit.PLANET_R:
+		var hit := false
+		for k in Orbit.count():
+			var p := home + dir * r
+			var v := p - Orbit.center(k)
+			if absf(v.length() - Orbit.radius(k, v.angle())) < _rr + 3.0:
+				hit = true
+		if hit:
+			r_hi = maxf(r_hi, r)
+			r_lo = minf(r_lo, r)
+		r -= 2.0
+	if r_hi <= 0.0:
+		r_hi = Orbit.radius(home_k, theta); r_lo = r_hi
 	t_danger_start = t_launch + (R0 - r_hi - _rr) / speed
 	t_danger_end = t_launch + (R0 - r_lo + _rr) / speed
 	t_impact = t_launch + (R0 - Orbit.PLANET_R - 2.0) / speed
@@ -49,21 +63,14 @@ func label_angle(_time: float) -> float:
 func danger(time: float, out: Array, k := 0) -> void:
 	if time < t_danger_start or time > t_danger_end:
 		return
-	var r := radius_at(time)
-	var R := Orbit.radius(k, theta)
-	if absf(r - R) >= _rr:
-		return
-	var c := (R * R + r * r - _rr * _rr) / (2.0 * R * r)
-	if c >= 1.0:
-		return
-	out.append(Vector2(theta, acos(clampf(c, -1.0, 1.0))))
+	point_danger(home + Vector2(cos(theta), sin(theta)) * radius_at(time), _rr, k, out)
 
 
 func tick(time: float) -> void:
 	super(time)
 	if time >= t_impact and not _impact_fx_done:
 		_impact_fx_done = true
-		impacted.emit(position + Orbit.on_ring(theta, Orbit.PLANET_R + 1.0))
+		impacted.emit(position + home + Vector2(cos(theta), sin(theta)) * (Orbit.PLANET_R + 1.0))
 
 
 func _draw() -> void:
@@ -71,18 +78,16 @@ func _draw() -> void:
 	var dir := Vector2(cos(theta), sin(theta))
 	var r := radius_at(t)
 	if t < t_danger_end:
-		var inner := INF
-		for k in Orbit.count():
-			inner = minf(inner, Orbit.radius(k, theta))
+		var inner := Orbit.radius(home_k, theta)
 		var blink := 0.55 + 0.45 * sin(t * 30.0)
 		var d := minf(r - 8.0, R0)
 		while d > inner + 6.0:
-			draw_rect(Rect2((dir * d).floor(), Vector2(1, 1)), Color(1, 0.55, 0.35, 0.8 * blink))
+			draw_rect(Rect2((home + dir * d).floor(), Vector2(1, 1)), Color(1, 0.55, 0.35, 0.8 * blink))
 			d -= 5.0
 		var k01 := clampf((t_danger_start - t) / maxf(0.01, t_danger_start - t_spawn), 0.0, 1.0)
 		var rad := 6.0 + 8.0 * k01
 		var col := warn_col if fmod(t * (6.0 + 10.0 * (1.0 - k01)), 1.0) < 0.6 else Color(1, 0.9, 0.4)
-		for k in Orbit.count():
+		for k in [home_k]:
 			var c := ring_pos(theta, k).round()
 			if r < Orbit.radius(k, theta) - _rr:
 				continue
@@ -92,14 +97,14 @@ func _draw() -> void:
 				var a := i * PI * 0.5 + t * 2.0
 				draw_rect(Rect2((c + Vector2(cos(a), sin(a)) * (rad + 2.0)).floor(), Vector2(1, 1)), col)
 	if t >= t_launch and t < t_impact:
-		var p := dir * r
+		var p := home + dir * r
 		draw_set_transform(p.round(), theta + PI * 0.5, Vector2.ONE)
 		var fr := int(t * 14.0) % 2
 		draw_texture_rect_region(TEX, Rect2(-6, -14, 12, 20), Rect2(fr * 12, 0, 12, 20))
 		draw_set_transform(Vector2.ZERO)
 	elif t >= t_impact:
 		var e := (t - t_impact) / 0.4
-		var c2 := dir * (Orbit.PLANET_R + 2.0)
+		var c2 := home + dir * (Orbit.PLANET_R + 2.0)
 		for i in 5:
 			var a2 := theta + (i - 2) * 0.6
 			var q := c2 + Vector2(cos(a2), sin(a2)) * (2.0 + 9.0 * e)

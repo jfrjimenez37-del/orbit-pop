@@ -23,6 +23,9 @@ signal teleport_pressed
 signal share_pressed
 signal ranking_pressed
 signal language_changed
+signal pause_pressed
+signal resume_pressed
+signal quit_pressed
 
 const FONT := preload("res://assets/font/pixel.fnt")
 const FONT_PLAIN := preload("res://assets/font/pixel_plain.fnt")  # no outline: dark text on light UI
@@ -51,6 +54,8 @@ var _hud_best: Label
 var _hint: Label
 var _banner: Control
 var _teleport_btn: Button
+var _pause_btn: Button
+var _rank_box: Control
 var _menu_best: Label
 var _menu_coins: Label
 var _gift_badge: Label
@@ -437,6 +442,9 @@ func _build_hud() -> void:
 	_teleport_btn.offset_top = -40; _teleport_btn.offset_bottom = -12
 	_teleport_btn.pressed.connect(func(): teleport_pressed.emit())
 	_teleport_btn.visible = false
+	_pause_btn = _button(hud, "white", "", "pause", Vector2(20, 20))
+	_pause_btn.position = Vector2(4, 4)
+	_pause_btn.pressed.connect(func(): pause_pressed.emit())
 	_pause_title = _label(hud, "", 4)
 
 
@@ -448,11 +456,13 @@ func show_hud(best: int, hint: bool) -> void:
 	_hint.visible = hint
 	_pause_title.visible = false
 	_banner.visible = false
+	_pause_btn.visible = true
 	_switch(hud)
 
 
 func show_hud_resume() -> void:
 	_pause_title.visible = false
+	_pause_btn.visible = true
 	for s in [pause, over, menu, skins, shop, ranking]:
 		s.visible = false
 	hud.visible = true
@@ -470,7 +480,11 @@ func set_teleport(charges: int) -> void:
 
 ## True when a gameplay tap at `pos` actually hit an in-run button.
 func blocks_tap(pos: Vector2) -> bool:
-	return _teleport_btn.visible and hud.visible and _teleport_btn.get_global_rect().grow(2).has_point(pos)
+	if not hud.visible:
+		return false
+	if _pause_btn.visible and _pause_btn.get_global_rect().grow(3).has_point(pos):
+		return true
+	return _teleport_btn.visible and _teleport_btn.get_global_rect().grow(2).has_point(pos)
 
 
 func world_banner(n: int, name: String, tip := "") -> void:
@@ -856,11 +870,7 @@ func refresh_shop() -> void:
 func show_shop(tab := "packs") -> void:
 	_shop_tab = tab
 	# keep the shop clear of the banner ad at the bottom of the screen
-	var banner := 0 if Monetization.ads_removed() else MonetizationConfig.BANNER_HEIGHT
-	var top := maxf(4.0, roundf((root.size.y - banner - 280.0) * 0.5))
-	_shop_box.anchor_top = 0.0; _shop_box.anchor_bottom = 0.0
-	_shop_box.offset_top = top
-	_shop_box.offset_bottom = top + 280
+	_fit_above_banner(_shop_box)
 	refresh_shop()
 	_switch(shop)
 
@@ -871,6 +881,7 @@ func _build_ranking() -> void:
 	ranking = _screen()
 	_dim(ranking)
 	var box := _container(ranking)
+	_rank_box = box
 	_place(box, 0.5, -140, 164, 280)
 	_tabs(box, ["ranking", "achievements"], [L.t("RANKING"), L.t("ACHIEVEMENTS")], ["trophy", "star"], _rank_tabs, func(id):
 		_rank_tab = id
@@ -966,7 +977,16 @@ func _open_board(board: String) -> void:
 		toast(L.t("PLAY_GAMES_OFF"), Color8(255, 150, 160))
 
 
+func _fit_above_banner(box: Control) -> void:
+	var banner := 0 if Monetization.ads_removed() else MonetizationConfig.BANNER_HEIGHT
+	var top := maxf(4.0, roundf((root.size.y - banner - 280.0) * 0.5))
+	box.anchor_top = 0.0; box.anchor_bottom = 0.0
+	box.offset_top = top
+	box.offset_bottom = top + 280
+
+
 func show_ranking() -> void:
+	_fit_above_banner(_rank_box)
 	refresh_ranking()
 	_switch(ranking)
 
@@ -1208,17 +1228,26 @@ func _build_pause() -> void:
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	pause.add_child(dim)
 	var box := _container(pause)
-	_place(box, 0.5, -30, 180, 60)
+	_place(box, 0.5, -50, 180, 100)
 	var l := _label(box, L.t("PAUSED"), 3)
 	_center_label(l, 180, 0)
-	var sub := _label(box, L.t("TAP_CONTINUE"), 1)
-	_center_label(sub, 180, 34)
+	var go := _button(box, "yellow", L.t("CONTINUE"), "", Vector2(100, 26), 2)
+	go.position = Vector2(40, 36)
+	go.pressed.connect(func(): resume_pressed.emit())
+	var quit := _button(box, "white", L.t("MENU"), "home", Vector2(70, 22))
+	quit.position = Vector2(55, 70)
+	quit.pressed.connect(func(): quit_pressed.emit())
 
 
 func show_pause() -> void:
 	pause.visible = true
 	pause.modulate.a = 1.0
 	hud.visible = true
+	_pause_btn.visible = false
+
+
+func show_countdown_start() -> void:
+	_pause_btn.visible = false
 
 
 func show_countdown(n: int) -> void:

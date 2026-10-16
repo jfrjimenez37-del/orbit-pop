@@ -11,6 +11,29 @@ var t_end := 0.0
 var scored := false
 var min_clear := INF
 var t := 0.0  # last game time seen (for drawing)
+var home_k := 0              # orbit whose planet this hazard belongs to
+var home := Vector2.ZERO     # that planet's center (world space)
+
+
+func set_home(k: int) -> void:
+	home_k = mini(k, Orbit.count() - 1)
+	home = Orbit.center(home_k)
+
+
+## Danger interval on orbit k caused by a round object of radius `rr` at world point p.
+static func point_danger(p: Vector2, rr: float, k: int, out: Array) -> void:
+	var v := p - Orbit.center(k)
+	var d := v.length()
+	if d < 1.0:
+		return
+	var phi := v.angle()
+	var R := Orbit.radius(k, phi)
+	if absf(d - R) >= rr:
+		return
+	var c := (R * R + d * d - rr * rr) / (2.0 * R * d)
+	if c >= 1.0:
+		return
+	out.append(Vector2(phi, acos(clampf(c, -1.0, 1.0))))
 
 
 ## Appends Vector2(center_angle, half_width) for every dangerous interval of orbit `k` at `time`.

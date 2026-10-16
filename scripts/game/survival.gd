@@ -66,13 +66,37 @@ static func danger_mask(hazards: Array, t: float, k := 0, margin := MARGIN) -> A
 	return m
 
 
-static func cross_mask() -> Array:
-	var m := [0, 0]
-	if Orbit.count() >= 2 and not Orbit.morphing():
-		for c in Orbit.crossings:
-			# only buckets fully inside the window count (conservative)
-			_set_range(m, c, Orbit.CROSS_WINDOW - BW * 0.5)
-	return m
+static func _has(v: Array, b: int) -> bool:
+	return (v[0] >> b) & 1 == 1 if b < 64 else (v[1] >> (b - 64)) & 1 == 1
+
+
+static func _setbit(v: Array, b: int) -> void:
+	b = posmod(b, N)
+	if b < 64:
+		v[0] |= 1 << b
+	else:
+		v[1] |= 1 << (b - 64)
+
+
+## Per orbit: [no-reverse mask, [[bucket, target bucket on the other orbit, dir sign], ...]]
+## Buckets surely inside a crossing window switch orbit; buckets that might be inside can
+## neither reverse nor switch (the true angle is only known to +-half a bucket).
+static func cross_maps() -> Array:
+	var out: Array = []
+	var W := Orbit.CROSS_WINDOW
+	for k in Orbit.count():
+		var m := [0, 0]
+		var maps: Array = []
+		if Orbit.count() >= 2 and not Orbit.morphing():
+			for c in Orbit.crossings:
+				var ak: float = c["a"][k]
+				_set_range(m, ak, W + BW * 0.5)
+				for b in range(ceili((ak - W + BW * 0.5) / BW), floori((ak + W - BW * 0.5) / BW) + 1):
+					var bb := posmod(b, N)
+					var a2 := Orbit.angle_of(1 - k, Orbit.pos(k, bb * BW))
+					maps.append([bb, bucket(a2), int(c["sign"])])
+		out.append([m, maps])
+	return out
 
 
 static func bucket(angle: float) -> int:
@@ -101,7 +125,7 @@ static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, om
 		P[mini(orbit, kc - 1)] = bit
 	else:
 		M[mini(orbit, kc - 1)] = bit
-	var X := cross_mask()
+	var CM := cross_maps()
 	var alive := false
 	for k in kc:
 		var d0 := danger_mask(hazards, t_now, k)
@@ -117,14 +141,22 @@ static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, om
 			NP.append(_rotl(P[k])); NM.append(_rotr(M[k]))
 		if s % gap == 0 and (s > 0 or first_tap):
 			for k in kc:
+				var X: Array = CM[k][0]
 				# outside crossings: reverse
 				NM[k] = _or(NM[k], _rotr(_andn(P[k], X)))
 				NP[k] = _or(NP[k], _rotl(_andn(M[k], X)))
-				# at crossings: switch orbit, keep direction
+				# at crossings: jump to the other orbit (angle + direction remapped)
 				if kc >= 2:
 					var o := 1 - k
-					NP[o] = _or(NP[o], _rotl(_and(P[k], X)))
-					NM[o] = _or(NM[o], _rotr(_and(M[k], X)))
+					for mp in CM[k][1]:
+						var b0: int = mp[0]
+						for dd in [1, -1]:
+							if _has(P[k] if dd > 0 else M[k], b0):
+								var nd: int = dd * int(mp[2])
+								if nd > 0:
+									_setbit(NP[o], int(mp[1]) + 1)
+								else:
+									_setbit(NM[o], int(mp[1]) - 1)
 		alive = false
 		for k in kc:
 			var d := danger_mask(hazards, t, k)

@@ -52,38 +52,23 @@ func _process(_dt: float) -> bool:
 	if main.state == main.S.PLAYING and TestBot.decide(main):
 		main._flip()
 	match frame:
-		40: shot("01_menu")
-		45: main.ui.show_boosts()
-		60: shot("02_boosts")
-		65: main.ui.show_mission()
-		80: shot("03_mission")
-		85: main.ui.show_settings()
-		100: shot("04_settings")
-		105:
-			main.ui.hide_popup()
+		40:
 			main.open_ranking()
-		130: shot("05_ranking")
-		135:
-			main.ui._rank_tab = "achievements"
-			main.ui.refresh_ranking()
-		145: shot("06_achievements")
-		150:
+		70: shot("01_ranking_banner")
+		75:
 			main.go_menu()
-			main.armed["teleport"] = true
 			main.start_run()
-		300: shot("07_play_sky")
-		305: main.score = 20; main._add_score(0)
-		420: shot("08_world2_banner")
-		700: shot("09_lagoon")
-		705: world(3)
-		900: shot("10_candy")
-		905: world(4)
-		1000: main.ui.world_banner(5, "NOCHE", "TOCA EN LA ESTRELLA")
-		1100: shot("11_night_dual")
-		1300: shot("12_night_2")
-		1301:
-			main.score = 63
-			main._die()
-		1400: shot("13_gameover")
-		1405: return true
+		200: shot("02_play_pause_button")
+		205: main._pause()
+		225: shot("03_pause_menu")
+		230: main._resume()
+		320:
+			world(5)
+		330: main.ui.world_banner(6, "PLANETAS GEMELOS", "TOCA DONDE SE CRUZAN")
+		420: shot("04_twin")
+		620: shot("05_twin_2")
+		625: world(6)
+		800: shot("06_binary")
+		1000: shot("07_binary_2")
+		1005: return true
 	return false

@@ -37,11 +37,7 @@ func label_angle(time: float) -> float:
 func danger(time: float, out: Array, k := 0) -> void:
 	if time < t_danger_start or time > t_danger_end:
 		return
-	var a := theta_at(time)
-	var rk := Orbit.radius(k, a)
-	if absf(rk - Orbit.radius(orbit, a)) >= _rr:
-		return
-	out.append(Vector2(wrapf(a, -PI, PI), Orbit.chord_half(_rr, rk)))
+	point_danger(Orbit.pos(orbit, theta_at(time)), _rr, k, out)
 
 
 func _draw() -> void:

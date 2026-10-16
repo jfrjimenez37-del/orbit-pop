@@ -1,9 +1,11 @@
 class_name Orbit
 ## Orbit geometry shared by gameplay, hazards, fairness checker and drawing.
-## An orbit is a star-shaped closed curve around the planet: radius(k, angle).
-## There can be 1 or 2 orbits; where 2 orbits cross, a tap switches orbit
-## instead of reversing. The player always moves at the same angular speed.
-## Shapes morph smoothly when the world changes (blend 0 -> 1).
+## Each orbit k is a star-shaped closed curve around its own center (a planet):
+##   pos(k, a) = center(k) + dir(a) * radius(k, a)      (a = angle around that center)
+## There can be 1 or 2 orbits. Where 2 orbits cross, a tap switches orbit instead of
+## reversing; when the orbits belong to different planets the angle and direction are
+## remapped so the motion continues smoothly (figure-eight). The player always moves at
+## the same angular speed. Shapes morph smoothly when the world changes (blend 0 -> 1).
 
 const PLANET_R := 29.0     # planet visual radius
 const PLAYER_R := 4.0      # player hitbox radius (forgiving: sprite body is ~6px)
@@ -11,12 +13,13 @@ const NEAR := 0.13         # rad of clearance that still counts as a near miss
 const CROSS_WINDOW := 0.16 # rad around a crossing where a tap switches orbit
 const BASE := [{"kind": "circle", "r": 60.0}]
 
-## Legacy mean radius (visual helpers). Kept in sync with the current shape.
+## Mean radius of orbit 0 (visual helpers). Kept in sync with the current shape.
 static var R := 60.0
 static var defs: Array = BASE.duplicate(true)
 static var prev_defs: Array = BASE.duplicate(true)
 static var blend := 1.0
-static var crossings: Array = []   # angles where orbit 0 and 1 meet
+## Each crossing: {"a": [angle on orbit 0, angle on orbit 1], "sign": dir multiplier when switching}
+static var crossings: Array = []
 
 
 static func reset() -> void:
@@ -62,27 +65,70 @@ static func _eval(d: Dictionary, a: float) -> float:
 	return float(d["r"])
 
 
+static func _def(list: Array, k: int) -> Dictionary:
+	return list[mini(k, list.size() - 1)]
+
+
 static func radius(k: int, a: float) -> float:
-	var new_r := _eval(defs[mini(k, defs.size() - 1)], a)
+	var new_r := _eval(_def(defs, k), a)
 	if blend >= 1.0:
 		return new_r
-	var old_r := _eval(prev_defs[mini(k, prev_defs.size() - 1)], a)
-	return lerpf(old_r, new_r, blend)
+	return lerpf(_eval(_def(prev_defs, k), a), new_r, blend)
+
+
+## Planet / orbit center of orbit k (world space, relative to the playfield origin).
+static func center(k: int) -> Vector2:
+	var c_new: Vector2 = _def(defs, k).get("center", Vector2.ZERO)
+	if blend >= 1.0:
+		return c_new
+	var c_old: Vector2 = _def(prev_defs, k).get("center", Vector2.ZERO)
+	return c_old.lerp(c_new, blend)
 
 
 static func pos(k: int, a: float) -> Vector2:
-	return Vector2(cos(a), sin(a)) * radius(k, a)
+	return center(k) + Vector2(cos(a), sin(a)) * radius(k, a)
+
+
+## Angle of a world point as seen from orbit k's center.
+static func angle_of(k: int, p: Vector2) -> float:
+	return (p - center(k)).angle()
+
+
+## Distinct planet centers (one planet per center).
+static func planets() -> Array:
+	var out: Array = []
+	for k in count():
+		var c := center(k)
+		var dup := false
+		for o in out:
+			if o.distance_to(c) < 1.0:
+				dup = true
+		if not dup:
+			out.append(c)
+	return out
 
 
 static func on_ring(a: float, r := -1.0) -> Vector2:
-	return Vector2(cos(a), sin(a)) * (radius(0, a) if r < 0.0 else r)
+	return center(0) + Vector2(cos(a), sin(a)) * (radius(0, a) if r < 0.0 else r)
 
 
-static func max_radius() -> float:
+## Largest distance of orbit k from its own center (default: any orbit, from its center).
+static func max_radius(k := -1) -> float:
+	var m := 0.0
+	for o in count():
+		if k >= 0 and o != k:
+			continue
+		for i in 32:
+			m = maxf(m, radius(o, TAU * i / 32.0))
+	return m
+
+
+## Farthest point of any orbit from the playfield origin (screen fitting).
+static func extent() -> float:
 	var m := 0.0
 	for k in count():
 		for i in 32:
-			m = maxf(m, radius(k, TAU * i / 32.0))
+			m = maxf(m, pos(k, TAU * i / 32.0).length())
 	return m
 
 
@@ -96,21 +142,32 @@ static func chord_half(rr: float, r := -1.0) -> float:
 	return 2.0 * asin(clampf(rr / (2.0 * rad), 0.0, 1.0))
 
 
-## True when a tap at this angle switches orbit (two orbits, close to a crossing).
-static func at_crossing(a: float) -> bool:
+## Index of the crossing whose window contains angle `a` on orbit `k`, or -1.
+static func crossing_at(a: float, k: int) -> int:
 	if count() < 2 or morphing():
-		return false
-	for c in crossings:
-		if absf(ang_diff(a, c)) <= CROSS_WINDOW:
-			return true
-	return false
+		return -1
+	for i in crossings.size():
+		if absf(ang_diff(a, crossings[i]["a"][k])) <= CROSS_WINDOW:
+			return i
+	return -1
 
 
-## Result of a tap: [orbit, dir].
+static func at_crossing(a: float, k := 0) -> bool:
+	return crossing_at(a, k) >= 0
+
+
+## Result of a tap: [orbit, dir, angle]. Inside a crossing window the player moves to the
+## other orbit at the same world point; otherwise the direction reverses.
 static func tap_result(a: float, k: int, dir: int) -> Array:
-	if at_crossing(a):
-		return [1 - k, dir]
-	return [k, -dir]
+	var i := crossing_at(a, k)
+	if i < 0:
+		return [k, -dir, a]
+	var o := 1 - k
+	return [o, dir * int(crossings[i]["sign"]), wrapf(angle_of(o, pos(k, a)), -PI, PI)]
+
+
+static func _tangent(k: int, a: float) -> Vector2:
+	return (pos(k, a + 0.01) - pos(k, a - 0.01)).normalized()
 
 
 static func _refresh() -> void:
@@ -119,24 +176,32 @@ static func _refresh() -> void:
 		s += radius(0, TAU * i / 16.0)
 	R = s / 16.0
 	crossings.clear()
-	if defs.size() < 2:
+	if count() < 2:
 		return
-	# sample between grid points (never exactly on a crossing), then refine by bisection
+	# walk orbit 0 and find where it enters/leaves orbit 1 (sign of "outside orbit 1")
 	var n := 256
 	var a0 := TAU * 0.5 / n
-	var prev := _eval(defs[0], a0) - _eval(defs[1], a0)
+	var prev := _outside(1, pos(0, a0))
 	for i in range(1, n + 1):
 		var a1 := TAU * (i + 0.5) / n
-		var d := _eval(defs[0], a1) - _eval(defs[1], a1)
+		var d := _outside(1, pos(0, a1))
 		if (d > 0.0) != (prev > 0.0):
 			var lo := a1 - TAU / n
 			var hi := a1
-			for it in 20:
+			for it in 22:
 				var m := (lo + hi) * 0.5
-				var dm := _eval(defs[0], m) - _eval(defs[1], m)
-				if (dm > 0.0) == (prev > 0.0):
+				if (_outside(1, pos(0, m)) > 0.0) == (prev > 0.0):
 					lo = m
 				else:
 					hi = m
-			crossings.append(wrapf((lo + hi) * 0.5, -PI, PI))
+			var ac := wrapf((lo + hi) * 0.5, -PI, PI)
+			var ao := wrapf(angle_of(1, pos(0, ac)), -PI, PI)
+			var sign := 1 if _tangent(0, ac).dot(_tangent(1, ao)) >= 0.0 else -1
+			crossings.append({"a": [ac, ao], "sign": sign})
 		prev = d
+
+
+## >0 when point p lies outside orbit k.
+static func _outside(k: int, p: Vector2) -> float:
+	var v := p - center(k)
+	return v.length() - radius(k, v.angle())

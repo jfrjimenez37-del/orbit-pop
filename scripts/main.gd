@@ -73,6 +73,9 @@ func _ready() -> void:
 	ui.teleport_pressed.connect(use_teleport)
 	ui.share_pressed.connect(_share)
 	ui.ranking_pressed.connect(open_ranking)
+	ui.pause_pressed.connect(_pause)
+	ui.resume_pressed.connect(_resume)
+	ui.quit_pressed.connect(_quit_run)
 	ui.language_changed.connect(func(): get_tree().reload_current_scene())
 	ui.style_changed.connect(apply_style)
 	ui.boost_toggled.connect(_on_boost_toggled)
@@ -147,6 +150,29 @@ func open_skins() -> void:
 func open_ranking() -> void:
 	state = S.RANKING
 	ui.show_ranking()
+	Monetization.show_banner()
+
+
+func _resume() -> void:
+	if state != S.PAUSED:
+		return
+	_resume_left = 1.2
+	state = S.RESUMING
+	ui.show_countdown(3)
+	Sfx.play("tick")
+
+
+## Leaving a paused run from the pause menu: it still counts (stats, coins, missions).
+func _quit_run() -> void:
+	if state != S.PAUSED:
+		return
+	Save.submit_run(score)
+	Monetization.on_game_over()
+	Progress.run_finished(score, world_no, gt)
+	var earned := int(floor(score * MonetizationConfig.COINS_PER_SCORE)) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE
+	Save.add_coins(earned - coins_awarded)
+	coins_awarded = earned
+	Monetization.between_runs(go_menu)
 
 
 func _share() -> void:
@@ -171,7 +197,7 @@ func apply_style() -> void:
 func _apply_world(i: int, animated: bool) -> void:
 	var w := Stages.world(i)
 	bg.apply_world(w, animated)
-	planet.set_world(w["planet"])
+	planet.set_world(w["planet"], w.get("planet2", w["planet"]))
 
 
 func _on_boost_toggled(id: String) -> void:
@@ -388,6 +414,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_T and state == S.PLAYING:
 		use_teleport()
 		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE, KEY_P]:
+		if state == S.PLAYING:
+			_pause()
+		elif state == S.PAUSED:
+			_resume()
+		return
 	if event is InputEventScreenTouch and event.pressed:
 		tap = true
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
@@ -409,10 +441,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _grace <= 0.0:
 				_flip()
 		S.PAUSED:
-			_resume_left = 1.2
-			state = S.RESUMING
-			ui.show_countdown(3)
-			Sfx.play("tick")
+			pass  # use the CONTINUE / MENU buttons
 
 
 func _flip() -> void:
@@ -491,6 +520,8 @@ func _process(delta: float) -> void:
 				ui.show_hud_resume()
 	planet.look = Vector2(cos(player.angle), sin(player.angle))
 	planet.player_angle = player.angle
+	planet.player_orbit = player.orbit
+	planet.player_pos = player.position
 	_cleanup()
 
 
@@ -617,7 +648,10 @@ func _update_world(dt: float) -> void:
 		planet.bump()
 		world_no = Stages.number_for_score(score)
 		var w := Stages.world(_stage_pending)
-		var tip := L.t("CROSS_TIP") if Stages.LIST[_stage_pending]["orbits"].size() >= 2 else ""
+		var orbits: Array = Stages.LIST[_stage_pending]["orbits"]
+		var tip := ""
+		if orbits.size() >= 2:
+			tip = L.t("JUMP_TIP") if orbits[1].has("center") else L.t("CROSS_TIP")
 		ui.world_banner(world_no, L.t("WORLD_" + str(w["id"]).to_upper()), tip)
 		Sfx.play("unlock")
 		Progress.event("world", world_no)

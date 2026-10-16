@@ -1,20 +1,24 @@
 class_name Planet
 extends Node2D
-## The cute central planet (with a reactive face) and the dotted orbit track.
+## The cute planet(s) with reactive faces and the dotted orbit track(s).
+## Two-planet worlds draw one planet per orbit center.
 
 var BODY: Texture2D = preload("res://assets/sprites/planet.png")
+var BODY2: Texture2D = preload("res://assets/sprites/planet.png")
 const FACE := preload("res://assets/sprites/planet_face.png")
 
 enum Mood { SMILE, OH, WORRY }
 
-var look := Vector2.ZERO   # direction toward the player
+var look := Vector2.ZERO   # kept for compatibility (direction toward the player)
 var mood := Mood.SMILE
+var ring_alpha := 0.85
+var player_angle := 0.0
+var player_orbit := 0
+var player_pos := Vector2.ZERO
 var _t := 0.0
 var _blink := 2.0
 var _oh_time := 0.0
 var _squash := 0.0
-var ring_alpha := 0.85
-var player_angle := 0.0
 
 
 func _process(delta: float) -> void:
@@ -32,8 +36,12 @@ func bump() -> void:
 	_squash = 1.0
 
 
+func set_world(tex_name: String, tex2 := "") -> void:
+	BODY = load("res://assets/sprites/%s.png" % tex_name)
+	BODY2 = load("res://assets/sprites/%s.png" % (tex2 if tex2 != "" else tex_name))
+
+
 func _draw() -> void:
-	# orbit dots
 	var n := 44
 	for k in Orbit.count():
 		var tint := Color(1, 1, 1, ring_alpha) if k == 0 else Color(1, 0.95, 0.7, ring_alpha)
@@ -46,19 +54,25 @@ func _draw() -> void:
 	# crossing points: glowing diamonds, brighter when the player can switch there
 	if Orbit.count() >= 2 and not Orbit.morphing():
 		for c in Orbit.crossings:
-			var p2 := Orbit.pos(0, c).round()
-			var hot := absf(Orbit.ang_diff(player_angle, c)) <= Orbit.CROSS_WINDOW
+			var p2 := Orbit.pos(0, c["a"][0]).round()
+			var hot := absf(Orbit.ang_diff(player_angle, c["a"][mini(player_orbit, 1)])) <= Orbit.CROSS_WINDOW
 			var col := Color8(255, 236, 90) if hot else Color(1, 1, 1, 0.7)
 			var s := 3 + (1 if hot and fmod(_t, 0.2) < 0.1 else 0)
 			for dy in range(-s, s + 1):
 				var w := s - absi(dy)
 				draw_rect(Rect2(p2 + Vector2(-w, dy), Vector2(w * 2 + 1, 1)), col)
-	var bob := roundf(sin(_t * 1.6) * 1.0)
+	var planets := Orbit.planets()
+	for i in planets.size():
+		_draw_planet(planets[i], BODY if i == 0 else BODY2)
+
+
+func _draw_planet(c: Vector2, body: Texture2D) -> void:
+	var bob := roundf(sin(_t * 1.6 + c.y * 0.05) * 1.0)
 	var sq := 1.0 + 0.06 * _squash * sin(_t * 40.0)
-	draw_set_transform(Vector2(0, bob), 0.0, Vector2(sq, 2.0 - sq))
-	draw_texture(BODY, Vector2(-32, -32))
-	# face
-	var e := (look * 1.4).round()
+	draw_set_transform(c.round() + Vector2(0, bob), 0.0, Vector2(sq, 2.0 - sq))
+	draw_texture(body, Vector2(-32, -32))
+	var to_player := player_pos - c
+	var e := (to_player.normalized() * 1.4).round() if to_player.length() > 1.0 else Vector2.ZERO
 	var blink := _blink < 0.0 or mood == Mood.WORRY and fmod(_t, 0.5) < 0.1
 	var eye_src := Rect2(8 if blink else 0, 0, 8, 8)
 	draw_texture_rect_region(FACE, Rect2(Vector2(-14, -9) + e, Vector2(8, 8)), eye_src)
@@ -70,7 +84,3 @@ func _draw() -> void:
 		m = 3
 	draw_texture_rect_region(FACE, Rect2(Vector2(-4, -1) + e * 0.5, Vector2(8, 8)), Rect2(m * 8, 0, 8, 8))
 	draw_set_transform(Vector2.ZERO)
-
-
-func set_world(tex_name: String) -> void:
-	BODY = load("res://assets/sprites/%s.png" % tex_name)
