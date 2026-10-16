@@ -1,0 +1,56 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="ORBIT POP"
+config/description="One-tap arcade: flip your orbit, dodge, pop, beat your best."
+config/version="0.1.0"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+boot_splash/bg_color=Color(0.43, 0.75, 1, 1)
+boot_splash/show_image=false
+config/icon="res://assets/icon/icon_192.png"
+config/quit_on_go_back=false
+
+[autoload]
+
+Save="*res://scripts/autoload/save.gd"
+Sfx="*res://scripts/autoload/sfx.gd"
+Monetization="*res://scripts/autoload/monetization.gd"
+
+[display]
+
+window/size/viewport_width=180
+window/size/viewport_height=320
+window/size/window_width_override=540
+window/size/window_height_override=960
+window/stretch/mode="viewport"
+window/stretch/aspect="expand"
+window/stretch/scale_mode="integer"
+window/handheld/orientation=1
+window/vsync/vsync_mode=1
+
+[gui]
+
+theme/custom_font="res://assets/font/pixel.fnt"
+theme/default_font_antialiasing=0
+common/drop_mouse_on_gui_input_disabled=true
+
+[input_devices]
+
+pointing/emulate_mouse_from_touch=true
+
+[physics]
+
+common/physics_ticks_per_second=60
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+2d/snap/snap_2d_transforms_to_pixel=true
+2d/snap/snap_2d_vertices_to_pixel=true
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.43, 0.75, 1, 1)

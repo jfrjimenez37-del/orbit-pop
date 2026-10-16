@@ -1,0 +1,71 @@
+class_name Barrier
+extends Hazard
+## Electric spoke from the planet surface beyond the orbit. Flickers as a dashed
+## warning first, then becomes a lethal beam for a while. Can rotate (`spin`).
+
+const NODE_TEX := preload("res://assets/sprites/node.png")
+const R_IN := Orbit.PLANET_R + 4.0
+const R_OUT := Orbit.R + 20.0
+const BEAM_HALF := 1.5
+
+var theta0 := 0.0
+var spin := 0.0
+var _half := asin((Orbit.PLAYER_R + BEAM_HALF) / Orbit.R)
+
+
+func setup(p_theta: float, p_t_spawn: float, warn: float, active: float, p_spin := 0.0) -> Barrier:
+	theta0 = p_theta
+	t_spawn = p_t_spawn
+	spin = p_spin
+	t_danger_start = t_spawn + warn
+	t_danger_end = t_danger_start + active
+	t_end = t_danger_end + 0.2
+	return self
+
+
+func theta_at(time: float) -> float:
+	return theta0 + spin * (time - t_spawn)
+
+
+func label_angle(time: float) -> float:
+	return theta_at(time)
+
+
+func danger(time: float, out: Array) -> void:
+	if time >= t_danger_start and time <= t_danger_end:
+		out.append(Vector2(wrapf(theta_at(time), -PI, PI), _half))
+
+
+func _draw() -> void:
+	var a := theta_at(t)
+	var d := Vector2(cos(a), sin(a))
+	var n := Vector2(-d.y, d.x)
+	var p_in := d * R_IN
+	var p_out := d * R_OUT
+	if t < t_danger_start:
+		var k := clampf((t - t_spawn) / (t_danger_start - t_spawn), 0.0, 1.0)
+		var on := fmod(t * (5.0 + 12.0 * k), 1.0) < 0.55
+		var r := R_IN
+		while r < R_OUT:
+			if on:
+				draw_rect(Rect2((d * r).floor(), Vector2(1, 1)), Color(1, 0.95, 0.4, 0.5 + 0.5 * k))
+			r += 4.0
+		var gc := Color(1, 1, 1, 0.4 + 0.5 * k)
+		draw_texture(NODE_TEX, (p_in - Vector2(5, 5)).round(), gc)
+		draw_texture(NODE_TEX, (p_out - Vector2(5, 5)).round(), gc)
+		return
+	var alive := t <= t_danger_end
+	if alive:
+		var pts := PackedVector2Array()
+		var segs := 9
+		var seed_t := int(t * 24.0)
+		for i in segs + 1:
+			var f := float(i) / segs
+			var j := 0.0 if i == 0 or i == segs else (float((seed_t * 31 + i * 17) % 7) - 3.0) * 0.8
+			pts.append((p_in.lerp(p_out, f) + n * j).round())
+		draw_polyline(pts, Color(0.15, 0.1, 0.25, 0.85), 4.0)
+		draw_polyline(pts, Color(1, 0.92, 0.3), 2.0)
+		draw_polyline(pts, Color(1, 1, 1), 1.0)
+	var fade := 1.0 if alive else 1.0 - (t - t_danger_end) / 0.2
+	draw_texture(NODE_TEX, (p_in - Vector2(5, 5)).round(), Color(1, 1, 1, fade))
+	draw_texture(NODE_TEX, (p_out - Vector2(5, 5)).round(), Color(1, 1, 1, fade))
