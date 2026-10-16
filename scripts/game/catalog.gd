@@ -34,6 +34,9 @@ const WORLDS := [
 	{"id": "candy", "name": "CANDY", "need": ["best", 0], "top": Color8(255, 150, 204), "bottom": Color8(255, 224, 242), "planet": "planet_mint", "cloud": Color(1, 1, 1), "stars": false},
 	{"id": "night", "name": "NIGHT", "need": ["best", 0], "top": Color8(34, 44, 116), "bottom": Color8(96, 96, 186), "planet": "planet_gold", "cloud": Color(0.7, 0.74, 0.95, 0.75), "stars": true},
 	{"id": "twin", "name": "TWIN", "need": ["best", 0], "top": Color8(112, 70, 190), "bottom": Color8(255, 160, 205), "planet": "planet_mint", "planet2": "planet", "cloud": Color(1, 0.9, 1, 0.9), "stars": true},
+	{"id": "trio", "name": "TRIO", "need": ["best", 0], "top": Color8(255, 150, 90), "bottom": Color8(255, 236, 170), "planet": "planet_violet", "planets": ["planet_violet", "planet_mint", "planet"], "cloud": Color(1, 0.95, 0.9), "stars": false},
+	{"id": "giants", "name": "GIANTS", "need": ["best", 0], "top": Color8(60, 120, 220), "bottom": Color8(190, 240, 255), "planet": "planet_gold", "planets": ["planet_gold", "planet_mint", "planet_violet"], "cloud": Color(1, 1, 1), "stars": false},
+	{"id": "warped", "name": "WARPED", "need": ["best", 0], "top": Color8(26, 20, 70), "bottom": Color8(170, 70, 160), "planet": "planet", "planets": ["planet", "planet_gold", "planet_mint"], "cloud": Color(0.8, 0.7, 1.0, 0.7), "stars": true},
 	{"id": "binary", "name": "BINARY", "need": ["best", 0], "top": Color8(16, 92, 120), "bottom": Color8(120, 222, 204), "planet": "planet_gold", "planet2": "planet_violet", "cloud": Color(0.85, 1, 1, 0.85), "stars": true},
 ]
 

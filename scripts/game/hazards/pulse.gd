@@ -11,6 +11,7 @@ var speed := 70.0
 var t_fire := 0.0
 var _rr := RADIUS + Orbit.PLAYER_R
 var _r_far := 80.0
+var _pr := Orbit.PLANET_R
 
 
 func setup(p_gap: float, p_t_spawn: float, warn: float, p_gap_half: float, p_speed := 70.0, p_home := 0) -> Pulse:
@@ -20,6 +21,7 @@ func setup(p_gap: float, p_t_spawn: float, warn: float, p_gap_half: float, p_spe
 	t_spawn = p_t_spawn
 	speed = p_speed
 	t_fire = t_spawn + warn
+	_pr = Orbit.planet_r(home_k)
 	var lo := INF
 	_r_far = 0.0
 	for k in Orbit.count():
@@ -27,14 +29,14 @@ func setup(p_gap: float, p_t_spawn: float, warn: float, p_gap_half: float, p_spe
 			var r := Orbit.pos(k, TAU * i / 32.0).distance_to(home)
 			lo = minf(lo, r)
 			_r_far = maxf(_r_far, r)
-	t_danger_start = t_fire + (lo - Orbit.PLANET_R - _rr) / speed
-	t_danger_end = t_fire + (_r_far - Orbit.PLANET_R + _rr) / speed
-	t_end = t_fire + (_r_far + 40.0 - Orbit.PLANET_R) / speed
+	t_danger_start = t_fire + (lo - _pr - _rr) / speed
+	t_danger_end = t_fire + (_r_far - _pr + _rr) / speed
+	t_end = t_fire + (_r_far + 40.0 - _pr) / speed
 	return self
 
 
 func wave_r(time: float) -> float:
-	return Orbit.PLANET_R + speed * (time - t_fire)
+	return _pr + speed * (time - t_fire)
 
 
 func label_angle(_time: float) -> float:
@@ -70,7 +72,7 @@ func _draw() -> void:
 				draw_rect(Rect2((home + Vector2(cos(a), sin(a)) * Orbit.radius(home_k, a)).floor() - Vector2(1, 1), Vector2(2, 2)), Color(0.4, 1.0, 0.55, 0.95 if on else 0.5))
 	if t < t_fire:
 		var k2 := clampf((t - t_spawn) / (t_fire - t_spawn), 0.0, 1.0)
-		draw_arc(home, Orbit.PLANET_R + 3.0 + 2.0 * sin(t * 30.0), gap + gap_half, gap + TAU - gap_half, 40, Color(1, 0.4, 0.5, 0.4 + 0.5 * k2), 2.0)
+		draw_arc(home, _pr + 3.0 + 2.0 * sin(t * 30.0), gap + gap_half, gap + TAU - gap_half, 40, Color(1, 0.4, 0.5, 0.4 + 0.5 * k2), 2.0)
 		return
 	var rw := wave_r(t)
 	if rw > _r_far + 40.0:

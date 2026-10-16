@@ -197,7 +197,7 @@ func apply_style() -> void:
 func _apply_world(i: int, animated: bool) -> void:
 	var w := Stages.world(i)
 	bg.apply_world(w, animated)
-	planet.set_world(w["planet"], w.get("planet2", w["planet"]))
+	planet.set_world(w.get("planets", [w["planet"], w.get("planet2", w["planet"])]))
 
 
 func _on_boost_toggled(id: String) -> void:

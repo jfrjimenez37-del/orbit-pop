@@ -4,12 +4,12 @@ extends Hazard
 ## warning first, then becomes a lethal beam for a while. Can rotate (`spin`).
 
 const NODE_TEX := preload("res://assets/sprites/node.png")
-const R_IN := Orbit.PLANET_R + 4.0
 const BEAM_HALF := 1.5
 
 var theta0 := 0.0
 var spin := 0.0
 var r_out := 80.0
+var R_IN := Orbit.PLANET_R + 4.0
 
 
 func setup(p_theta: float, p_t_spawn: float, warn: float, active: float, p_spin := 0.0, p_home := 0) -> Barrier:
@@ -21,6 +21,7 @@ func setup(p_theta: float, p_t_spawn: float, warn: float, active: float, p_spin 
 	t_danger_end = t_danger_start + active
 	t_end = t_danger_end + 0.2
 	r_out = Orbit.max_radius(home_k) + 18.0
+	R_IN = Orbit.planet_r(home_k) + 4.0
 	return self
 
 

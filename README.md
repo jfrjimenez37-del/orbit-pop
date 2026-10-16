@@ -73,7 +73,7 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 116 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
+| 134 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
 | Guardado local, récords, estadísticas, 6 skins | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
@@ -147,7 +147,10 @@ interna" de Play antes de publicar.
 | 110 | 5 NOCHE | 2 órbitas elípticas que se cruzan en 4 estrellas |
 | 150 | 6 PLANETAS GEMELOS | 2 planetas, cada uno con su órbita; se cruzan entre ambos (forma de 8) |
 | 195 | 7 SISTEMA BINARIO | 2 planetas distintos (círculo + elipse) en diagonal |
-| 240+ | 8, 9, … | se repiten 2–7 cada 40 puntos |
+| 240 | 8 TRÍO DE PLANETAS | 3 planetas en triángulo, cada órbita cruza a las otras dos |
+| 290 | 9 GRANDES Y PEQUEÑAS | 1 órbita grande y 2 pequeñas (planetas de 3 tamaños) |
+| 340 | 10 ÓRBITAS DEFORMES | 3 órbitas descentradas: anchas hacia el planeta vecino, estrechas al otro lado |
+| 390+ | 11, 12, … | se repiten 2–10 cada 40 puntos |
 
 Al cambiar de mundo se espera a que el campo quede libre y la órbita se transforma en 1,3 s.
 En NOCHE, tocar dentro de la ventana de una estrella de cruce (±0,16 rad) **cambia de órbita**
@@ -155,7 +158,9 @@ en vez de invertir. En los mundos de 2 planetas el cambio te pasa a la órbita d
 el mismo punto, invirtiendo el sentido de giro para seguir hacia delante (recorrido en 8). Los
 obstáculos pertenecen a un planeta pero su geometría afecta a ambas órbitas. Obstáculos nuevos según avanzas: PULSO (onda desde el planeta con un hueco
 seguro, mundo 2+), SIERRA (recorre un arco marcado de la órbita, mundo 3+), y patrones que
-obligan a cambiar de órbita (mundo 5). El validador de justicia simula también los cambios de
+obligan a cambiar de órbita (mundo 5). Con 2 o más planetas (mundo 6+): RAYO (enlace eléctrico
+entre dos planetas que bloquea la zona de paso), COMETA (cruza la pantalla en línea recta, no
+hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El validador de justicia simula también los cambios de
 órbita: un test hace sobrevivir al bot justo 45 s en cada forma de órbita.
 
 ## Misiones, logros, ranking, nube, compartir, idiomas

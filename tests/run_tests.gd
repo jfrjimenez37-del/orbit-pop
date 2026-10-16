@@ -370,6 +370,60 @@ func test_orbits() -> void:
 		var t1: Vector2 = Orbit._tangent(1, r2[2]) * r2[1]
 		ok(t0.dot(t1) > 0.0, "%s: motion continues forward after switching" % Stages.LIST[si]["world"])
 		ok(Orbit.extent() + 8.0 <= 96.0 and absf(Orbit.pos(0, 0).x) + 8.0 <= 90.0, "%s fits the screen" % Stages.LIST[si]["world"])
+	# three planets: every orbit reachable, everything on screen, no orbit through a planet
+	for si in [7, 8, 9]:
+		var nm: String = Stages.LIST[si]["world"]
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+		ok(Orbit.planets().size() == 3 and Orbit.crossings.size() >= 4, "%s: 3 planets, %d crossings" % [nm, Orbit.crossings.size()])
+		var reach := {0: true}
+		for it in 3:
+			for kk in reach.keys():
+				for o in Orbit.neighbors(kk):
+					reach[o] = true
+		ok(reach.size() == 3, "%s: every orbit reachable by switching" % nm)
+		var maxx := 0.0
+		var clear := INF
+		for k in 3:
+			for i in 90:
+				var p := Orbit.pos(k, TAU * i / 90.0)
+				maxx = maxf(maxx, absf(p.x))
+				for pl in Orbit.planets():
+					clear = minf(clear, p.distance_to(pl["c"]) - pl["r"])
+		ok(maxx + 8.0 <= 90.0 and clear > Orbit.PLAYER_R + 2.0, "%s fits the screen (x %.0f) and clears planets (%.1f)" % [nm, maxx, clear])
+		for cx in Orbit.crossings:
+			var kk2: int = cx["k"][0]
+			var r3 := Orbit.tap_result(cx["a"][0], kk2, 1)
+			ok(r3[0] == cx["k"][1] and Orbit.pos(r3[0], r3[2]).distance_to(Orbit.pos(kk2, cx["a"][0])) < 1.0, "%s: switch %d->%d keeps position" % [nm, kk2, r3[0]])
+			break
+	# link beam and comet: danger matches real distances
+	Orbit.set_shape(Stages.LIST[5]["orbits"], true)
+	var ln := Link.new().setup(0, 1, 0.0, 0.5, 2.0)
+	var bad := 0
+	for k in 2:
+		for i in 180:
+			var a := TAU * i / 180.0
+			var p := Orbit.pos(k, a)
+			var q := Geometry2D.get_closest_point_to_segment(p, ln._p0, ln._p1)
+			var real := p.distance_to(q) < Orbit.PLAYER_R + Link.BEAM_HALF
+			var said := ln.clearance(1.0, a, k) < 0.0
+			if real and not said:
+				bad += 1
+	ok(bad == 0, "link beam never misses a real hit (%d misses)" % bad)
+	ok(ln.clearance(0.2, 0.0, 0) == INF, "link harmless during warning")
+	ln.free()
+	var cm := Comet.new().setup(Orbit.pos(0, 0.5), 2.0, 0.0, 0.4, 160.0)
+	bad = 0
+	var t2 := cm.t_danger_start
+	while t2 <= cm.t_danger_end:
+		for k in 2:
+			for i in 120:
+				var a := TAU * i / 120.0
+				var real2 := Orbit.pos(k, a).distance_to(cm.pos_at(t2)) < Comet.RADIUS + Orbit.PLAYER_R - 0.3
+				if real2 and cm.clearance(t2, a, k) >= 0.0:
+					bad += 1
+		t2 += 0.01
+	ok(bad == 0, "comet never misses a real hit (%d)" % bad)
+	cm.free()
 	Orbit.set_shape(Stages.LIST[4]["orbits"], true)
 	c = Orbit.crossings[0]["a"][0]
 	ok(Orbit.max_radius() + 8.0 <= 90.0, "widest orbit fits a 180px screen")
@@ -559,6 +613,7 @@ func test_simulation(save) -> void:
 	lens.sort()
 	print("  human-like bot run lengths (s): ", lens)
 	ok(counts.size() >= 4, "hazard types appear: %s" % str(counts.keys()))
+	print("  (worlds reached in long runs exercise the newer hazards too)")
 	# rapid restarts: no leaks of hazards
 	for i in 20:
 		main.start_run()

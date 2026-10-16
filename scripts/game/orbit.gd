@@ -2,7 +2,7 @@ class_name Orbit
 ## Orbit geometry shared by gameplay, hazards, fairness checker and drawing.
 ## Each orbit k is a star-shaped closed curve around its own center (a planet):
 ##   pos(k, a) = center(k) + dir(a) * radius(k, a)      (a = angle around that center)
-## There can be 1 or 2 orbits. Where 2 orbits cross, a tap switches orbit instead of
+## There can be 1 to 3 orbits. Where 2 orbits cross, a tap switches orbit instead of
 ## reversing; when the orbits belong to different planets the angle and direction are
 ## remapped so the motion continues smoothly (figure-eight). The player always moves at
 ## the same angular speed. Shapes morph smoothly when the world changes (blend 0 -> 1).
@@ -18,7 +18,7 @@ static var R := 60.0
 static var defs: Array = BASE.duplicate(true)
 static var prev_defs: Array = BASE.duplicate(true)
 static var blend := 1.0
-## Each crossing: {"a": [angle on orbit 0, angle on orbit 1], "sign": dir multiplier when switching}
+## Each crossing: {"k": [orbit i, orbit j], "a": [angle on i, angle on j], "sign": dir multiplier}
 static var crossings: Array = []
 
 
@@ -94,17 +94,35 @@ static func angle_of(k: int, p: Vector2) -> float:
 	return (p - center(k)).angle()
 
 
-## Distinct planet centers (one planet per center).
+## Planet radius of orbit k's planet.
+static func planet_r(k: int) -> float:
+	var r_new: float = _def(defs, k).get("pr", PLANET_R)
+	if blend >= 1.0:
+		return r_new
+	return lerpf(float(_def(prev_defs, k).get("pr", PLANET_R)), r_new, blend)
+
+
+## Distinct planets: [{"c": center, "r": radius, "k": first orbit index}]
 static func planets() -> Array:
 	var out: Array = []
 	for k in count():
 		var c := center(k)
 		var dup := false
 		for o in out:
-			if o.distance_to(c) < 1.0:
+			if o["c"].distance_to(c) < 1.0:
 				dup = true
 		if not dup:
-			out.append(c)
+			out.append({"c": c, "r": planet_r(k), "k": k})
+	return out
+
+
+## Orbits reachable from k through a crossing.
+static func neighbors(k: int) -> Array:
+	var out: Array = []
+	for c in crossings:
+		var i: int = c["k"].find(k)
+		if i >= 0 and not out.has(c["k"][1 - i]):
+			out.append(c["k"][1 - i])
 	return out
 
 
@@ -147,7 +165,8 @@ static func crossing_at(a: float, k: int) -> int:
 	if count() < 2 or morphing():
 		return -1
 	for i in crossings.size():
-		if absf(ang_diff(a, crossings[i]["a"][k])) <= CROSS_WINDOW:
+		var side: int = crossings[i]["k"].find(k)
+		if side >= 0 and absf(ang_diff(a, crossings[i]["a"][side])) <= CROSS_WINDOW:
 			return i
 	return -1
 
@@ -162,8 +181,9 @@ static func tap_result(a: float, k: int, dir: int) -> Array:
 	var i := crossing_at(a, k)
 	if i < 0:
 		return [k, -dir, a]
-	var o := 1 - k
-	return [o, dir * int(crossings[i]["sign"]), wrapf(angle_of(o, pos(k, a)), -PI, PI)]
+	var c: Dictionary = crossings[i]
+	var o: int = c["k"][1 - c["k"].find(k)]
+	return [o, dir * int(c["sign"]), wrapf(angle_of(o, pos(k, a)), -PI, PI)]
 
 
 static func _tangent(k: int, a: float) -> Vector2:
@@ -178,26 +198,32 @@ static func _refresh() -> void:
 	crossings.clear()
 	if count() < 2:
 		return
-	# walk orbit 0 and find where it enters/leaves orbit 1 (sign of "outside orbit 1")
+	for i in count():
+		for j in range(i + 1, count()):
+			_find_crossings(i, j)
+
+
+## Walks orbit i and finds where it enters/leaves orbit j (sign of "outside orbit j").
+static func _find_crossings(i: int, j: int) -> void:
 	var n := 256
 	var a0 := TAU * 0.5 / n
-	var prev := _outside(1, pos(0, a0))
-	for i in range(1, n + 1):
-		var a1 := TAU * (i + 0.5) / n
-		var d := _outside(1, pos(0, a1))
+	var prev := _outside(j, pos(i, a0))
+	for s in range(1, n + 1):
+		var a1 := TAU * (s + 0.5) / n
+		var d := _outside(j, pos(i, a1))
 		if (d > 0.0) != (prev > 0.0):
 			var lo := a1 - TAU / n
 			var hi := a1
 			for it in 22:
 				var m := (lo + hi) * 0.5
-				if (_outside(1, pos(0, m)) > 0.0) == (prev > 0.0):
+				if (_outside(j, pos(i, m)) > 0.0) == (prev > 0.0):
 					lo = m
 				else:
 					hi = m
 			var ac := wrapf((lo + hi) * 0.5, -PI, PI)
-			var ao := wrapf(angle_of(1, pos(0, ac)), -PI, PI)
-			var sign := 1 if _tangent(0, ac).dot(_tangent(1, ao)) >= 0.0 else -1
-			crossings.append({"a": [ac, ao], "sign": sign})
+			var ao := wrapf(angle_of(j, pos(i, ac)), -PI, PI)
+			var sign := 1 if _tangent(i, ac).dot(_tangent(j, ao)) >= 0.0 else -1
+			crossings.append({"k": [i, j], "a": [ac, ao], "sign": sign})
 		prev = d
 
 

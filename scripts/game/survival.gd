@@ -78,7 +78,7 @@ static func _setbit(v: Array, b: int) -> void:
 		v[1] |= 1 << (b - 64)
 
 
-## Per orbit: [no-reverse mask, [[bucket, target bucket on the other orbit, dir sign], ...]]
+## Per orbit: [no-reverse mask, [[bucket, target orbit, target bucket, dir sign], ...]]
 ## Buckets surely inside a crossing window switch orbit; buckets that might be inside can
 ## neither reverse nor switch (the true angle is only known to +-half a bucket).
 static func cross_maps() -> Array:
@@ -89,12 +89,16 @@ static func cross_maps() -> Array:
 		var maps: Array = []
 		if Orbit.count() >= 2 and not Orbit.morphing():
 			for c in Orbit.crossings:
-				var ak: float = c["a"][k]
+				var side: int = c["k"].find(k)
+				if side < 0:
+					continue
+				var o: int = c["k"][1 - side]
+				var ak: float = c["a"][side]
 				_set_range(m, ak, W + BW * 0.5)
 				for b in range(ceili((ak - W + BW * 0.5) / BW), floori((ak + W - BW * 0.5) / BW) + 1):
 					var bb := posmod(b, N)
-					var a2 := Orbit.angle_of(1 - k, Orbit.pos(k, bb * BW))
-					maps.append([bb, bucket(a2), int(c["sign"])])
+					var a2 := Orbit.angle_of(o, Orbit.pos(k, bb * BW))
+					maps.append([bb, o, bucket(a2), int(c["sign"])])
 		out.append([m, maps])
 	return out
 
@@ -146,17 +150,16 @@ static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, om
 				NM[k] = _or(NM[k], _rotr(_andn(P[k], X)))
 				NP[k] = _or(NP[k], _rotl(_andn(M[k], X)))
 				# at crossings: jump to the other orbit (angle + direction remapped)
-				if kc >= 2:
-					var o := 1 - k
-					for mp in CM[k][1]:
-						var b0: int = mp[0]
-						for dd in [1, -1]:
-							if _has(P[k] if dd > 0 else M[k], b0):
-								var nd: int = dd * int(mp[2])
-								if nd > 0:
-									_setbit(NP[o], int(mp[1]) + 1)
-								else:
-									_setbit(NM[o], int(mp[1]) - 1)
+				for mp in CM[k][1]:
+					var b0: int = mp[0]
+					var o: int = mp[1]
+					for dd in [1, -1]:
+						if _has(P[k] if dd > 0 else M[k], b0):
+							var nd: int = dd * int(mp[3])
+							if nd > 0:
+								_setbit(NP[o], int(mp[2]) + 1)
+							else:
+								_setbit(NM[o], int(mp[2]) - 1)
 		alive = false
 		for k in kc:
 			var d := danger_mask(hazards, t, k)

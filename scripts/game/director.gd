@@ -28,7 +28,9 @@ const PATTERNS := [
 	["drift", 48.0, 1.6],
 ]
 ## Obstacles unlocked by reaching a world (stage index, base weight).
-const STAGE_PATTERNS := [["pulse", 1, 2.2], ["saw", 2, 2.0], ["swap", 4, 2.6], ["cross_rain", 4, 1.6]]
+const STAGE_PATTERNS := [["pulse", 1, 2.2], ["saw", 2, 2.0], ["swap", 4, 2.6], ["cross_rain", 4, 1.6],
+	["link", 5, 2.4], ["comet", 5, 2.4], ["comet_rain", 7, 1.8], ["link_cage", 7, 1.6]]
+const MULTI_PLANET := ["link", "comet_rain", "link_cage"]
 
 
 func reset(seed_value: int, recent_avg: float) -> void:
@@ -104,7 +106,9 @@ func _pick(t: float) -> String:
 			pool.append([p[0], w])
 			total += w
 	for sp in STAGE_PATTERNS:
-		if stage >= sp[1] and (sp[0] != "swap" and sp[0] != "cross_rain" or Orbit.count() >= 2):
+		var needs_two: bool = sp[0] in ["swap", "cross_rain"]
+		var needs_planets: bool = sp[0] in MULTI_PLANET
+		if stage >= sp[1] and (not needs_two or Orbit.count() >= 2) and (not needs_planets or Orbit.planets().size() >= 2):
 			pool.append([sp[0], sp[2]])
 			total += sp[2]
 	var r := rng.randf() * total
@@ -122,6 +126,15 @@ func _meteor(theta: float, t_spawn: float, x: float) -> Meteor:
 	var pre := lerpf(0.34, 0.16, x)
 	var v := lerpf(105.0, 170.0, x)
 	return Meteor.new().setup(theta, t_spawn, pre, v, _home)
+
+
+## Orbits whose planet is not the planet of orbit k.
+func _other_planets(k: int) -> Array:
+	var out: Array = []
+	for p in Orbit.planets():
+		if p["c"].distance_to(Orbit.center(k)) > 1.0:
+			out.append(p["k"])
+	return out
 
 
 func _hit_time(x: float) -> float:
@@ -200,7 +213,7 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 			length = warn + 1.4
 		"pulse":
 			var spd := lerpf(62.0, 90.0, x)
-			var cross_t := warn + (Orbit.R - Orbit.PLANET_R) / spd
+			var cross_t := warn + (Orbit.R - Orbit.planet_r(k)) / spd
 			var gh := lerpf(0.8, 0.5, x)
 			hs.append(Pulse.new().setup(a + d * w * cross_t * rng.randf_range(0.3, 1.0), t, warn, gh, spd, k))
 			length = cross_t + 0.4
@@ -219,12 +232,42 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 			length = warn + 1.8
 		"cross_rain":
 			# mines on the other orbit + meteors on this one: pick the right orbit
-			var o := 1 - k
+			var nb := Orbit.neighbors(k)
+			var o: int = nb[rng.randi() % nb.size()] if not nb.is_empty() else (k + 1) % Orbit.count()
 			var ao := Orbit.angle_of(o, Orbit.pos(k, a)) + rng.randf_range(1.2, 1.8) * (1 if rng.randf() < 0.5 else -1)
 			hs.append(Spiky.new().setup(ao, t, warn, 2.6, 0.0, o))
 			for i in 3:
 				hs.append(_meteor(a + d * w * (_hit_time(x) + i * 0.5) * 0.6 + rng.randf_range(-0.3, 0.3), t + i * 0.5, x))
 			length = warn + 1.6
+		"link":
+			# electric bond between this planet and a neighbour (blocks the junction for a while)
+			var nb2 := _other_planets(k)
+			if not nb2.is_empty():
+				hs.append(Link.new().setup(k, nb2[rng.randi() % nb2.size()], t, warn + 0.1, rng.randf_range(1.6, 2.4)))
+				if rng.randf() < 0.5 + x * 0.3:
+					hs.append(_meteor(a + d * w * _hit_time(x) + rng.randf_range(-0.2, 0.2), t + 0.3, x))
+			length = warn + 1.4
+		"link_cage":
+			var others := _other_planets(k)
+			for o2 in others:
+				hs.append(Link.new().setup(k, o2, t, warn + 0.1, rng.randf_range(2.0, 2.6)))
+			hs.append(Spiky.new().setup(a + d * rng.randf_range(1.0, 1.6), t, warn, 2.4, 0.0, k))
+			length = warn + 1.8
+		"comet":
+			var n2 := 1 + (1 if rng.randf() < x else 0)
+			for i in n2:
+				var tt := lerpf(0.55, 0.32, x) + Comet.LEN * 0.5 / lerpf(130.0, 190.0, x)
+				var target := Orbit.pos(k, a + d * w * tt + rng.randf_range(-0.35, 0.35))
+				hs.append(Comet.new().setup(target, rng.randf_range(-PI, PI), t + i * 0.7, lerpf(0.55, 0.32, x), lerpf(130.0, 190.0, x)))
+			length = n2 * 0.7 + 0.6
+		"comet_rain":
+			for i in 3:
+				var ti := t + i * 0.55
+				var tt2 := lerpf(0.5, 0.3, x) + Comet.LEN * 0.5 / lerpf(140.0, 190.0, x)
+				var kk := rng.randi_range(0, Orbit.count() - 1)
+				var target2 := Orbit.pos(kk, rng.randf_range(-PI, PI)) if kk != k else Orbit.pos(k, a + d * w * (tt2 + i * 0.55))
+				hs.append(Comet.new().setup(target2, rng.randf_range(-PI, PI), ti, lerpf(0.5, 0.3, x), lerpf(140.0, 190.0, x)))
+			length = 1.9
 	# later attempts: simplify (drop extras) to make acceptance easier
 	if attempt >= 3 and hs.size() > 1:
 		for q in range(1, hs.size()):

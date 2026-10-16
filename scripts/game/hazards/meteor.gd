@@ -27,7 +27,8 @@ func setup(p_theta: float, p_t_spawn: float, pre: float, p_speed: float, p_home 
 	var r_lo := INF
 	var dir := Vector2(cos(theta), sin(theta))
 	var r := R0
-	while r > Orbit.PLANET_R:
+	var pr := Orbit.planet_r(home_k)
+	while r > pr:
 		var hit := false
 		for k in Orbit.count():
 			var p := home + dir * r
@@ -42,7 +43,7 @@ func setup(p_theta: float, p_t_spawn: float, pre: float, p_speed: float, p_home 
 		r_hi = Orbit.radius(home_k, theta); r_lo = r_hi
 	t_danger_start = t_launch + (R0 - r_hi - _rr) / speed
 	t_danger_end = t_launch + (R0 - r_lo + _rr) / speed
-	t_impact = t_launch + (R0 - Orbit.PLANET_R - 2.0) / speed
+	t_impact = t_launch + (R0 - pr - 2.0) / speed
 	t_end = t_impact + 0.4
 	return self
 
@@ -70,7 +71,7 @@ func tick(time: float) -> void:
 	super(time)
 	if time >= t_impact and not _impact_fx_done:
 		_impact_fx_done = true
-		impacted.emit(position + home + Vector2(cos(theta), sin(theta)) * (Orbit.PLANET_R + 1.0))
+		impacted.emit(position + home + Vector2(cos(theta), sin(theta)) * (Orbit.planet_r(home_k) + 1.0))
 
 
 func _draw() -> void:
@@ -104,7 +105,7 @@ func _draw() -> void:
 		draw_set_transform(Vector2.ZERO)
 	elif t >= t_impact:
 		var e := (t - t_impact) / 0.4
-		var c2 := home + dir * (Orbit.PLANET_R + 2.0)
+		var c2 := home + dir * (Orbit.planet_r(home_k) + 2.0)
 		for i in 5:
 			var a2 := theta + (i - 2) * 0.6
 			var q := c2 + Vector2(cos(a2), sin(a2)) * (2.0 + 9.0 * e)

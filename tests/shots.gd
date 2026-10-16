@@ -53,22 +53,18 @@ func _process(_dt: float) -> bool:
 		main._flip()
 	match frame:
 		40:
-			main.open_ranking()
-		70: shot("01_ranking_banner")
-		75:
-			main.go_menu()
 			main.start_run()
-		200: shot("02_play_pause_button")
-		205: main._pause()
-		225: shot("03_pause_menu")
-		230: main._resume()
-		320:
-			world(5)
-		330: main.ui.world_banner(6, "PLANETAS GEMELOS", "TOCA DONDE SE CRUZAN")
-		420: shot("04_twin")
-		620: shot("05_twin_2")
-		625: world(6)
-		800: shot("06_binary")
-		1000: shot("07_binary_2")
-		1005: return true
+		60: world(5)
+		260: shot("01_twin_link")
+		265: world(7)
+		270: main.ui.world_banner(8, "TRÍO DE PLANETAS", "TOCA DONDE SE CRUZAN")
+		360: shot("02_trio")
+		560: shot("03_trio_2")
+		565: world(8)
+		760: shot("04_giants")
+		960: shot("05_giants_2")
+		965: world(9)
+		1160: shot("06_warped")
+		1360: shot("07_warped_2")
+		1365: return true
 	return false

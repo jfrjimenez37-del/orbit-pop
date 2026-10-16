@@ -17,8 +17,23 @@ const LIST := [
 	{"world": "binary", "score": 195, "orbits": [
 		{"kind": "circle", "r": 44.0, "center": Vector2(-15, -37)},
 		{"kind": "ellipse", "a": 40.0, "b": 47.0, "rot": 0.0, "center": Vector2(14, 37)}]},
+	# three planets
+	{"world": "trio", "score": 240, "orbits": [
+		{"kind": "circle", "r": 38.0, "center": Vector2(0, -44), "pr": 21.0},
+		{"kind": "circle", "r": 38.0, "center": Vector2(-34, 22), "pr": 21.0},
+		{"kind": "circle", "r": 38.0, "center": Vector2(34, 22), "pr": 21.0}]},
+	# one big orbit and two small ones
+	{"world": "giants", "score": 290, "orbits": [
+		{"kind": "circle", "r": 52.0, "center": Vector2(0, -34), "pr": 21.0},
+		{"kind": "circle", "r": 32.0, "center": Vector2(-34, 40), "pr": 15.0},
+		{"kind": "circle", "r": 32.0, "center": Vector2(34, 40), "pr": 15.0}]},
+	# lopsided orbits: wide on the side facing the next planet, tight on the other
+	{"world": "warped", "score": 340, "orbits": [
+		{"kind": "offset", "r": 36.0, "c": 8.0, "phi": 2.0465, "center": Vector2(0, -44), "pr": 15.0},
+		{"kind": "offset", "r": 36.0, "c": 8.0, "phi": 0.0000, "center": Vector2(-34, 22), "pr": 15.0},
+		{"kind": "offset", "r": 36.0, "c": 8.0, "phi": -2.0465, "center": Vector2(34, 22), "pr": 15.0}]},
 ]
-const LOOP_FROM := 240   # after this score, stages 1..6 repeat every LOOP_EVERY points
+const LOOP_FROM := 390   # after this score, stages 1..9 repeat every LOOP_EVERY points
 const LOOP_EVERY := 40
 
 

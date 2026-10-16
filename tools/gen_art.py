@@ -683,9 +683,39 @@ def hue_shift(img, deg, sat=1.0, val=1.0):
             px[x, y] = (int(r2 * 255), int(g2 * 255), int(b2 * 255), a)
     return out
 
+def planet_sized(size, r):
+    """Smaller planets for multi-planet worlds (same look, scaled details)."""
+    im = new(size, size)
+    cx = cy = size / 2.0
+    k = r / 28.5
+    shaded_disc(im, cx, cy, r, (255, 142, 108), (226, 86, 98), (255, 196, 150), light_off=(-0.42, -0.45), light_r=0.30)
+    for y in range(size):
+        for x in range(size):
+            if in_disc(x, y, cx, cy, r):
+                dx, dy = x + 0.5 - cx, y + 0.5 - cy
+                if dx * 0.6 + dy * 0.8 > r * 0.78:
+                    put(im, x, y, (190, 64, 100))
+    for (kx, ky, kr) in [(14, 40, 3.2), (45, 18, 2.6), (47, 44, 3.6), (22, 15, 2.0)]:
+        px_, py_ = cx + (kx - 32) * k, cy + (ky - 32) * k
+        kr2 = max(1.2, kr * k)
+        for y in range(size):
+            for x in range(size):
+                if in_disc(x, y, px_, py_, kr2) and opaque(im, x, y):
+                    put(im, x, y, (236, 112, 104) if (y + 0.5) < py_ else (250, 168, 132))
+    for (bx, by) in [(-14, 5), (10, 5)]:
+        for dx in range(3):
+            put(im, int(cx + bx * k) + dx, int(cy + by * k), (255, 110, 140))
+    outline(im)
+    return im
+
 base_planet = planet()
+sized = {"m": planet_sized(48, 21.0), "s": planet_sized(34, 15.0)}
+for sz, img in sized.items():
+    img.save(os.path.join(SPR, "planet_%s.png" % sz))
 for name, deg, sat in [("violet", 255, 0.9), ("mint", 140, 0.85), ("gold", 30, 1.1)]:
     hue_shift(base_planet, deg, sat).save(os.path.join(SPR, "planet_%s.png" % name))
+    for sz, img in sized.items():
+        hue_shift(img, deg, sat).save(os.path.join(SPR, "planet_%s_%s.png" % (name, sz)))
 
 def trail_icon(kind):
     im = new(16, 16)
