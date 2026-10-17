@@ -129,17 +129,46 @@ func test_survival() -> void:
 
 func test_save(save) -> void:
 	save.reset_all()
+	var minty := Catalog.find("skins", "minty")
 	var r1: Dictionary = save.submit_run(12)
 	ok(r1["record"], "first run is a record")
-	ok(r1["unlocked"].has(1), "MINTY unlocked at 12")
+	ok(not save.is_unlocked(minty), "MINTY still locked at 12")
+	save.best = 0; save.games = 0; save.total = 0
+	r1 = save.submit_run(12 + 4)
+	ok(r1["unlocked"].has(minty), "MINTY unlocked at 16")
 	var r2: Dictionary = save.submit_run(5)
 	ok(not r2["record"], "lower score is not a record")
-	save.skin = 1
+	save.skin = minty
 	save.save_data()
 	save.best = 0; save.games = 0; save.skin = 0
 	save.load_data()
-	ok(save.best == 12 and save.games == 2 and save.total == 17, "stats persisted (%d,%d,%d)" % [save.best, save.games, save.total])
-	ok(save.skin == 1, "skin persisted")
+	ok(save.best == 16 and save.games == 2 and save.total == 21, "stats persisted (%d,%d,%d)" % [save.best, save.games, save.total])
+	ok(save.skin == minty, "skin persisted")
+	# rarity catalog
+	var last_rank := 0
+	var sorted := true
+	for sk in Catalog.SKINS:
+		var rk: int = Catalog.RARITIES.find(sk["rarity"])
+		sorted = sorted and rk >= last_rank
+		last_rank = rk
+		ok(FileAccess.file_exists("res://assets/sprites/char_%s.png" % sk["id"]), "sprite for skin %s" % sk["id"])
+	ok(sorted and Catalog.SKINS.size() >= 26, "skins listed by rarity (%d)" % Catalog.SKINS.size())
+	# old saves stored the skin index: index 9 was COOKIE
+	ok(Catalog.SKINS[Catalog.skin_index(9)]["id"] == "cookie" and Catalog.skin_index("nova") == Catalog.find("skins", "nova"), "legacy skin index maps to id")
+	ok(save._seen_ids([0, 5, "volt"]) == ["poppy", "cosmo", "volt"], "legacy seen list converts to ids")
+	# world-reached skins
+	var ghosty := Catalog.find("skins", "ghosty")
+	save.stats["best_world"] = 5
+	ok(not save.is_unlocked(ghosty), "GHOSTY locked before world 6")
+	save.stats["best_world"] = 6
+	ok(save.is_unlocked(ghosty) and save.submit_run(1)["unlocked"].has(ghosty), "GHOSTY unlocked at world 6 and announced")
+	save.stats = {}
+	var omega := Catalog.find("skins", "omega")
+	save.best = 999
+	ok(not save.is_unlocked(omega), "OMEGA needs 1000")
+	save.best = 1000
+	ok(save.is_unlocked(omega), "OMEGA unlocked at 1000")
+	save.best = 16
 	ok(not save.is_unlocked(2), "BERRY still locked")
 	save.reset_all()
 
@@ -206,7 +235,7 @@ func test_monetization(save) -> void:
 	ok(not save.owns("star_pack"), "cancelled purchase grants nothing")
 	mon.buy("star_pack")
 	await process_frame
-	ok(save.owns("star_pack") and save.is_unlocked(6) and save.is_unlocked(8), "STAR PACK unlocks premium skins")
+	ok(save.owns("star_pack") and save.is_unlocked(Catalog.find("skins", "goldie")) and save.is_unlocked(Catalog.find("skins", "panda")), "STAR PACK unlocks premium skins")
 	mon.buy("supporter")
 	await process_frame
 	ok(save.owns("no_ads"), "SUPPORTER includes NO ADS")
@@ -266,7 +295,7 @@ func test_economy(save) -> void:
 	save.coins = 100
 	var robo := Catalog.find("skins", "robo")
 	ok(not save.buy_item("skins", robo), "cannot buy without enough coins")
-	save.coins = 900
+	save.coins = 2300
 	ok(save.buy_item("skins", robo) and save.coins == 100 and save.is_unlocked(robo), "coin skin bought")
 	ok(not save.buy_item("skins", robo), "cannot buy twice")
 	ok(not save.buy_item("skins", Catalog.find("skins", "goldie")), "shop items not buyable with coins")
@@ -484,6 +513,11 @@ func test_progress(save) -> void:
 	prog.run_finished(30, 3, 10.0)
 	ok(save.achievements.has("score25") and save.achievements.has("first"), "achievements unlock from stats")
 	ok(not save.achievements.has("score50"), "locked achievements stay locked")
+	ok(prog.ACHIEVEMENTS.size() >= 30 and PlayGamesConfig.ACHIEVEMENTS.size() == prog.ACHIEVEMENTS.size(), "achievement list and Play Games ids match")
+	for a in prog.ACHIEVEMENTS:
+		if a["id"] == "skins_all":
+			ok(int(a["goal"]) == Catalog.SKINS.size(), "EVERY SKIN goal matches the catalog")
+	ok(Stages.index_for_score(29) == 0 and Stages.index_for_score(30) == 1 and Stages.number_for_score(450) == 10, "wider world spacing")
 	# cloud merge: fresh install restores progress
 	var cloud: Dictionary = save.export_data()
 	cloud["best"] = 99; cloud["coins"] = 777; cloud["saved_at"] = save.saved_at + 100

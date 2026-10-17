@@ -78,7 +78,7 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		var hs: Array = res["hazards"]
 		var all := active.duplicate()
 		all.append_array(hs)
-		if Survival.can_survive(all, t, angle, dir, w, true, k):
+		if Survival.can_survive(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP):
 			spawned_first = true
 			committed += 1
 			next_t = t + float(res["length"]) + lerpf(0.55, 0.08, level(t))

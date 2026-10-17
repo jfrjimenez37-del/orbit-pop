@@ -81,6 +81,14 @@ var _style_tabs := {}
 var _style_cards: Array = []
 var _style_preview: TextureRect
 var _style_name: Label
+var _menu_name: Label
+var _over_rank: Label
+var _over_ranks := {}
+var _over_was_record := false
+var _rank_board := ""   # "" = my best runs, else a leaderboard key
+var _board_rows := {}
+var _style_need: Label
+var _style_rarity: Label
 var _style_action: Button
 var _style_page_lbl: Label
 var _style_coins: Label
@@ -126,6 +134,10 @@ func _ready() -> void:
 	_build_shop()
 	_build_ranking()
 	_build_popup()
+	var pg = Progress.games
+	pg.player_loaded.connect(func(_n): refresh_menu())
+	pg.rank_loaded.connect(_on_rank_loaded)
+	pg.top_loaded.connect(_on_top_loaded)
 	_toast = _label(root, "", 1)
 	var tb := StyleBoxFlat.new()
 	tb.bg_color = Color(0.15, 0.1, 0.26, 0.92)
@@ -353,6 +365,8 @@ func _build_menu() -> void:
 	var best_box := _container(menu)
 	_place(best_box, 0.0, logo.texture.get_height() + 16, 150, 10)
 	_menu_best = _label(best_box, "", 1, GOLD)
+	_menu_name = _label(best_box, "", 1, Color.WHITE)
+	_menu_name.position.y = 12
 	var cb := _container(menu)
 	cb.position = Vector2(4, 3)
 	_icon(cb, "icon_coin", Vector2.ZERO)
@@ -396,6 +410,10 @@ func _build_menu() -> void:
 func refresh_menu() -> void:
 	_menu_best.text = L.t("BEST_N", Save.best) if Save.best > 0 else L.t("TAGLINE")
 	_center_label(_menu_best, 150, 0)
+	var pg = Progress.games
+	_menu_name.visible = pg.player_name != ""
+	_menu_name.text = player_label(pg.player_name, pg.ranks.get("GLOBAL", -1))
+	_center_label(_menu_name, 150, 12)
 	_menu_coins.text = str(Save.coins)
 	_menu_coins.size = Vector2(_text_w(_menu_coins.text), 10)
 	_gift_badge.visible = Save.daily_available()
@@ -561,6 +579,7 @@ func _build_over() -> void:
 	_over_double.position = Vector2(80, 85)
 	_over_double.pressed.connect(func(): double_pressed.emit())
 	_over_unlock = _label(panel, "", 1, GREEN_INK)
+	_over_rank = _label(panel, "", 1, Color8(70, 120, 220))
 	_over_continue = _button(panel, "pink", L.t("CONTINUE"), "video", Vector2(108, 24))
 	_over_continue.pressed.connect(func(): continue_pressed.emit())
 	_over_continue_free = _button(panel, "green", L.t("CONTINUE"), "retry", Vector2(108, 24))
@@ -577,7 +596,7 @@ func _build_over() -> void:
 func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_continue := false, free_continue := false) -> void:
 	_over_continue.visible = can_continue and not free_continue
 	_over_continue_free.visible = can_continue and free_continue
-	var y := 120
+	var y := 126
 	_over_continue.position = Vector2(14, y)
 	_over_continue_free.position = Vector2(14, y)
 	if can_continue:
@@ -595,7 +614,10 @@ func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_co
 	_over_best_cap.visible = not _over_record.visible
 	_over_best.visible = not _over_record.visible
 	_over_unlock.text = "" if unlocked.is_empty() else L.t("NEW_SKIN", Save.SKINS[unlocked[-1]]["name"])
-	_center_label(_over_unlock, 136, 106)
+	_center_label(_over_unlock, 136, 104)
+	_over_ranks = {}
+	_over_was_record = record and score > 0
+	_over_rank.text = ""
 	for b in _over_buttons:
 		b.disabled = true
 	get_tree().create_timer(0.3).timeout.connect(func():
@@ -607,6 +629,44 @@ func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_co
 func set_over_coins(n: int, can_double: bool) -> void:
 	_over_coins.text = "+%d" % n
 	_over_double.visible = can_double
+
+
+## Player name as shown in the pixel font (upper case, short).
+static func safe_name(n: String) -> String:
+	var u := n.strip_edges().to_upper()
+	return u.substr(0, 12) + ("." if u.length() > 12 else "")
+
+
+static func player_label(n: String, rank: int) -> String:
+	return safe_name(n) + ("  #%d" % rank if rank > 0 else "")
+
+
+func _on_rank_loaded(board: String, rank: int, _score: int) -> void:
+	if menu.visible:
+		refresh_menu()
+	if ranking.visible and _rank_board == board:
+		refresh_ranking()
+	if not over.visible or rank <= 0:
+		return
+	_over_ranks[board] = rank
+	var parts: Array = []
+	if _over_ranks.has("GLOBAL"):
+		parts.append("%s #%d" % [L.t("GLOBAL"), _over_ranks["GLOBAL"]])
+	for k in _over_ranks:
+		if k != "GLOBAL":
+			parts.append("%s #%d" % [PlayGamesConfig.REGION_NAMES[k], _over_ranks[k]])
+	_over_rank.text = "  ".join(parts)
+	if _text_w(_over_rank.text) > 132:
+		_over_rank.text = parts[0]
+	_center_label(_over_rank, 136, 114)
+	if board == "GLOBAL" and _over_was_record:
+		toast(L.t("RANK_ENTER", rank), Color8(255, 226, 90))
+
+
+func _on_top_loaded(board: String, rows: Array) -> void:
+	_board_rows[board] = rows
+	if ranking.visible and _rank_board == board:
+		refresh_ranking()
 
 
 # ------------------------------------------------------------------ style (skins / trails)
@@ -629,6 +689,10 @@ func _build_style() -> void:
 	_style_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(_style_preview)
 	_style_name = _label(panel, "", 1, INK)
+	_style_need = _label(panel, "", 1, MUTED)
+	_style_need.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_style_need.position = Vector2(84, 40)
+	_style_rarity = _label(panel, "", 1, INK)
 	_style_action = _button(panel, "yellow", "0000", "coin", Vector2(64, 20))
 	_style_action.position = Vector2(84, 36)
 	_style_action.pressed.connect(_on_style_action)
@@ -654,8 +718,13 @@ func _build_style() -> void:
 		var lock := _icon(card, "icon_lock", Vector2(19, 15))
 		var coin := _icon(card, "icon_coin", Vector2(6, 39))
 		var cap := _label(card, "", 1, INK)
+		var bar := ColorRect.new()
+		bar.size = Vector2(36, 2)
+		bar.position = Vector2(6, 2)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(bar)
 		card.pressed.connect(_on_card.bind(i))
-		_style_cards.append({"card": card, "pic": pic, "lock": lock, "coin": coin, "cap": cap})
+		_style_cards.append({"card": card, "pic": pic, "lock": lock, "coin": coin, "cap": cap, "bar": bar})
 	for k in 2:
 		var ar := _button(panel, "white", "", "left" if k == 0 else "right", Vector2(26, 16))
 		ar.position = Vector2(8 if k == 0 else 130, 234)
@@ -689,6 +758,8 @@ func _need_text(cat: String, i: int) -> String:
 			return str(need[1])
 		"total":
 			return "TOTAL %d" % need[1]
+		"world":
+			return L.t("WORLD_N", need[1])
 	return L.t("BEST_N", need[1])
 
 
@@ -740,10 +811,19 @@ func _refresh_style() -> void:
 	var un := Save.unlocked(_style_tab, f)
 	var need: Array = it["need"]
 	var buyable: bool = not un and need[0] in ["coins", "shop"]
-	_style_name.text = it["name"] if un or buyable else "%s - %s" % [it["name"], _need_text(_style_tab, f)]
+	_style_name.text = it["name"]
 	_style_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_style_name.size = Vector2(_text_w(_style_name.text), 10)
-	_style_name.position = Vector2(84, 24) if buyable or un else Vector2(roundf((164 - _style_name.size.x) * 0.5), 56)
+	_style_name.position = Vector2(84, 24)
+	_style_need.visible = not un and not buyable
+	_style_need.text = _need_text(_style_tab, f)
+	_style_need.size = Vector2(_text_w(_style_need.text), 10)
+	var rar: String = it.get("rarity", "")
+	_style_rarity.visible = rar != ""
+	if rar != "":
+		_style_rarity.text = L.t("R_" + rar.to_upper())
+		_style_rarity.modulate = Catalog.RARITY_COLORS[rar]
+		_center_label(_style_rarity, 80, 55)
 	_style_action.visible = buyable
 	if buyable:
 		var coin_item: bool = need[0] == "coins"
@@ -771,14 +851,23 @@ func _refresh_style() -> void:
 		if i == f and not unl:
 			d["pic"].modulate = Color(1, 1, 1, 0.8)
 		d["lock"].visible = not unl
-		d["coin"].visible = not unl and n[0] == "coins"
+		var need_icon: String = {"coins": "icon_coin", "best": "icon_star", "world": "icon_world", "total": "icon_trophy"}.get(n[0], "")
+		d["coin"].visible = not unl and need_icon != ""
+		if d["coin"].visible:
+			d["coin"].texture = _tex(need_icon)
+		var r2: String = list[i].get("rarity", "")
+		d["bar"].visible = r2 != ""
+		if r2 != "":
+			d["bar"].color = Catalog.RARITY_COLORS[r2]
 		var cap: Label = d["cap"]
-		cap.text = list[i]["name"] if unl else _need_text(_style_tab, i)
+		cap.text = list[i]["name"] if unl else (str(n[1]) if need_icon != "" else _need_text(_style_tab, i))
 		cap.modulate = INK if unl else (Color8(214, 66, 128) if n[0] == "shop" else (COIN_INK if n[0] == "coins" else MUTED))
 		_center_label(cap, 48, 40)
 		if d["coin"].visible:
-			cap.position.x += 6
-			d["coin"].position.x = cap.position.x - 11
+			var iw: float = d["coin"].texture.get_width()
+			cap.position.x += roundf(iw * 0.5) + 1
+			d["coin"].position.x = cap.position.x - iw - 2
+			d["coin"].position.y = 39 - roundf((d["coin"].texture.get_height() - 9) * 0.5)
 	var pages := _pages()
 	for ar in _style_arrows:
 		ar.visible = pages > 1
@@ -900,29 +989,24 @@ func refresh_ranking() -> void:
 		_style_button(_rank_tabs[id], "yellow" if id == _rank_tab else "white")
 	var pg = Progress.games
 	if _rank_tab == "ranking":
-		var t := _label(_rank_list, L.t("MY_BEST"), 1, MUTED)
-		_center_label(t, 164, 6)
-		var tops: Array = Save.top_scores
-		for i in 10:
-			var y := 20 + i * 12
-			var col := INK if i < tops.size() else Color8(190, 180, 210)
-			_left_label(_rank_list, "%d." % (i + 1), Vector2(14, y), col)
-			if i < tops.size():
-				var e: Dictionary = tops[i]
-				var sc := _left_label(_rank_list, str(e["s"]), Vector2(40, y), Color8(214, 66, 128) if i == 0 else INK)
-				sc.scale = Vector2.ONE
-				_left_label(_rank_list, L.t("WORLD_N", int(e.get("w", 1))), Vector2(84, y), MUTED)
-			else:
-				_left_label(_rank_list, "-", Vector2(40, y), col)
 		var region := PlayGamesConfig.region()
-		var g := _button(_rank_list, "yellow", L.t("GLOBAL"), "globe", Vector2(72, 20))
-		g.position = Vector2(8, 146)
-		g.pressed.connect(func(): _open_board("GLOBAL"))
-		var r := _button(_rank_list, "yellow", PlayGamesConfig.REGION_NAMES[region], "", Vector2(72, 20))
-		r.position = Vector2(84, 146)
-		r.pressed.connect(func(): _open_board(region))
-		var rl := _label(_rank_list, L.t("REGION") + ": " + PlayGamesConfig.REGION_NAMES[region], 1, MUTED)
-		_center_label(rl, 164, 170)
+		if _rank_board == "":
+			_my_runs()
+		else:
+			_board_view(pg)
+		var boards := [["GLOBAL", L.t("GLOBAL"), "globe"], [region, PlayGamesConfig.REGION_NAMES[region], ""]]
+		for k in 2:
+			var bd: String = boards[k][0]
+			var bt := _button(_rank_list, "yellow" if _rank_board == bd else "white", boards[k][1], boards[k][2], Vector2(72, 20))
+			bt.position = Vector2(8 + k * 76, 146)
+			bt.pressed.connect(_select_board.bind(bd))
+		if _rank_board == "":
+			var rl := _label(_rank_list, L.t("REGION") + ": " + PlayGamesConfig.REGION_NAMES[region], 1, MUTED)
+			_center_label(rl, 164, 170)
+		else:
+			var all := _button(_rank_list, "green", L.t("SEE_ALL"), "trophy", Vector2(100, 18))
+			all.position = Vector2(32, 168)
+			all.pressed.connect(func(): _open_board(_rank_board))
 		_play_games_footer(pg, 186)
 	else:
 		var per := 8
@@ -960,6 +1044,62 @@ func refresh_ranking() -> void:
 		open.pressed.connect(func(): pg.show_achievements())
 
 
+func _my_runs() -> void:
+	var t := _label(_rank_list, L.t("MY_BEST"), 1, MUTED)
+	_center_label(t, 164, 6)
+	var tops: Array = Save.top_scores
+	for i in 10:
+		var y := 20 + i * 12
+		var col := INK if i < tops.size() else Color8(190, 180, 210)
+		_left_label(_rank_list, "%d." % (i + 1), Vector2(14, y), col)
+		if i < tops.size():
+			var e: Dictionary = tops[i]
+			_left_label(_rank_list, str(e["s"]), Vector2(40, y), Color8(214, 66, 128) if i == 0 else INK)
+			_left_label(_rank_list, L.t("WORLD_N", int(e.get("w", 1))), Vector2(84, y), MUTED)
+		else:
+			_left_label(_rank_list, "-", Vector2(40, y), col)
+
+
+## Top of a Play Games leaderboard with names, plus the player's own position.
+func _board_view(pg) -> void:
+	var me: int = pg.ranks.get(_rank_board, -1)
+	var head: String = L.t("GLOBAL") if _rank_board == "GLOBAL" else PlayGamesConfig.REGION_NAMES[_rank_board]
+	if me > 0:
+		head += "  " + L.t("YOU_RANK", me)
+	var t := _label(_rank_list, head, 1, MUTED)
+	_center_label(t, 164, 6)
+	if not pg.signed_in:
+		var off := _label(_rank_list, L.t("PLAY_GAMES_OFF"), 1, Color8(190, 120, 150))
+		_center_label(off, 164, 60)
+		return
+	if not _board_rows.has(_rank_board):
+		var ld := _label(_rank_list, L.t("LOADING"), 1, MUTED)
+		_center_label(ld, 164, 60)
+		return
+	var rows: Array = _board_rows[_rank_board]
+	if rows.is_empty():
+		var em := _label(_rank_list, L.t("NO_SCORES"), 1, MUTED)
+		_center_label(em, 164, 60)
+	for i in mini(rows.size(), 10):
+		var r: Dictionary = rows[i]
+		var y := 20 + i * 12
+		var col := Color8(214, 66, 128) if r["me"] else INK
+		_left_label(_rank_list, "%d." % int(r["rank"]), Vector2(8, y), MUTED if not r["me"] else col)
+		_left_label(_rank_list, safe_name(r["name"]), Vector2(32, y), col)
+		var sc := str(r["score"])
+		_left_label(_rank_list, sc, Vector2(156 - _text_w(sc), y), col)
+
+
+func _select_board(board: String) -> void:
+	if _rank_board == board:
+		_rank_board = ""
+	else:
+		_rank_board = board
+		if Progress.games.load_top(board):
+			Progress.games.load_rank(board)
+	refresh_ranking()
+
+
 func _play_games_footer(pg, y: int) -> void:
 	if pg.signed_in:
 		return
@@ -987,6 +1127,7 @@ func _fit_above_banner(box: Control) -> void:
 
 func show_ranking() -> void:
 	_fit_above_banner(_rank_box)
+	_rank_board = ""
 	refresh_ranking()
 	_switch(ranking)
 

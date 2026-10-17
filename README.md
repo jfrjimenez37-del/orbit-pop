@@ -56,8 +56,10 @@ tests/                    suite headless, bot y capturas
 ```
 
 ## Diseño clave
-- **Equidad:** cada patrón candidato se simula con todos los estados alcanzables del jugador
-  (ritmo máx. de toque 0,12 s, hitbox inflada). Si no hay salida, se descarta o simplifica.
+- **Equidad:** cada patrón candidato se simula con todos los estados alcanzables del jugador.
+  Para aceptarlo exige margen humano: la salida debe funcionar aunque el toque llegue 60 ms tarde
+  y sin tocar más rápido que cada 0,17 s. Si no hay salida, se descarta o simplifica.
+  `tests/audit.gd` juega los 10 mundos con un bot perfecto y otro "humano" (toques 0–70 ms tarde).
   Las mismas funciones `danger()` deciden colisiones y validación.
 - **Anti-campeo:** los meteoritos apuntan a la posición actual o prevista del jugador y las minas
   aparecen cerca: quedarse temblando en un sitio no es seguro.
@@ -65,7 +67,17 @@ tests/                    suite headless, bot y capturas
 - **Dificultad:** velocidad orbital 2,45→3,45 rad/s, meteoritos más rápidos, avisos más cortos y
   patrones nuevos (pinza, minas, barreras, puerta, lluvia, barrera giratoria, jaula, estrella móvil)
   que se desbloquean entre 0 y 48 s. Se desplaza ±segundos según la media de las últimas 5 partidas.
-- **Skins:** POPPY (inicial), MINTY (récord 10), BERRY (25), FROSTY (250 puntos totales), EMBER (50), COSMO (80).
+- **Skins (26, por rareza):** el color de la barra de la carta y la etiqueta indican la rareza.
+  | Rareza | Skins y cómo se consiguen |
+  |---|---|
+  | COMÚN | POPPY (inicial), MINTY (récord 15), BERRY (récord 40), COOKIE (600), MELONY (900) |
+  | RARA | FROSTY (mundo 3), EMBER (mundo 4), VOLT (mundo 5, chispas), PIXEL (2500 puntos totales), BUBBLY (1500), ROBO (2200), PANDA (STAR PACK) |
+  | ÉPICA (partículas) | GHOSTY (mundo 6, llamas), ALIEN (mundo 7), CRYSTAL (mundo 8), COSMO (récord 250, estrellas), NINJA (4000), DRAKE (5500), NEON (STAR PACK) |
+  | LEGENDARIA (aura) | MAGMA (mundo 9, brasas), ROYAL (mundo 10), SKULLY (9000), PRISM (15000, arcoíris), GOLDIE (STAR PACK) |
+  | MÍTICA | NOVA (récord 500), OMEGA (récord 1000) |
+
+  Los números sueltos son precios en monedas. Las skins se guardan por id (las partidas antiguas
+  se convierten solas).
 - **Móvil:** pausa automática al perder foco, botón Atrás (pausa/menú/salir), vibración al chocar,
   escalado entero pixel-perfect con aspecto "expand" (probado 9:16, 20:9 y 10:16), renderer Compatibility.
 
@@ -76,7 +88,7 @@ tests/                    suite headless, bot y capturas
 | 134 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
-| Guardado local, récords, estadísticas, 6 skins | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
+| Guardado local, récords, estadísticas, 26 skins por rareza | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
 
 ## Monetización
 Arquitectura: `scripts/autoload/monetization.gd` (fachada + reglas) con proveedores intercambiables
@@ -102,8 +114,7 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
 - Se ganan: puntuación/3 + 1 por burbuja en cada partida, regalo diario y anuncios opcionales.
 - Regalo diario con racha de 7 días: 30, 40, 50 (+RUSH), 60, 80, 100 (+SHIELD), 250 (+SHIELD).
   Si se salta un día, vuelve al día 1.
-- Se gastan en: 4 skins (COOKIE 300, BUBBLY 500, ROBO 800, DRAKE 1200), estela SPARKLE (200),
-  mundo LAGOON (600) y boosts.
+- Se gastan en: 9 skins (de 600 a 15000 monedas), estela SPARKLE (200) y boosts.
 
 **Boosts (ventaja limitada)**: SHIELD (aguanta 1 golpe, 150), BUBBLE RUSH (2x burbujas, 100) y
 TELEPORT (botón en partida: salta al lado opuesto de la órbita, 120). Máximo uno de cada por
@@ -141,16 +152,16 @@ interna" de Play antes de publicar.
 | Puntos | Mundo | Órbita |
 |---|---|---|
 | 0 | 1 CIELO | círculo normal |
-| 20 | 2 LAGUNA | círculo más grande |
-| 45 | 3 ATARDECER | círculo estrecho (cerca del planeta) |
-| 75 | 4 CARAMELO | círculo descentrado: estrecha arriba, ancha abajo |
-| 110 | 5 NOCHE | 2 órbitas elípticas que se cruzan en 4 estrellas |
-| 150 | 6 PLANETAS GEMELOS | 2 planetas, cada uno con su órbita; se cruzan entre ambos (forma de 8) |
-| 195 | 7 SISTEMA BINARIO | 2 planetas distintos (círculo + elipse) en diagonal |
-| 240 | 8 TRÍO DE PLANETAS | 3 planetas en triángulo, cada órbita cruza a las otras dos |
-| 290 | 9 GRANDES Y PEQUEÑAS | 1 órbita grande y 2 pequeñas (planetas de 3 tamaños) |
-| 340 | 10 ÓRBITAS DEFORMES | 3 órbitas descentradas: anchas hacia el planeta vecino, estrechas al otro lado |
-| 390+ | 11, 12, … | se repiten 2–10 cada 40 puntos |
+| 30 | 2 LAGUNA | círculo más grande |
+| 65 | 3 ATARDECER | círculo estrecho (cerca del planeta) |
+| 105 | 4 CARAMELO | círculo descentrado: estrecha arriba, ancha abajo |
+| 150 | 5 NOCHE | 2 órbitas elípticas que se cruzan en 4 estrellas |
+| 200 | 6 PLANETAS GEMELOS | 2 planetas, cada uno con su órbita; se cruzan entre ambos (forma de 8) |
+| 255 | 7 SISTEMA BINARIO | 2 planetas distintos (círculo + elipse) en diagonal |
+| 315 | 8 TRÍO DE PLANETAS | 3 planetas en triángulo, cada órbita cruza a las otras dos |
+| 380 | 9 GRANDES Y PEQUEÑAS | 1 órbita grande y 2 pequeñas (planetas de 3 tamaños) |
+| 450 | 10 ÓRBITAS DEFORMES | 3 órbitas descentradas: anchas hacia el planeta vecino, estrechas al otro lado |
+| 520+ | 11, 12, … | se repiten 2–10 cada 60 puntos |
 
 Al cambiar de mundo se espera a que el campo quede libre y la órbita se transforma en 1,3 s.
 En NOCHE, tocar dentro de la ventana de una estrella de cruce (±0,16 rad) **cambia de órbita**
@@ -166,11 +177,16 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
 ## Misiones, logros, ranking, nube, compartir, idiomas
 - **Misión diaria:** 10 misiones fijas, una por día en ciclo (día del año local % 10). Premio en
   monedas automático al completarla. Botón de pergamino en el menú.
-- **Logros:** 16, funcionan sin conexión (pantalla RANKING ▸ LOGROS) y se sincronizan con Google
+- **Logros:** 34 (récords hasta 1000, mundo 15, 100.000 puntos totales, 1000 partidas, todas las
+  skins...). Funcionan sin conexión (pantalla RANKING ▸ LOGROS) y se sincronizan con Google
   Play Games si está conectado.
 - **Ranking:** lista local de tus 10 mejores + tablas de Google Play Games **MUNDIAL** y
   **REGIONAL** (LATAM, BRASIL, EUROPA, N. AMÉRICA, ASIA-PACÍFICO, ÁFRICA/O. MEDIO). La región
-  sale del país del idioma del teléfono (sin servidores ni permiso de ubicación).
+  sale del país del idioma del teléfono (sin servidores ni permiso de ubicación). Dentro del juego
+  se ve el top 10 con nombres y tu puesto exacto (Play Games entrega como máximo 25 filas por
+  consulta); VER TODOS abre la tabla nativa de Google Play, que lista a todos los jugadores sin
+  límite (miles). El nombre de la cuenta de Play Games aparece en el menú con tu puesto mundial,
+  y al terminar cada partida se muestra tu puesto MUNDIAL y REGIONAL (con aviso si fue récord).
 - **Nube:** Saved Games de Play Games. Al conectar se descarga y fusiona: récords y desbloqueos
   se combinan (nunca bajan); monedas y boosts siguen la copia más reciente. Se sube al terminar
   cada partida.
@@ -184,7 +200,7 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
 ### Configurar Google Play Games (pendiente, en Play Console)
 1. Instalar el plugin https://github.com/Iakobs/godot-play-game-services (v3.x) en `addons/` y
    activarlo; pide el App ID de Play Games en su configuración del editor.
-2. En Play Console ▸ Play Games Services: crear 7 tablas (MUNDIAL + 6 regiones) y 16 logros.
+2. En Play Console ▸ Play Games Services: crear 7 tablas (MUNDIAL + 6 regiones) y 34 logros.
 3. Pegar los IDs generados en `scripts/services/play_games_config.gd` (los vacíos se ignoran).
 4. Activar "Saved Games" en la configuración de Play Games.
 5. Compartir: instalar https://github.com/godot-sdk-integrations/godot-share.

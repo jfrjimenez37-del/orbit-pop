@@ -16,7 +16,7 @@ var world := "sky"
 var sound := true
 var music := true
 var recent: Array = []        # last scores, used for adaptive difficulty
-var seen_unlocks: Array = [0] # skin indices the player was already told about
+var seen_unlocks: Array = ["poppy"] # skin ids the player was already told about
 var purchases: Array = []     # owned non-consumable product ids (mirrors the store)
 var coins := 0
 var owned_items: Array = []   # "cat:id" bought with coins
@@ -50,10 +50,10 @@ func load_data() -> void:
 	games = int(cfg.get_value("stats", "games", 0))
 	total = int(cfg.get_value("stats", "total", 0))
 	recent = cfg.get_value("stats", "recent", [])
-	skin = int(cfg.get_value("player", "skin", 0))
+	skin = Catalog.skin_index(cfg.get_value("player", "skin_id", cfg.get_value("player", "skin", 0)))
 	trail = str(cfg.get_value("player", "trail", "classic"))
 	world = str(cfg.get_value("player", "world", "sky"))
-	seen_unlocks = cfg.get_value("player", "seen_unlocks", [0])
+	seen_unlocks = _seen_ids(cfg.get_value("player", "seen_unlocks", ["poppy"]))
 	purchases = cfg.get_value("shop", "purchases", [])
 	coins = int(cfg.get_value("shop", "coins", 0))
 	owned_items = cfg.get_value("shop", "owned_items", [])
@@ -87,7 +87,7 @@ func save_data() -> void:
 	cfg.set_value("stats", "games", games)
 	cfg.set_value("stats", "total", total)
 	cfg.set_value("stats", "recent", recent)
-	cfg.set_value("player", "skin", skin)
+	cfg.set_value("player", "skin_id", SKINS[skin]["id"])
 	cfg.set_value("player", "trail", trail)
 	cfg.set_value("player", "world", world)
 	cfg.set_value("player", "seen_unlocks", seen_unlocks)
@@ -127,13 +127,29 @@ func submit_run(score: int) -> Dictionary:
 	recent.append(score)
 	while recent.size() > 5:
 		recent.pop_front()
-	var fresh := []
-	for i in SKINS.size():
-		if is_unlocked(i) and not seen_unlocks.has(i):
-			seen_unlocks.append(i)
-			fresh.append(i)
+	var fresh := note_unlocks()
 	save_data()
 	return {"record": record, "unlocked": fresh}
+
+
+## Marks newly unlocked skins as seen and returns their indices.
+func note_unlocks() -> Array:
+	var fresh := []
+	for i in SKINS.size():
+		if is_unlocked(i) and not seen_unlocks.has(SKINS[i]["id"]):
+			seen_unlocks.append(SKINS[i]["id"])
+			fresh.append(i)
+	return fresh
+
+
+## Legacy saves stored skin indices; convert them to ids.
+static func _seen_ids(list: Array) -> Array:
+	var out: Array = []
+	for v in list:
+		var id: String = v if v is String else Catalog.SKINS[Catalog.skin_index(v)]["id"]
+		if not out.has(id):
+			out.append(id)
+	return out
 
 
 ## Reverts the last submit_run (the player continued that same run).
@@ -172,9 +188,7 @@ func grant(product: String) -> void:
 		coins += int(bonus.get("coins", 0))
 		for b in bonus.get("boosts", {}):
 			boosts[b] = int(boosts.get(b, 0)) + int(bonus["boosts"][b])
-	for i in SKINS.size():
-		if is_unlocked(i) and not seen_unlocks.has(i):
-			seen_unlocks.append(i)
+	note_unlocks()
 	save_data()
 
 
@@ -190,6 +204,8 @@ func unlocked(cat: String, i: int) -> bool:
 			return owned_items.has(cat + ":" + it["id"])
 		"total":
 			return total >= int(need[1])
+		"world":
+			return int(stats.get("best_world", 1)) >= int(need[1])
 	return best >= int(need[1])
 
 
@@ -210,6 +226,8 @@ func need_text(cat: String, i: int) -> String:
 			return str(need[1])
 		"total":
 			return "TOTAL %d" % need[1]
+		"world":
+			return "WORLD %d" % need[1]
 	return "BEST %d" % need[1]
 
 
@@ -319,6 +337,7 @@ func export_data() -> Dictionary:
 	var d := {}
 	for k in _CLOUD_KEYS:
 		d[k] = get(k)
+	d["skin"] = SKINS[skin]["id"]
 	return d
 
 
@@ -330,6 +349,7 @@ func merge(d: Dictionary) -> bool:
 	best = maxi(best, int(d.get("best", 0)))
 	games = maxi(games, int(d.get("games", 0)))
 	total = maxi(total, int(d.get("total", 0)))
+	d["seen_unlocks"] = _seen_ids(d.get("seen_unlocks", []))
 	for key in ["owned_items", "purchases", "achievements", "seen_unlocks"]:
 		var mine: Array = get(key)
 		for v in d.get(key, []):
@@ -350,7 +370,7 @@ func merge(d: Dictionary) -> bool:
 		daily_day = int(d.get("daily_day", daily_day))
 		daily_last = str(d.get("daily_last", daily_last))
 		mission = d.get("mission", mission)
-		skin = int(d.get("skin", skin))
+		skin = Catalog.skin_index(d.get("skin", SKINS[skin]["id"]))
 		trail = str(d.get("trail", trail))
 	if skin < 0 or skin >= SKINS.size() or not is_unlocked(skin):
 		skin = 0
@@ -402,7 +422,7 @@ func note_free_ad() -> void:
 func reset_all() -> void:
 	best = 0; games = 0; total = 0; skin = 0
 	trail = "classic"; world = "sky"
-	recent = []; seen_unlocks = [0]; purchases = []
+	recent = []; seen_unlocks = ["poppy"]; purchases = []
 	coins = 0; owned_items = []; boosts = {"shield": 0, "rush": 0, "teleport": 0}
 	daily_day = 0; daily_last = ""; free_ads_date = ""; free_ads_used = 0
 	starter_seen = false

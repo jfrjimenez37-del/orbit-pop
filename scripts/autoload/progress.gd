@@ -22,24 +22,42 @@ const MISSIONS := [
 	{"id": "score_run", "text": "M_SCORE_RUN", "goal": 50, "reward": 150, "mode": "max"},
 ]
 
-## stat: Save.stats key (or "best"/"games"), name: [l10n key, arg]
+## stat: Save.stats key (or "best"/"games"/"total"/"skins"), name: [l10n key, arg]
 const ACHIEVEMENTS := [
 	{"id": "first", "name": ["A_FIRST"], "stat": "games", "goal": 1},
-	{"id": "score10", "name": ["A_SCORE", 10], "stat": "best", "goal": 10},
 	{"id": "score25", "name": ["A_SCORE", 25], "stat": "best", "goal": 25},
 	{"id": "score50", "name": ["A_SCORE", 50], "stat": "best", "goal": 50},
 	{"id": "score100", "name": ["A_SCORE", 100], "stat": "best", "goal": 100},
-	{"id": "score150", "name": ["A_SCORE", 150], "stat": "best", "goal": 150},
-	{"id": "world2", "name": ["A_WORLD", 2], "stat": "best_world", "goal": 2},
+	{"id": "score200", "name": ["A_SCORE", 200], "stat": "best", "goal": 200},
+	{"id": "score350", "name": ["A_SCORE", 350], "stat": "best", "goal": 350},
+	{"id": "score500", "name": ["A_SCORE", 500], "stat": "best", "goal": 500},
+	{"id": "score750", "name": ["A_SCORE", 750], "stat": "best", "goal": 750},
+	{"id": "score1000", "name": ["A_SCORE", 1000], "stat": "best", "goal": 1000},
 	{"id": "world3", "name": ["A_WORLD", 3], "stat": "best_world", "goal": 3},
-	{"id": "world4", "name": ["A_WORLD", 4], "stat": "best_world", "goal": 4},
 	{"id": "world5", "name": ["A_WORLD", 5], "stat": "best_world", "goal": 5},
-	{"id": "near50", "name": ["A_NEAR", 50], "stat": "near_total", "goal": 50},
-	{"id": "bubbles100", "name": ["A_BUBBLES", 100], "stat": "bubbles_total", "goal": 100},
-	{"id": "games50", "name": ["A_GAMES", 50], "stat": "games", "goal": 50},
-	{"id": "missions7", "name": ["A_MISSIONS", 7], "stat": "missions_done", "goal": 7},
-	{"id": "switch10", "name": ["A_SWITCH", 10], "stat": "switch_total", "goal": 10},
-	{"id": "warp", "name": ["A_TELEPORT"], "stat": "teleport_total", "goal": 1},
+	{"id": "world7", "name": ["A_WORLD", 7], "stat": "best_world", "goal": 7},
+	{"id": "world10", "name": ["A_WORLD", 10], "stat": "best_world", "goal": 10},
+	{"id": "world15", "name": ["A_WORLD", 15], "stat": "best_world", "goal": 15},
+	{"id": "near100", "name": ["A_NEAR", 100], "stat": "near_total", "goal": 100},
+	{"id": "near500", "name": ["A_NEAR", 500], "stat": "near_total", "goal": 500},
+	{"id": "near2000", "name": ["A_NEAR", 2000], "stat": "near_total", "goal": 2000},
+	{"id": "bubbles250", "name": ["A_BUBBLES", 250], "stat": "bubbles_total", "goal": 250},
+	{"id": "bubbles1000", "name": ["A_BUBBLES", 1000], "stat": "bubbles_total", "goal": 1000},
+	{"id": "games100", "name": ["A_GAMES", 100], "stat": "games", "goal": 100},
+	{"id": "games500", "name": ["A_GAMES", 500], "stat": "games", "goal": 500},
+	{"id": "games1000", "name": ["A_GAMES", 1000], "stat": "games", "goal": 1000},
+	{"id": "total5000", "name": ["A_TOTAL", 5000], "stat": "total", "goal": 5000},
+	{"id": "total25000", "name": ["A_TOTAL", 25000], "stat": "total", "goal": 25000},
+	{"id": "total100000", "name": ["A_TOTAL", 100000], "stat": "total", "goal": 100000},
+	{"id": "missions10", "name": ["A_MISSIONS", 10], "stat": "missions_done", "goal": 10},
+	{"id": "missions30", "name": ["A_MISSIONS", 30], "stat": "missions_done", "goal": 30},
+	{"id": "missions100", "name": ["A_MISSIONS", 100], "stat": "missions_done", "goal": 100},
+	{"id": "switch50", "name": ["A_SWITCH", 50], "stat": "switch_total", "goal": 50},
+	{"id": "switch250", "name": ["A_SWITCH", 250], "stat": "switch_total", "goal": 250},
+	{"id": "warp25", "name": ["A_TELEPORT", 25], "stat": "teleport_total", "goal": 25},
+	{"id": "skins10", "name": ["A_SKINS", 10], "stat": "skins", "goal": 10},
+	{"id": "skins20", "name": ["A_SKINS", 20], "stat": "skins", "goal": 20},
+	{"id": "skins_all", "name": ["A_SKINS_ALL"], "stat": "skins", "goal": 26},
 ]
 
 var games: Node     # Play Games adapter
@@ -160,6 +178,14 @@ func stat(key: String) -> int:
 			return Save.best
 		"games":
 			return Save.games
+		"total":
+			return Save.total
+		"skins":
+			var n := 0
+			for i in Save.SKINS.size():
+				if Save.is_unlocked(i):
+					n += 1
+			return n
 	return int(Save.stats.get(key, 1 if key == "best_world" else 0))
 
 

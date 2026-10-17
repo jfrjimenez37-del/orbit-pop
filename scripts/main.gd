@@ -377,7 +377,7 @@ func _die() -> void:
 	player.die()
 	planet.mood = Planet.Mood.WORRY
 	_shake = 5.0
-	fx.burst(player.position, 22, [Color.WHITE, OrbitPlayer.SKIN_COLORS[player.skin], Color8(255, 236, 90)], 110.0, 0.6, 3.0, 120.0)
+	fx.burst(player.position, 22, [Color.WHITE, player.color(), Color8(255, 236, 90)], 110.0, 0.6, 3.0, 120.0)
 	fx.ring(player.position, Color.WHITE, 4.0, 26.0, 0.35)
 	ui.flash()
 	Sfx.play("hit")
@@ -457,7 +457,7 @@ func _flip() -> void:
 		return
 	Progress.event("flip")
 	var back := -Vector2(-sin(player.angle), cos(player.angle)) * player.dir
-	fx.burst(player.position, 5, [Color.WHITE, OrbitPlayer.SKIN_COLORS[player.skin]], 40.0, 0.25, 2.0, 0.0, back, 0.7)
+	fx.burst(player.position, 5, [Color.WHITE, player.color()], 40.0, 0.25, 2.0, 0.0, back, 0.7)
 	Sfx.play("flip", randf_range(0.95, 1.08))
 
 

@@ -75,7 +75,7 @@ SKINS = [
     ("berry",  (255, 128, 178), (214, 66, 128),  (255, 206, 228), (236, 40, 70),  "heart"),
     ("frosty", (172, 226, 255), (90, 156, 232),  (244, 252, 255), (255, 255, 255), "flake"),
     ("ember",  (255, 122, 58),  (198, 48, 44),   (255, 204, 120), (255, 220, 60), "flame"),
-    ("cosmo",  (152, 104, 255), (88, 58, 196),   (214, 186, 255), (255, 224, 70), "star"),
+    ("cosmo",  (92, 60, 186),   (46, 34, 118),   (150, 112, 236), (255, 224, 70), "star"),
     # premium (STAR PACK)
     ("goldie", (255, 204, 44),  (206, 120, 22),  (255, 244, 160), (255, 236, 90), "crown"),
     ("neon",   (64, 232, 226),  (20, 150, 196),  (206, 255, 252), (255, 80, 200), "bolt"),
@@ -85,7 +85,22 @@ SKINS = [
     ("bubbly", (255, 172, 232), (218, 100, 190), (255, 224, 248), (140, 230, 255), "bubble"),
     ("robo",   (190, 202, 220), (118, 130, 162), (238, 244, 252), (255, 70, 70),   "rivets"),
     ("drake",  (112, 204, 92),  (48, 142, 62),   (196, 242, 160), (255, 250, 230), "horns"),
+    # rarity expansion (concept sheets 1-4)
+    ("melony", (124, 204, 96),  (58, 140, 70),   (196, 240, 160), (96, 190, 70),  "vine"),
+    ("volt",   (255, 214, 40),  (240, 130, 30),  (255, 248, 170), (255, 190, 30), "zap"),
+    ("pixel",  (250, 246, 250), (226, 206, 220), (255, 255, 255), (236, 60, 110), "tie"),
+    ("ghosty", (222, 208, 255), (176, 150, 236), (248, 244, 255), (196, 160, 255), "wisp"),
+    ("alien",  (110, 220, 110), (40, 150, 80),   (190, 250, 170), (190, 240, 90), "antenna"),
+    ("crystal", (150, 220, 255), (70, 150, 230), (232, 250, 255), (120, 210, 255), "gem"),
+    ("ninja",  (70, 64, 96),    (40, 36, 62),    (112, 108, 146), (60, 54, 80),   "band"),
+    ("magma",  (236, 70, 52),   (150, 28, 40),   (255, 140, 90),  (255, 200, 50), "lava"),
+    ("royal",  (176, 100, 232), (116, 58, 180),  (228, 184, 255), (255, 206, 50), "royal"),
+    ("skully", (238, 232, 216), (178, 170, 156), (255, 253, 244), (238, 232, 216), "bone"),
+    ("prism",  (255, 120, 120), (150, 90, 230),  (255, 255, 255), (255, 255, 255), "prism"),
+    ("nova",   (255, 246, 214), (255, 184, 72),  (255, 255, 255), (255, 214, 60), "nova"),
+    ("omega",  (44, 34, 78),    (22, 16, 44),    (110, 92, 190),  (255, 255, 255), "omega"),
 ]
+RAINBOW = [(255, 92, 92), (255, 170, 60), (255, 230, 70), (110, 220, 110), (90, 170, 255), (170, 110, 255)]
 WING_UP = [(2, 8), (1, 7), (2, 7), (1, 6), (0, 6), (0, 5), (1, 5)]
 WING_MID = [(2, 9), (1, 9), (0, 9), (1, 8), (2, 8), (0, 8), (1, 10)]
 WING_DN = [(2, 10), (1, 10), (2, 11), (1, 11), (0, 11), (0, 12), (1, 12)]
@@ -97,8 +112,49 @@ def draw_char(skin, wing, eyes):
         put(im, x + 1, y, (255, 255, 255) if (x + y) % 3 else (206, 234, 255))
     cx, cy, r = 8.5, 9.6, 5.5
     shaded_disc(im, cx, cy, r, base, shade, light)
+    body = [(x, y) for y in range(16) for x in range(16) if in_disc(x, y, cx, cy, r)]
+    # body patterns (drawn before the face)
+    if acc == "vine":       # watermelon stripes
+        for (x, y) in body:
+            if x in (5, 8, 12) and (x, y) != (8, 4):
+                put(im, x, y, (40, 112, 56))
+    elif acc == "zap":      # lightning mark
+        for p in [(6, 6), (5, 7), (6, 7), (5, 8), (4, 9), (5, 9), (6, 9), (5, 10), (4, 11)]:
+            put(im, *p, (255, 252, 210))
+    elif acc == "tie":      # pink checker pattern
+        for (x, y) in body:
+            if (x <= 6 or y >= 13) and (x + y) % 2 == 0:
+                put(im, x, y, (240, 96, 140))
+    elif acc == "gem":      # facets
+        for (x, y) in body:
+            if (x + y) % 4 == 0:
+                put(im, x, y, (206, 242, 255))
+            elif (x - y) % 5 == 0:
+                put(im, x, y, (96, 176, 240))
+    elif acc == "lava":     # glowing cracks
+        for p in [(5, 7), (5, 8), (6, 9), (6, 10), (5, 11), (7, 12), (8, 13), (11, 13), (12, 12), (12, 6), (11, 5), (9, 14)]:
+            put(im, *p, (255, 210, 70))
+    elif acc == "prism":    # rainbow bands
+        for (x, y) in body:
+            put(im, x, y, RAINBOW[((x + y) // 2) % len(RAINBOW)])
+        for p in [(6, 6), (7, 6), (6, 7)]:
+            put(im, *p, (255, 255, 255))
+    elif acc == "omega":    # dark galaxy with a rainbow rim
+        for (x, y) in body:
+            if not all(in_disc(x + dx, y + dy, cx, cy, r) for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]):
+                put(im, x, y, RAINBOW[(x * 3 + y * 5) % len(RAINBOW)])
+        for p in [(6, 7), (5, 11), (12, 13), (8, 13)]:
+            put(im, *p, (255, 255, 255))
+    elif acc == "nova":     # hot core
+        for (x, y) in body:
+            if (x + 0.5 - cx) ** 2 + (y + 0.5 - cy) ** 2 > (r - 1.4) ** 2 and (x + y) % 2 == 0:
+                put(im, x, y, (255, 150, 60))
+    if acc == "star":       # cosmo: deep galaxy
+        for (x, y) in body:
+            if (x * 7 + y * 3) % 11 == 0:
+                put(im, x, y, (190, 120, 255))
     # antenna
-    if acc not in ("crown", "ears", "horns"):
+    if acc not in ("crown", "ears", "horns", "royal", "bone", "band", "nova", "gem", "vine", "tie"):
         put(im, 9, 3, shade); put(im, 10, 2, shade)
     if acc == "ball":
         for p in [(10, 0), (11, 0), (10, 1), (11, 1)]:
@@ -143,6 +199,59 @@ def draw_char(skin, wing, eyes):
     elif acc == "horns":
         for p in [(6, 3), (6, 2), (5, 1), (11, 3), (11, 2), (12, 1)]:
             put(im, *p, tip)
+    elif acc == "vine":
+        for p in [(9, 3), (9, 2), (8, 1), (7, 1), (7, 2)]:
+            put(im, *p, (70, 150, 60))
+        for p in [(10, 2), (11, 1), (12, 1), (11, 2), (12, 0)]:
+            put(im, *p, (130, 220, 90))
+    elif acc == "zap":
+        for p in [(10, 0), (11, 0), (10, 1), (9, 1), (10, 2), (11, 2)]:
+            put(im, *p, tip)
+        put(im, 11, 0, (255, 250, 200))
+    elif acc == "tie":
+        for p in [(9, 3), (10, 3), (9, 2), (10, 2), (8, 1), (11, 1), (8, 0), (11, 0)]:
+            put(im, *p, tip)
+    elif acc == "wisp":
+        for p in [(10, 1), (11, 0), (10, 0), (11, 1), (12, 0)]:
+            put(im, *p, tip)
+        put(im, 10, 1, (245, 236, 255))
+    elif acc == "antenna":
+        for p in [(10, 0), (11, 0), (10, 1), (11, 1), (12, 1), (12, 0)]:
+            put(im, *p, tip)
+        put(im, 10, 0, (250, 255, 200))
+    elif acc == "gem":
+        for p in [(9, 2), (10, 1), (10, 2), (11, 2), (10, 3), (9, 3), (11, 3)]:
+            put(im, *p, tip)
+        put(im, 10, 1, (255, 255, 255))
+    elif acc == "band":     # ninja headband + knot + flowing tails
+        for x in range(3, 14):
+            if in_disc(x, 6, cx, cy, r):
+                put(im, x, 6, (232, 52, 64))
+        for p in [(3, 5), (2, 4), (1, 4), (2, 6), (1, 7)]:
+            put(im, *p, (232, 52, 64))
+        for p in [(9, 3), (10, 3), (9, 2), (10, 2), (10, 1)]:
+            put(im, *p, (36, 32, 56))
+    elif acc == "lava":
+        for p in [(10, 1), (11, 1), (10, 2), (11, 0), (10, 0)]:
+            put(im, *p, (255, 120, 40))
+        put(im, 10, 1, (255, 230, 90)); put(im, 11, 0, (255, 220, 60))
+    elif acc == "royal":
+        for p in [(7, 3), (8, 2), (9, 3), (10, 2), (11, 3), (7, 2), (11, 2), (7, 4), (8, 4), (9, 4), (10, 4), (11, 4), (8, 3), (10, 3), (9, 1)]:
+            put(im, *p, tip)
+        put(im, 9, 3, (150, 60, 220)); put(im, 9, 2, (255, 250, 210))
+    elif acc == "bone":
+        for p in [(8, 2), (9, 2), (10, 2), (11, 2), (7, 1), (7, 3), (12, 1), (12, 3)]:
+            put(im, *p, tip)
+    elif acc == "prism":
+        for i, p in enumerate([(9, 1), (10, 1), (11, 1), (10, 0), (9, 2), (10, 2)]):
+            put(im, *p, RAINBOW[i])
+    elif acc == "nova":
+        for p in [(9, 0), (9, 1), (8, 2), (9, 2), (10, 2), (7, 2), (11, 2), (9, 3), (8, 3), (10, 3)]:
+            put(im, *p, tip)
+        put(im, 9, 2, (255, 255, 255))
+    elif acc == "omega":
+        for i, p in enumerate([(10, 0), (9, 1), (10, 1), (11, 1), (10, 2)]):
+            put(im, *p, RAINBOW[i])
     if acc == "chips":
         for p in [(5, 8), (6, 12), (11, 13), (4, 11)]:
             put(im, *p, (110, 60, 40))
@@ -163,6 +272,7 @@ def draw_char(skin, wing, eyes):
     if acc == "star":    # galaxy sparkles
         for p in [(5, 12), (7, 6), (11, 13)]:
             put(im, *p, (255, 255, 255))
+        put(im, 6, 9, (255, 226, 90)); put(im, 12, 6, (255, 226, 90))
     # face (facing right)
     if eyes == "open":
         for ex in (8, 11):
@@ -179,7 +289,18 @@ def draw_char(skin, wing, eyes):
     elif eyes == "happy":
         for ex in (8, 11):
             put(im, ex, 9, OUT); put(im, ex, 8, OUT); put(im, ex + 1, 7, OUT)
-    put(im, 7, 10, (255, 120, 150)); put(im, 13, 10, (255, 120, 150))
+    if acc == "bone" and eyes in ("open", "happy"):   # skull: hollow sockets + teeth
+        for ex in (8, 11):
+            for y in (7, 8, 9):
+                put(im, ex, y, OUT); put(im, ex + 1, y, OUT)
+            put(im, ex - (1 if ex == 8 else -2), 8, OUT)
+        for x in (8, 10, 12):
+            put(im, x, 12, OUT)
+        put(im, 10, 10, OUT)
+        outline(im)
+        return im
+    blush = (190, 120, 255) if acc == "antenna" else (255, 120, 150)
+    put(im, 7, 10, blush); put(im, 13, 10, blush)
     put(im, 10, 11, OUT)
     if eyes == "dead":
         put(im, 9, 11, OUT)

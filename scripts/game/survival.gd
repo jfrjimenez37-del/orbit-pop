@@ -12,6 +12,14 @@ const BW := TAU / N
 const TAP_GAP := 0.12          # fastest tapping assumed (s)
 const MARGIN := BW * 0.5 + 0.03
 const MAXP := 0x7FFFFFFFFFFFFFFF
+## Human tolerance used when committing new patterns: every escape must still work if the
+## player taps up to HUMAN_LATE seconds off, and never needs taps closer than HUMAN_GAP.
+const HUMAN_LATE := 0.06
+const HUMAN_GAP := 0.17
+
+
+static func human_margin(omega: float) -> float:
+	return MARGIN + omega * HUMAN_LATE
 
 
 static func _rotl(v: Array) -> Array:
@@ -109,7 +117,9 @@ static func bucket(angle: float) -> int:
 
 ## True if some tap sequence lets the player survive every hazard in `hazards`.
 ## `first_tap`: whether a tap is allowed right now (step 0).
-static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, omega: float, first_tap := true, orbit := 0) -> bool:
+## `margin` / `tap_gap`: hitbox inflation and fastest tap assumed (Director uses the human values).
+static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, omega: float, first_tap := true, orbit := 0,
+		margin := MARGIN, tap_gap := TAP_GAP) -> bool:
 	var horizon := t_now
 	for h in hazards:
 		horizon = maxf(horizon, h.t_danger_end)
@@ -118,7 +128,7 @@ static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, om
 	var kc := Orbit.count()
 	var dt := BW / omega
 	var steps := ceili((horizon - t_now) / dt) + 1
-	var gap := maxi(1, roundi(TAP_GAP / dt))
+	var gap := maxi(1, roundi(tap_gap / dt))
 	var b := bucket(angle)
 	var bit := [(1 << b) if b < 64 else 0, (1 << (b - 64)) if b >= 64 else 0]
 	var P: Array = []   # per orbit, moving +1 (angle increasing)
@@ -132,7 +142,7 @@ static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, om
 	var CM := cross_maps()
 	var alive := false
 	for k in kc:
-		var d0 := danger_mask(hazards, t_now, k)
+		var d0 := danger_mask(hazards, t_now, k, margin)
 		P[k] = _andn(P[k], d0); M[k] = _andn(M[k], d0)
 		alive = alive or _any(P[k]) or _any(M[k])
 	if not alive:
@@ -162,7 +172,7 @@ static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, om
 								_setbit(NM[o], int(mp[2]) - 1)
 		alive = false
 		for k in kc:
-			var d := danger_mask(hazards, t, k)
+			var d := danger_mask(hazards, t, k, margin)
 			P[k] = _andn(NP[k], d); M[k] = _andn(NM[k], d)
 			alive = alive or _any(P[k]) or _any(M[k])
 		if not alive:

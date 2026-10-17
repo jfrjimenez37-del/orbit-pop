@@ -13,9 +13,12 @@ const LEADERBOARDS := {
 }
 
 const ACHIEVEMENTS := {
-	"first": "", "score10": "", "score25": "", "score50": "", "score100": "", "score150": "",
-	"world2": "", "world3": "", "world4": "", "world5": "", "near50": "", "bubbles100": "",
-	"games50": "", "missions7": "", "switch10": "", "warp": "",
+	"first": "", "score25": "", "score50": "", "score100": "", "score200": "", "score350": "",
+	"score500": "", "score750": "", "score1000": "", "world3": "", "world5": "", "world7": "",
+	"world10": "", "world15": "", "near100": "", "near500": "", "near2000": "", "bubbles250": "",
+	"bubbles1000": "", "games100": "", "games500": "", "games1000": "", "total5000": "", "total25000": "",
+	"total100000": "", "missions10": "", "missions30": "", "missions100": "", "switch50": "", "switch250": "",
+	"warp25": "", "skins10": "", "skins20": "", "skins_all": "",
 }
 
 const CLOUD_SLOT := "orbitpop_progress"
