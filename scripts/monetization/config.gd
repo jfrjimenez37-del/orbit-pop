@@ -48,7 +48,7 @@ const CONTINUE_SHIELD := 1.8            # seconds of invulnerability after reviv
 
 ## Fill these with the real ids from the AdMob console before the release build.
 ## Debug builds always use Google's demo ad units (configured inside the plugin).
-const ADMOB_APP_ID := ""
+const ADMOB_APP_ID := "ca-app-pub-3155364507895952~6157313760"
 const ADMOB_INTERSTITIAL_ID := ""
 const ADMOB_REWARDED_ID := ""
 const ADMOB_BANNER_ID := ""          # small banner on the shop and ranking/achievements screens
