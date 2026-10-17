@@ -13,6 +13,7 @@ var spawned_first := false
 var bubble_rate := 1.0     # BUBBLE RUSH boost: 2.0 = twice as many bubbles
 var hold := false          # world change in progress: no new spawns
 var stage := 0             # current Stages index (unlocks obstacles)
+var human_check := true    # require human timing slack when committing (off only for A/B audits)
 
 # name, unlock time (effective seconds), base weight
 const PATTERNS := [
@@ -78,7 +79,9 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		var hs: Array = res["hazards"]
 		var all := active.duplicate()
 		all.append_array(hs)
-		if Survival.can_survive(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP):
+		var fair := Survival.can_survive(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP) \
+			if human_check else Survival.can_survive(all, t, angle, dir, w, true, k)
+		if fair:
 			spawned_first = true
 			committed += 1
 			next_t = t + float(res["length"]) + lerpf(0.55, 0.08, level(t))

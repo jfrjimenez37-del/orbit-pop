@@ -3,8 +3,9 @@ extends SceneTree
 ##   godot --headless --path . --script tests/audit.gd -- [runs_per_world] [seconds]
 ## For every world it plays with two bots at max difficulty:
 ##   perfect: taps exactly when needed (any death = a truly impossible situation)
-##   human:   taps 0-70 ms late and never faster than every 0.16 s
+##   human:   plans with slack (human margin), then taps 0-70 ms late, never faster than every 0.17 s
 ## and reports deaths per minute, so unfair-for-humans worlds stand out.
+## Pass "old" as third argument to commit patterns without the human check (A/B comparison).
 
 const DT := 1.0 / 60.0
 
@@ -14,6 +15,7 @@ func _initialize() -> void:
 	var args := OS.get_cmdline_user_args()
 	var runs := int(args[0]) if args.size() > 0 else 4
 	var secs := float(args[1]) if args.size() > 1 else 40.0
+	var human_check := not (args.size() > 2 and args[2] == "old")
 	var save = get_root().get_node("Save")
 	save.path = "user://audit_save.cfg"
 	save.reset_all()
@@ -30,7 +32,7 @@ func _initialize() -> void:
 			var time := 0.0
 			var causes := {}
 			for r in runs:
-				var out := _play(main, si, kind, secs, 1000 * si + r)
+				var out := _play(main, si, kind, secs, 1000 * si + r, human_check)
 				time += out["t"]
 				if out["died"]:
 					deaths += 1
@@ -42,10 +44,23 @@ func _initialize() -> void:
 	quit(0)
 
 
-func _play(main, si: int, kind: String, secs: float, seed_value: int) -> Dictionary:
+## Human-like decision: keep a timing cushion when possible, otherwise act like the perfect bot.
+func _human_decide(main) -> bool:
+	var p = main.player
+	var hm := Survival.human_margin(p.omega)
+	var stay_ok := Survival.can_survive(main.hazards, main.gt, p.angle, p.dir, p.omega, false, p.orbit, hm, Survival.HUMAN_GAP)
+	var r := Orbit.tap_result(p.angle, p.orbit, p.dir)
+	var tap_ok := Survival.can_survive(main.hazards, main.gt, r[2], r[1], p.omega, false, r[0], hm, Survival.HUMAN_GAP)
+	if stay_ok or tap_ok:
+		return not stay_ok
+	return TestBot.decide(main)
+
+
+func _play(main, si: int, kind: String, secs: float, seed_value: int, human_check := true) -> Dictionary:
 	main.start_run()
 	main.director.rng.seed = seed_value
 	main.director.offset = 60.0
+	main.director.human_check = human_check
 	Orbit.set_shape(Stages.LIST[si]["orbits"], true)
 	main.stage = si
 	main.director.stage = si
@@ -61,7 +76,7 @@ func _play(main, si: int, kind: String, secs: float, seed_value: int) -> Diction
 			if TestBot.decide(main):
 				main._flip()
 		else:
-			if pending < 0.0 and main.gt - last_tap >= 0.16 and TestBot.decide(main):
+			if pending < 0.0 and main.gt - last_tap >= Survival.HUMAN_GAP and _human_decide(main):
 				pending = main.gt + rng.randf_range(0.0, 0.07)
 			if pending >= 0.0 and main.gt >= pending:
 				main._flip()
