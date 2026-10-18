@@ -37,6 +37,7 @@ func start() -> void:
 	add_child(_admob)
 	_admob.connect("initialization_completed", func(_s): _on_init())
 	_admob.connect("consent_info_updated", _on_consent_info)
+	_admob.connect("consent_info_update_failed", func(_e): _on_consent_failed())
 	_admob.connect("consent_form_loaded", func(): _admob.call("show_consent_form"))
 	_admob.connect("rewarded_ad_loaded", func(_a, _r): _rewarded_loaded = true)
 	_admob.connect("rewarded_ad_failed_to_load", func(_a, _e): _retry_load("rewarded"))
@@ -57,6 +58,13 @@ func _on_consent_info() -> void:
 	# UserConsent.Status: 0 UNKNOWN, 1 NOT_REQUIRED, 2 REQUIRED, 3 OBTAINED
 	if st != null and int(st.get("status")) == 2 and bool(_admob.call("is_consent_form_available")):
 		_admob.call("load_consent_form")
+	if not _ready_init:
+		_ready_init = true
+		_admob.call("initialize")
+
+
+## No consent info (offline, UMP error): still start the SDK; it serves limited ads if needed.
+func _on_consent_failed() -> void:
 	if not _ready_init:
 		_ready_init = true
 		_admob.call("initialize")

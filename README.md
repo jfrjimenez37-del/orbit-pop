@@ -198,12 +198,15 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
   formulario de consentimiento de AdMob, obligatorio en la UE).
 
 ### Configurar Google Play Games (pendiente, en Play Console)
-1. Instalar el plugin https://github.com/Iakobs/godot-play-game-services (v3.x) en `addons/` y
-   activarlo; pide el App ID de Play Games en su configuración del editor.
+1. El plugin https://github.com/Iakobs/godot-play-game-services (v3.4.0, con sus .aar) ya viene en
+   `addons/GodotPlayGameServices` y activado. Falta poner el App ID de Play Games en el preset de
+   exportación (`godot_play_game_services/game_id`).
 2. En Play Console ▸ Play Games Services: crear 7 tablas (MUNDIAL + 6 regiones) y 34 logros.
 3. Pegar los IDs generados en `scripts/services/play_games_config.gd` (los vacíos se ignoran).
 4. Activar "Saved Games" en la configuración de Play Games.
-5. Compartir: instalar https://github.com/godot-sdk-integrations/godot-share.
+5. Compartir: instalar https://github.com/godot-sdk-integrations/godot-share (AssetLib: "Share").
+6. AdMob: instalar el plugin desde AssetLib ("Admob", Android). El id de la app para el manifiesto
+   ya está en `addons/AdmobPlugin/android_export.cfg` (el nodo Admob se crea por código).
 
 **No verificado en dispositivo:** Play Games, compartir nativo y la nube dependen de los plugins
 y de la configuración de Play Console; no pudieron probarse aquí. Toda la lógica (misiones,

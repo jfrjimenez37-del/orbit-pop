@@ -15,6 +15,7 @@ config/quit_on_go_back=false
 
 [autoload]
 
+GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/godot_play_game_services.gd"
 Save="*res://scripts/autoload/save.gd"
 Sfx="*res://scripts/autoload/sfx.gd"
 Monetization="*res://scripts/autoload/monetization.gd"
@@ -32,6 +33,10 @@ window/stretch/aspect="expand"
 window/stretch/scale_mode="integer"
 window/handheld/orientation=1
 window/vsync/vsync_mode=1
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/GodotPlayGameServices/plugin.cfg")
 
 [gui]
 
