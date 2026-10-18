@@ -30,7 +30,7 @@ func _initialize() -> void:
 	pg.available = true
 	pg.player_name = "Javier Feliz"
 	pg.player_id = "me"
-	pg.ranks = {"GLOBAL": 734, "LATAM": 41}
+	pg.ranks = {"GLOBAL": 734, "CENTRAL_AMERICA": 41}
 	var names := ["NEBULA_77", "Ana Lucía", "orbitKing", "Pedro M", "ZETA", "Lu", "Maria Jose", "TapTap", "Kai", "Sol"]
 	var rows: Array = []
 	for i in 10:
@@ -87,7 +87,7 @@ func _process(_dt: float) -> bool:
 			main.state = main.S.OVER
 			ui.show_game_over(268, 268, true, [Catalog.find("skins", "alien")])
 			ui._on_rank_loaded("GLOBAL", 734, 268)
-			ui._on_rank_loaded("LATAM", 41, 268)
+			ui._on_rank_loaded("CENTRAL_AMERICA", 41, 268)
 		140: shot("ui_07_game_over_rank")
 		142:
 			main.ui.hide_popup()

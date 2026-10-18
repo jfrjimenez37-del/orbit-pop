@@ -531,7 +531,8 @@ func test_progress(save) -> void:
 	save.merge(older)
 	ok(save.coins == 777 and save.best == 99, "older cloud copy never lowers progress")
 	# regions
-	ok(PlayGamesConfig.region("es_MX") == "LATAM" and PlayGamesConfig.region("pt_BR") == "BRASIL" \
+	ok(PlayGamesConfig.region("es_MX") == "CENTRAL_AMERICA" and PlayGamesConfig.region("es_DO") == "CENTRAL_AMERICA" \
+		and PlayGamesConfig.region("pt_BR") == "SOUTH_AMERICA" and PlayGamesConfig.region("es_AR") == "SOUTH_AMERICA" \
 		and PlayGamesConfig.region("es_ES") == "EUROPE" and PlayGamesConfig.region("en_US") == "NORTH_AMERICA", "regional boards by locale")
 	# localization: 4 languages for every key, every glyph present in the pixel font
 	var font: FontFile = load("res://assets/font/pixel.fnt")

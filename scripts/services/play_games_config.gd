@@ -4,8 +4,8 @@ class_name PlayGamesConfig
 
 const LEADERBOARDS := {
 	"GLOBAL": "",
-	"LATAM": "",
-	"BRASIL": "",
+	"SOUTH_AMERICA": "",
+	"CENTRAL_AMERICA": "",
 	"EUROPE": "",
 	"NORTH_AMERICA": "",
 	"ASIA_PACIFIC": "",
@@ -25,13 +25,14 @@ const CLOUD_SLOT := "orbitpop_progress"
 
 ## Regional board from the device locale country (no servers, no location permission).
 const REGIONS := {
-	"LATAM": ["MX", "AR", "CO", "CL", "PE", "VE", "EC", "GT", "CU", "BO", "DO", "HN", "PY", "SV", "NI", "CR", "PA", "UY", "PR"],
-	"BRASIL": ["BR"],
+	"SOUTH_AMERICA": ["BR", "AR", "CO", "CL", "PE", "VE", "EC", "BO", "PY", "UY", "GY", "SR", "GF", "FK"],
+	"CENTRAL_AMERICA": ["MX", "GT", "HN", "SV", "NI", "CR", "PA", "BZ", "CU", "DO", "PR", "HT", "JM", "TT", "BS", "BB",
+		"LC", "VC", "GD", "AG", "DM", "KN", "AW", "CW", "BQ", "SX", "MQ", "GP", "KY", "TC", "VG", "VI", "AI", "MS", "BL", "MF"],
 	"EUROPE": ["ES", "PT", "FR", "DE", "IT", "GB", "IE", "NL", "BE", "LU", "CH", "AT", "PL", "CZ", "SK", "HU", "RO", "BG", "GR", "SE", "NO", "DK", "FI", "IS", "EE", "LV", "LT", "SI", "HR", "RS", "UA", "AD"],
 	"NORTH_AMERICA": ["US", "CA"],
 	"ASIA_PACIFIC": ["JP", "KR", "CN", "TW", "HK", "IN", "ID", "PH", "TH", "VN", "MY", "SG", "AU", "NZ", "PK", "BD"],
 }
-const REGION_NAMES := {"LATAM": "LATAM", "BRASIL": "BRASIL", "EUROPE": "EUROPA", "NORTH_AMERICA": "N. AMERICA",
+const REGION_NAMES := {"SOUTH_AMERICA": "SUDAMÉRICA", "CENTRAL_AMERICA": "C. AMÉRICA", "EUROPE": "EUROPA", "NORTH_AMERICA": "N. AMERICA",
 	"ASIA_PACIFIC": "ASIA-PACIFIC", "AFRICA_ME": "AFRICA / M.E."}
 
 
@@ -45,8 +46,6 @@ static func region(locale := "") -> String:
 				return r
 		return "AFRICA_ME"
 	# no country in the locale: guess from the language
-	if loc.begins_with("pt"):
-		return "BRASIL"
-	if loc.begins_with("es"):
-		return "LATAM"
+	if loc.begins_with("pt") or loc.begins_with("es"):
+		return "SOUTH_AMERICA"
 	return "NORTH_AMERICA" if loc.begins_with("en") else "EUROPE"

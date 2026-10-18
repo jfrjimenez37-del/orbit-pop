@@ -7,7 +7,7 @@ extends Node
 signal signed_in_changed(signed: bool)
 signal cloud_loaded(data: Dictionary)
 signal player_loaded(name: String)
-## rank: position on the board (1 = first), -1 if unknown. board: our board key (GLOBAL, LATAM...)
+## rank: position on the board (1 = first), -1 if unknown. board: our board key (GLOBAL, SOUTH_AMERICA...)
 signal rank_loaded(board: String, rank: int, score: int)
 ## rows: [{"rank": int, "name": String, "score": int, "me": bool}]
 signal top_loaded(board: String, rows: Array)

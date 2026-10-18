@@ -181,7 +181,7 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
   skins...). Funcionan sin conexión (pantalla RANKING ▸ LOGROS) y se sincronizan con Google
   Play Games si está conectado.
 - **Ranking:** lista local de tus 10 mejores + tablas de Google Play Games **MUNDIAL** y
-  **REGIONAL** (LATAM, BRASIL, EUROPA, N. AMÉRICA, ASIA-PACÍFICO, ÁFRICA/O. MEDIO). La región
+  **REGIONAL** (SUDAMÉRICA, CENTROAMÉRICA Y CARIBE —incluye México—, NORTEAMÉRICA, EUROPA, ASIA-PACÍFICO, ÁFRICA/O. MEDIO). La región
   sale del país del idioma del teléfono (sin servidores ni permiso de ubicación). Dentro del juego
   se ve el top 10 con nombres y tu puesto exacto (Play Games entrega como máximo 25 filas por
   consulta); VER TODOS abre la tabla nativa de Google Play, que lista a todos los jugadores sin
