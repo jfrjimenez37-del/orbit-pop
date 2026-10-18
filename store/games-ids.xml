@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--Google Play game services IDs. Save this file as res/values/games-ids.xml in your project.-->
+<resources>
+  <!--app_id-->
+  <string name="app_id" translatable="false">305962750440</string>
+  <!--package_name-->
+  <string name="package_name" translatable="false">com.barriogames.orbitpop</string>
+  <!--achievement Primer vuelo-->
+  <string name="achievement_primer_vuelo" translatable="false">CgkI6KO05vMIEAIQCA</string>
+  <!--achievement 25 puntos-->
+  <string name="achievement_25_puntos" translatable="false">CgkI6KO05vMIEAIQGw</string>
+  <!--achievement 50 puntos-->
+  <string name="achievement_50_puntos" translatable="false">CgkI6KO05vMIEAIQKQ</string>
+  <!--achievement 100 puntos-->
+  <string name="achievement_100_puntos" translatable="false">CgkI6KO05vMIEAIQFA</string>
+  <!--achievement 200 puntos-->
+  <string name="achievement_200_puntos" translatable="false">CgkI6KO05vMIEAIQHw</string>
+  <!--achievement 350 puntos-->
+  <string name="achievement_350_puntos" translatable="false">CgkI6KO05vMIEAIQDw</string>
+  <!--achievement 500 puntos-->
+  <string name="achievement_500_puntos" translatable="false">CgkI6KO05vMIEAIQJg</string>
+  <!--achievement 750 puntos-->
+  <string name="achievement_750_puntos" translatable="false">CgkI6KO05vMIEAIQDA</string>
+  <!--achievement 1000 puntos-->
+  <string name="achievement_1000_puntos" translatable="false">CgkI6KO05vMIEAIQIg</string>
+  <!--achievement Mundo 3-->
+  <string name="achievement_mundo_3" translatable="false">CgkI6KO05vMIEAIQGA</string>
+  <!--achievement Mundo 5-->
+  <string name="achievement_mundo_5" translatable="false">CgkI6KO05vMIEAIQGQ</string>
+  <!--achievement Mundo 7-->
+  <string name="achievement_mundo_7" translatable="false">CgkI6KO05vMIEAIQHA</string>
+  <!--achievement Mundo 10-->
+  <string name="achievement_mundo_10" translatable="false">CgkI6KO05vMIEAIQIA</string>
+  <!--achievement Mundo 15-->
+  <string name="achievement_mundo_15" translatable="false">CgkI6KO05vMIEAIQHQ</string>
+  <!--achievement 100 cercanas-->
+  <string name="achievement_100_cercanas" translatable="false">CgkI6KO05vMIEAIQDg</string>
+  <!--achievement 500 cercanas-->
+  <string name="achievement_500_cercanas" translatable="false">CgkI6KO05vMIEAIQIw</string>
+  <!--achievement 2000 cercanas-->
+  <string name="achievement_2000_cercanas" translatable="false">CgkI6KO05vMIEAIQKA</string>
+  <!--achievement 250 burbujas-->
+  <string name="achievement_250_burbujas" translatable="false">CgkI6KO05vMIEAIQEQ</string>
+  <!--achievement 1000 burbujas-->
+  <string name="achievement_1000_burbujas" translatable="false">CgkI6KO05vMIEAIQCw</string>
+  <!--achievement 100 partidas-->
+  <string name="achievement_100_partidas" translatable="false">CgkI6KO05vMIEAIQFg</string>
+  <!--achievement 500 partidas-->
+  <string name="achievement_500_partidas" translatable="false">CgkI6KO05vMIEAIQEg</string>
+  <!--achievement 1000 partidas-->
+  <string name="achievement_1000_partidas" translatable="false">CgkI6KO05vMIEAIQEw</string>
+  <!--achievement 5000 puntos en total-->
+  <string name="achievement_5000_puntos_en_total" translatable="false">CgkI6KO05vMIEAIQHg</string>
+  <!--achievement 25000 puntos en total-->
+  <string name="achievement_25000_puntos_en_total" translatable="false">CgkI6KO05vMIEAIQFQ</string>
+  <!--achievement 100000 puntos en total-->
+  <string name="achievement_100000_puntos_en_total" translatable="false">CgkI6KO05vMIEAIQEA</string>
+  <!--achievement 10 misiones-->
+  <string name="achievement_10_misiones" translatable="false">CgkI6KO05vMIEAIQCQ</string>
+  <!--achievement 30 misiones-->
+  <string name="achievement_30_misiones" translatable="false">CgkI6KO05vMIEAIQDQ</string>
+  <!--achievement 100 misiones-->
+  <string name="achievement_100_misiones" translatable="false">CgkI6KO05vMIEAIQIQ</string>
+  <!--achievement 50 cambios de órbita-->
+  <string name="achievement_50_cambios_de_rbita" translatable="false">CgkI6KO05vMIEAIQJw</string>
+  <!--achievement 250 cambios de órbita-->
+  <string name="achievement_250_cambios_de_rbita" translatable="false">CgkI6KO05vMIEAIQGg</string>
+  <!--achievement 25 teletransportes-->
+  <string name="achievement_25_teletransportes" translatable="false">CgkI6KO05vMIEAIQCg</string>
+  <!--achievement 10 skins-->
+  <string name="achievement_10_skins" translatable="false">CgkI6KO05vMIEAIQJA</string>
+  <!--achievement 20 skins-->
+  <string name="achievement_20_skins" translatable="false">CgkI6KO05vMIEAIQJQ</string>
+  <!--achievement Todas las skins-->
+  <string name="achievement_todas_las_skins" translatable="false">CgkI6KO05vMIEAIQFw</string>
+  <!--leaderboard Global-->
+  <string name="leaderboard_global" translatable="false">CgkI6KO05vMIEAIQAQ</string>
+  <!--leaderboard Sudamérica-->
+  <string name="leaderboard_sudamrica" translatable="false">CgkI6KO05vMIEAIQAg</string>
+  <!--leaderboard Centroamérica y Caribe-->
+  <string name="leaderboard_centroamrica_y_caribe" translatable="false">CgkI6KO05vMIEAIQAw</string>
+  <!--leaderboard Norteamérica-->
+  <string name="leaderboard_norteamrica" translatable="false">CgkI6KO05vMIEAIQBA</string>
+  <!--leaderboard Europa-->
+  <string name="leaderboard_europa" translatable="false">CgkI6KO05vMIEAIQBQ</string>
+  <!--leaderboard Asia-Pacífico-->
+  <string name="leaderboard_asiapacfico" translatable="false">CgkI6KO05vMIEAIQBg</string>
+  <!--leaderboard África y Oriente Medio-->
+  <string name="leaderboard_frica_y_oriente_medio" translatable="false">CgkI6KO05vMIEAIQBw</string>
+</resources>

@@ -514,6 +514,11 @@ func test_progress(save) -> void:
 	ok(save.achievements.has("score25") and save.achievements.has("first"), "achievements unlock from stats")
 	ok(not save.achievements.has("score50"), "locked achievements stay locked")
 	ok(prog.ACHIEVEMENTS.size() >= 30 and PlayGamesConfig.ACHIEVEMENTS.size() == prog.ACHIEVEMENTS.size(), "achievement list and Play Games ids match")
+	var all_ids: Array = PlayGamesConfig.ACHIEVEMENTS.values() + PlayGamesConfig.LEADERBOARDS.values()
+	var uniq := {}
+	for v in all_ids:
+		uniq[v] = true
+	ok(not all_ids.has("") and uniq.size() == all_ids.size(), "every Play Games id is set and unique")
 	for a in prog.ACHIEVEMENTS:
 		if a["id"] == "skins_all":
 			ok(int(a["goal"]) == Catalog.SKINS.size(), "EVERY SKIN goal matches the catalog")
