@@ -30,6 +30,8 @@ func _initialize() -> void:
 	await test_monetization(save)
 	print("== economy")
 	await test_economy(save)
+	print("== abilities")
+	await test_abilities(save)
 	print("== orbit shapes")
 	test_orbits()
 	print("== missions, achievements, cloud, l10n")
@@ -299,22 +301,37 @@ func test_economy(save) -> void:
 	ok(save.buy_item("skins", robo) and save.coins == 100 and save.is_unlocked(robo), "coin skin bought")
 	ok(not save.buy_item("skins", robo), "cannot buy twice")
 	ok(not save.buy_item("skins", Catalog.find("skins", "goldie")), "shop items not buyable with coins")
-	# boosts
-	save.coins = 200
-	ok(mon.buy_boost("shield") and save.boosts["shield"] == 1 and save.coins == 50, "boost bought with coins")
-	ok(not mon.buy_boost("shield"), "boost refused without coins")
+	# player level & abilities
+	save.coins = 5000
+	ok(not save.buy_ability("coins"), "locked ability can't be bought")
+	var lv_before: int = save.level
+	var gained: Array = save.add_xp(Upgrades.xp_next(1))
+	ok(gained == [2] and save.level == lv_before + 1 and save.ability("coins") == 1, "level 2 unlocks COINS+ for free")
+	ok(save.coins == 5000 + Upgrades.level_coins(2), "level-up pays coins")
+	save.coins = 1000
+	ok(save.buy_ability("coins") and save.ability("coins") == 2 and save.coins == 0, "ability upgraded with coins")
+	ok(not save.buy_ability("coins"), "upgrade refused without coins")
+	save.level = 15
+	ok(save.ability("secondlife") == 0 and Upgrades.price("secondlife", 0) == 15000, "SECOND LIFE must be bought")
+	save.abilities["shield"] = 3
+	ok(Upgrades.price("shield", 3) == -1 and not save.buy_ability("shield"), "maxed ability can't be bought")
+	var xp50 := 0
+	for L in range(1, Upgrades.MAX_LEVEL):
+		xp50 += Upgrades.xp_next(L)
+	ok(xp50 > 150000 and xp50 < 260000, "level 50 needs %d XP (tuned curve)" % xp50)
+	save.level = 1; save.xp = 0; save.abilities = {}
 	# bundles & consumables
 	save.coins = 0
 	mon.buy("starter")
 	await process_frame
-	ok(save.owns("no_ads") and save.coins == 500 and save.boosts["shield"] == 3, "starter: no ads + 500 coins + 2 shields")
+	ok(save.owns("no_ads") and save.coins == 1000, "starter: no ads + 1000 coins")
 	save.grant("starter")
-	ok(save.coins == 500, "bundle bonus only once (restore safe)")
+	ok(save.coins == 1000, "bundle bonus only once (restore safe)")
 	mon.buy("coins_1500")
 	await process_frame
 	mon.buy("coins_1500")
 	await process_frame
-	ok(save.coins == 3500, "coin bag is consumable (%d)" % save.coins)
+	ok(save.coins == 4000, "coin bag is consumable (%d)" % save.coins)
 	ok(not save.unlocked("trails", Catalog.find("trails", "rainbow")), "trail pack not owned yet")
 	mon.buy("supporter")
 	await process_frame
@@ -327,30 +344,29 @@ func test_economy(save) -> void:
 	ok(mon.ads._banner.visible, "banner shown in shop otherwise")
 	mon.hide_banner()
 	ok(not mon.ads._banner.visible, "banner hidden when leaving shop")
-	# in-game: coins, free continue, shield boost
+	# in-game: coins, XP, free continue, SHIELD ability
 	save.reset_all()
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
 	await process_frame
 	main.set_process(false)
 	main.ui.hide_popup()
-	save.boosts["shield"] = 1
-	main.armed["shield"] = true
+	save.abilities["shield"] = 1
 	main.start_run()
-	ok(main.shield_hit and save.boosts["shield"] == 0, "shield boost consumed at run start")
+	ok(main.shield_hits == 1 and main.player.shield_boost, "SHIELD ability arms a shield every run")
 	var m := Meteor.new().setup(main.player.angle, main.gt - 0.5, 0.0, 200.0)
 	# force a meteor right on the player now
 	m.t_danger_start = main.gt; m.t_danger_end = main.gt + 0.05
 	m.t_launch = main.gt - (Meteor.R0 - Orbit.R) / 200.0
 	main.hazards.append(m); main.hazards_root.add_child(m)
 	main._process(1.0 / 120.0)
-	ok(main.state == main.S.PLAYING and not main.shield_hit, "shield absorbed the hit")
+	ok(main.state == main.S.PLAYING and main.shield_hits == 0, "shield absorbed the hit")
 	main.score = 30
 	main.bubbles_popped = 2
 	main._die()
 	for f in 60:
 		main._process(1.0 / 60.0)
-	ok(save.coins == 12, "coins = score/3 + bubbles (%d)" % save.coins)
+	ok(save.coins == 12 + Upgrades.level_coins(2) and save.level == 2, "coins = score/3 + bubbles, first run reaches level 2 (%d)" % save.coins)
 	save.purchases = ["no_ads"]
 	ok(mon.can_continue(30, false) and mon.continue_is_free(), "NO ADS gives a free continue")
 	main._on_continue_pressed()
@@ -370,7 +386,9 @@ func test_economy(save) -> void:
 	main._die()
 	for f in 60:
 		main._process(1.0 / 60.0)
-	ok(save.coins == 14, "continued run only pays the new coins (%d)" % save.coins)
+	# level 2 unlocked COINS+ (x1.1): the whole run is now worth floor(14 * 1.1) = 15, 12 already paid
+	var paid: int = 12 + Upgrades.level_coins(2) + int(floor(14 * Upgrades.coin_mult(1))) - 12
+	ok(save.coins == paid, "continued run only pays the new coins (%d)" % save.coins)
 	main.queue_free()
 	await process_frame
 	save.reset_all()
@@ -481,32 +499,37 @@ func test_progress(save) -> void:
 	save.reset_all()
 	var day0 := 1_900_000_000.0
 	var seen := {}
-	for d in 10:
+	var distinct := true
+	for d in 15:
 		save.clock_override = day0 + d * 86400
-		seen[prog.mission_index()] = true
-	save.clock_override = day0 + 10 * 86400
-	ok(seen.size() == 10, "10 different missions over 10 days")
+		var idx: Array = prog.daily_indices(save.day_number())
+		distinct = distinct and idx.size() == 3 and idx[0] != idx[1] and idx[1] != idx[2] and idx[0] != idx[2]
+		seen[idx[0]] = true
+	ok(distinct and seen.size() == 15, "3 different missions a day, the whole pool of 15 in 15 days")
 	save.clock_override = day0
-	var first: int = prog.mission_index()
-	save.clock_override = day0 + 10 * 86400
-	ok(prog.mission_index() == first, "missions repeat cyclically")
-	# complete today's mission whatever it is
+	var first: Array = prog.daily_indices(save.day_number())
+	save.clock_override = day0 + 15 * 86400
+	ok(prog.daily_indices(save.day_number()) == first, "missions repeat cyclically")
+	ok(prog.missions().size() == 3 and not prog.weekly().is_empty(), "today has 3 missions + a weekly challenge")
+	# complete today's missions whatever they are
 	save.clock_override = day0
-	var m: Dictionary = prog.MISSIONS[prog.mission_index()]
 	var coins0: int = save.coins
-	for i in int(m["goal"]) + 2:
-		match m["id"]:
-			"runs": prog.run_finished(1, 1, 1.0)
-			"score_run": prog.event("score_now", int(m["goal"]))
-			"near", "near_run": prog.event("near")
-			"bubble": prog.event("bubble")
-			"world": prog.event("world", int(m["goal"]))
-			"flip": prog.event("flip")
-			"score_total": prog.run_finished(int(m["goal"]), 1, 1.0)
-			"time_run": prog.run_finished(1, 1, float(m["goal"]))
-	ok(prog.mission()["done"] and save.coins >= coins0 + int(m["reward"]), "mission completes and pays %d" % m["reward"])
+	var lv0: int = save.level
+	var expect := 0
+	for m in prog.missions():
+		expect += int(m["reward"])
+	for i in 160:
+		prog.run_started()
+		prog.event("score_now", 60)
+		prog.event("world", 6)
+		prog.event("near"); prog.event("flip"); prog.event("bubble")
+		for b in 3:
+			prog.event("bubble")
+		prog.run_finished(60, 6, 50.0)
+	ok(prog.missions_left() == 0 and save.coins >= coins0 + expect, "all 3 missions complete and pay")
+	ok(save.level > lv0, "missions give XP")
 	save.clock_override = day0 + 86400
-	ok(not prog.mission()["done"], "a new mission the next day")
+	ok(prog.missions_left() == 3, "new missions the next day")
 	save.clock_override = -1.0
 	# achievements
 	save.submit_run(30)
@@ -557,7 +580,81 @@ func test_progress(save) -> void:
 	for code in l10n.LANGS:
 		l10n.set_lang(code)
 		ok(l10n.t("PLAY") != "" and l10n.t("M_RUNS", 3).contains("3"), "language %s works" % code)
+	# abilities screen rows: name and description must fit left of the price button
+	var ui_script: Script = load("res://scripts/ui/ui.gd")
+	var too_wide: Array = []
+	for code in l10n.LANGS:
+		l10n.set_lang(code)
+		for ab in Upgrades.ABILITIES:
+			var texts: Array = [l10n.t("AB_" + ab["id"].to_upper())]
+			for lv in range(1, int(ab["max"]) + 1):
+				texts.append(ui_script.ability_desc(ab["id"], lv))
+			for tx in texts:
+				if font.get_string_size(tx, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > 158 - 46 - 19 - 2:
+					too_wide.append(code + ":" + tx)
+	ok(too_wide.is_empty(), "ability texts fit their row %s" % str(too_wide))
 	l10n.set_lang("en")
+	save.reset_all()
+
+
+func test_abilities(save) -> void:
+	# old saves: consumable boosts become coins, once
+	save.reset_all()
+	var cfg := ConfigFile.new()
+	cfg.set_value("shop", "coins", 10)
+	cfg.set_value("shop", "boosts", {"shield": 2, "rush": 1, "teleport": 1})
+	cfg.save(save.path)
+	save.load_data()
+	ok(save.coins == 10 + 300 + 100 + 120, "old boosts refunded in coins (%d)" % save.coins)
+	save.save_data()
+	save.load_data()
+	ok(save.coins == 530, "boost refund only once")
+	# HEADSTART: capped by its level and by the best world reached - 1
+	save.reset_all()
+	save.abilities["headstart"] = 2
+	save.stats["best_world"] = 9
+	save.start_world = 8
+	ok(save.headstart_max() == 5 and save.chosen_start_world() == 5, "headstart level 2 starts at world 5 at most")
+	save.stats["best_world"] = 4
+	ok(save.chosen_start_world() == 3, "headstart never skips past your best world - 1")
+	save.abilities["headstart"] = 0
+	ok(save.chosen_start_world() == 1, "no headstart starts at world 1")
+	ok(Stages.bounds(0) == Vector2i(0, 30) and Stages.bounds(70) == Vector2i(65, 105)
+		and Stages.bounds(530) == Vector2i(520, 580), "world progress bounds")
+	# region override
+	save.region = "EUROPE"
+	ok(get_root().get_node("Progress").region() == "EUROPE", "region picked in settings wins")
+	save.region = ""
+	ok(get_root().get_node("Progress").region() == PlayGamesConfig.region(), "AUTO region follows the phone")
+	# in-run abilities
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	save.abilities = {"headstart": 1, "slowmo": 2, "secondlife": 1}
+	save.stats["best_world"] = 5
+	save.start_world = 3
+	main.start_run()
+	ok(main.world_no == 3 and main.score == Stages.LIST[2]["score"] and main.start_score == main.score,
+		"headstart run begins in world 3 with its points (%d)" % main.score)
+	ok(main.slowmo_charges == 2 and main.second_life, "slowmo charges and second life armed")
+	main._grace = 0.0
+	var gt0: float = main.gt
+	main.use_slowmo()
+	for f in 30:
+		main._process(1.0 / 60.0)
+	ok(main.slowmo_charges == 1 and absf(main.gt - gt0 - 0.25) < 0.02, "slowmo runs the game at half speed (%.2f)" % (main.gt - gt0))
+	main._die()
+	ok(main.state == main.S.PLAYING and not main.second_life and main.hazards.is_empty(), "second life revives once")
+	main._die()
+	ok(main.state == main.S.DYING, "second death ends the run")
+	for f in 60:
+		main._process(1.0 / 60.0)
+	ok(main.run_coins == int(main.bubbles_popped * Upgrades.coin_mult(0)), "headstart points don't pay coins (%d)" % main.run_coins)
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
 	save.reset_all()
 
 

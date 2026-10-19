@@ -21,7 +21,7 @@ func _initialize() -> void:
 	sv.path = "user://shots_save.cfg"
 	sv.reset_all()
 	sv.best = 37; sv.games = 3; sv.total = 260; sv.coins = 640
-	sv.boosts = {"shield": 1, "rush": 0, "teleport": 2}
+	sv.level = 12; sv.abilities = {"coins": 2, "shield": 1, "magnet": 1, "slowmo": 1, "teleport": 2}
 	sv.daily_last = sv._day_string()   # skip the daily popup
 	sv.add_top_score(37, 2); sv.add_top_score(22, 2); sv.add_top_score(9, 1)
 	sv.achievements = ["first", "score10", "score25", "world2"]

@@ -3,7 +3,8 @@ extends Node2D
 ## The orbiting critter. Owns the orbital state (angle, direction) and its look:
 ## flapping wings, blinking, squash on flip, colored trail, death tumble.
 
-const TRAIL_LEN := 12
+const TRAIL_LEN := 20
+const TRAIL_STEP := 2.0   # px between trail samples
 
 var angle := -PI * 0.5
 var dir := 1
@@ -101,9 +102,11 @@ func _process(delta: float) -> void:
 		var tangent_x := -sin(angle) * dir
 		if absf(tangent_x) > 0.25:
 			face_right = tangent_x > 0.0
-		_trail.push_front(position)
-		if _trail.size() > TRAIL_LEN:
-			_trail.pop_back()
+		# sampled by distance, so the trail is just as long at the slow start of a run
+		if _trail.is_empty() or position.distance_squared_to(_trail[0]) >= TRAIL_STEP * TRAIL_STEP:
+			_trail.push_front(position)
+			if _trail.size() > TRAIL_LEN:
+				_trail.pop_back()
 	else:
 		_dead_vel.y += 260.0 * delta
 		_dead_pos += _dead_vel * delta
@@ -174,7 +177,7 @@ func _draw_trail() -> void:
 	for i in range(n - 1, 1, -1):
 		var p := (_trail[i] - position).round()
 		var k := 1.0 - float(i) / TRAIL_LEN
-		var a := 0.85 * k
+		var a := minf(1.0, 1.15 * k)
 		var s := maxf(1.0, roundf(4.0 * k))
 		var c0: Color = cols[0] if not cols.is_empty() else color()
 		var c1: Color = cols[1] if cols.size() > 1 else Color.WHITE
@@ -190,7 +193,7 @@ func _draw_trail() -> void:
 					_sq(p + Vector2(0, -3 * sin(_t * 3.0 + i)), 1.0, Color(1, 1, 1, a))
 			"dots":
 				if i % 2 == 0:
-					_sq(p, 1.0, Color(alt, a))
+					_sq(p, maxf(2.0, s - 1.0), Color(alt, a))
 			"dash":
 				if i % 3 != 2:
 					draw_rect(Rect2(p - Vector2(1, 0), Vector2(3, 1)), Color(alt, a))
@@ -222,10 +225,12 @@ func _draw_trail() -> void:
 				if i % 3 == 0:
 					_shape(p, "crystal", Color(alt, a))
 			"bolt":
-				if i < n - 1:
-					var q := (_trail[i + 1] - position).round()
-					var jit := Vector2(0, 2 if (i + int(_t * 15.0)) % 2 == 0 else -2)
-					draw_line(p + jit, q - jit, Color(alt, a), 1.0)
+				# zig-zag of pixels that flickers, with a white core now and then
+				var zig := (i + int(_t * 15.0)) % 4
+				var jit := Vector2(0, [0, 2, 0, -2][zig])
+				_sq(p + jit, 2.0 if k > 0.4 else 1.0, Color(alt, a))
+				if zig == 1 and k > 0.5:
+					_sq(p + jit, 1.0, Color(1, 1, 1, a))
 			"notes":
 				if i % 4 == 1:
 					_shape(p + Vector2(0, -roundf((1.0 - k) * 4.0)), "note", Color(alt, a))

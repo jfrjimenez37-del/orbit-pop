@@ -993,12 +993,15 @@ static func ability_desc(id: String, lv: int) -> String:
 		"shield":
 			return L.t(["AB_SHIELD_D1", "AB_SHIELD_D2", "AB_SHIELD_D3"][mini(lv, 3) - 1])
 		"magnet":
-			return L.t("AB_MAGNET_D", lv)
+			return L.t("AB_MAGNET_D")
 		"slowmo", "teleport":
 			return L.t("AB_CHARGES_D", lv)
 		"headstart":
 			return L.t("AB_HEADSTART_D", Upgrades.HEADSTART_WORLD[mini(lv, 3)])
 	return L.t("AB_SECONDLIFE_D")
+
+
+const AB_BTN_W := 46
 
 
 func refresh_abilities() -> void:
@@ -1014,7 +1017,7 @@ func refresh_abilities() -> void:
 		var id: String = a["id"]
 		var cur := Save.ability(id)
 		var open := Save.ability_unlocked(id)
-		var name := L.t("AB_" + id.to_upper()) + ("  %d/%d" % [cur, a["max"]] if open else "")
+		var name := L.t("AB_" + id.to_upper())
 		var desc := ability_desc(id, cur)
 		if id == "headstart" and cur > 0:
 			desc = L.t("AB_START", Save.chosen_start_world())
@@ -1034,13 +1037,23 @@ func refresh_abilities() -> void:
 			else:
 				Sfx.play("deny")
 				toast(L.t("NOT_ENOUGH"), Color8(255, 150, 160))
-			refresh_abilities())
+			refresh_abilities(), AB_BTN_W)
+		if open:  # level pips under the button
+			var mx := int(a["max"])
+			var px := 158 - AB_BTN_W + roundi((AB_BTN_W - (mx * 5 - 2)) * 0.5)
+			for k in mx:
+				var pip := ColorRect.new()
+				pip.size = Vector2(3, 3)
+				pip.position = Vector2(px + k * 5, y + 23)
+				pip.color = Color8(255, 200, 60) if k < cur else Color8(90, 90, 120)
+				pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				_ab_list.add_child(pip)
 		if not open:
 			b.modulate = Color(1, 1, 1, 0.6)
 			_icon(_ab_list, "icon_lock", Vector2(5, y + 3)).modulate = Color(1, 1, 1, 0.9)
 		if id == "headstart" and cur > 0 and Save.headstart_max() > 1:
-			var sw := _button(_ab_list, "white", "", "right", Vector2(16, 16))
-			sw.position = Vector2(86, y + 2)
+			var sw := _button(_ab_list, "white", "", "right", Vector2(14, 14))
+			sw.position = Vector2(mini(21 + roundi(_text_w(desc)), 156 - AB_BTN_W - 14), y + 7)
 			sw.pressed.connect(func():
 				Save.start_world = Save.chosen_start_world() % Save.headstart_max() + 1
 				Save.save_data()
@@ -1073,12 +1086,12 @@ func _build_shop() -> void:
 	back.pressed.connect(func(): menu_pressed.emit())
 
 
-func _shop_row(parent: Control, y: int, icon: String, name: String, desc: String, btn_style: String, btn_text: String, btn_icon: String, enabled: bool, cb: Callable) -> Button:
+func _shop_row(parent: Control, y: int, icon: String, name: String, desc: String, btn_style: String, btn_text: String, btn_icon: String, enabled: bool, cb: Callable, btn_w := 54) -> Button:
 	_icon(parent, "icon_" + icon, Vector2(5, y + 3))
 	_left_label(parent, name, Vector2(19, y))
 	_left_label(parent, desc, Vector2(19, y + 10), MUTED)
-	var b := _button(parent, btn_style, btn_text, btn_icon, Vector2(54, 20))
-	b.position = Vector2(104, y)
+	var b := _button(parent, btn_style, btn_text, btn_icon, Vector2(btn_w, 20))
+	b.position = Vector2(158 - btn_w, y)
 	b.disabled = not enabled
 	b.pressed.connect(cb)
 	return b

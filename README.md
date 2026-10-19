@@ -111,25 +111,39 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
   una cuenta atrás; MENÚ termina la partida y la cuenta igual (récord, monedas, misiones).
 
 **Monedas (moneda blanda, sin compra obligatoria)**
-- Se ganan: puntuación/3 + 1 por burbuja en cada partida, regalo diario y anuncios opcionales.
-- Regalo diario con racha de 7 días: 30, 40, 50 (+RUSH), 60, 80, 100 (+SHIELD), 250 (+SHIELD).
-  Si se salta un día, vuelve al día 1.
-- Se gastan en: 9 skins (de 600 a 15000 monedas), estela SPARKLE (200) y boosts.
+- Se ganan: (puntuación/3 + 1 por burbuja) × multiplicador de MONEDAS+, subidas de nivel
+  (20 × nivel), misiones, regalo diario y anuncios opcionales.
+- Regalo diario con racha de 7 días: 30, 40, 70, 60, 80, 140, 300. Si se salta un día, vuelve al día 1.
+- Se gastan en: mejoras de habilidades, skins (600 a 15000) y estelas (300 a 8000).
 
-**Boosts (ventaja limitada)**: SHIELD (aguanta 1 golpe, 150), BUBBLE RUSH (2x burbujas, 100) y
-TELEPORT (botón en partida: salta al lado opuesto de la órbita, 120). Máximo uno de cada por
-partida; se activan o compran desde el botón PODERES junto a JUGAR. Solo cuestan monedas, para
-que los récords sigan siendo justos (las monedas pueden comprarse con la bolsa de 1500).
+**Nivel de jugador y habilidades permanentes** (`scripts/game/upgrades.gd`). Cada partida da XP
+= puntos + 15 (la primera, mínimo 50, para subir a nivel 2 enseguida). XP para pasar del nivel L:
+`40 + 10·L^1.8`, hasta nivel 50. Cada habilidad se desbloquea gratis (nivel 1) al llegar a su nivel
+de jugador y luego se mejora con monedas (1000, 2500, 6000, 15000). Nada se gasta al jugar.
+
+| Habilidad | Nivel | Máx. | Efecto |
+|---|---|---|---|
+| MONEDAS+ | 2 | 5 | +10 % monedas por nivel |
+| ESCUDO | 3 | 3 | escudo al empezar; nv2 se recarga a los 60 s; nv3 aguanta 2 golpes |
+| IMÁN | 5 | 5 | atrae burbujas (+3 px de alcance por nivel) |
+| CÁMARA LENTA | 8 | 3 | botón en partida: 2 s a media velocidad, 1 carga por nivel |
+| TELEPORT | 10 | 3 | botón en partida: salta al lado opuesto, 1 carga por nivel |
+| SALTO INICIAL | 12 | 3 | empezar en el mundo 3/5/8 (con sus puntos), sin pasar de tu mejor mundo −1 |
+| SEGUNDA VIDA | 15 | 1 | revive 1 vez por partida (se compra: 15000) |
+
+Simulación de la curva: un jugador medio (25 min/día) desbloquea todas en ~5 días, las mejora
+al máximo en ~2,5 meses y llega a nivel 50 en ~4 meses. Las partidas guardadas antiguas reciben
+en monedas el valor de los boosts que tenían.
 
 **Compras (Google Play)**
 
 | ID | Tipo | Contenido | Precio sugerido |
 |---|---|---|---|
-| `starter` | único | NO ADS + 500 monedas + 2 SHIELD (oferta emergente tras 8 partidas) | $1.99 |
+| `starter` | único | NO ADS + 1000 monedas (oferta emergente tras 8 partidas) | $1.99 |
 | `no_ads` | único | sin intersticiales ni banner + CONTINUE gratis | $2.99 |
 | `star_pack` | único | skins GOLDIE, NEON, PANDA | $1.99 |
 | `trail_pack` | único | estelas RAINBOW, HEARTS, STARS | $0.99 |
-| `supporter` | único | todos los packs + NO ADS + 1000 monedas | $3.99 |
+| `supporter` | único | todos los packs + NO ADS + 1500 monedas | $3.99 |
 | `coins_1500` | consumible | 1500 monedas | $0.99 |
 
 Activar lo real (requiere build Gradle, ver sección AAB):
@@ -175,8 +189,12 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
 órbita: un test hace sobrevivir al bot justo 45 s en cada forma de órbita.
 
 ## Misiones, logros, ranking, nube, compartir, idiomas
-- **Misión diaria:** 10 misiones fijas, una por día en ciclo (día del año local % 10). Premio en
-  monedas automático al completarla. Botón de pergamino en el menú.
+- **Misiones:** 3 diarias (de un grupo de 15, en ciclo) + 1 reto semanal (de 5). Dan monedas y
+  XP al completarse. Botón de pergamino en el menú (con el número pendiente).
+- **HUD:** barra de progreso hasta el siguiente mundo con una marca en tu récord.
+- **Skins y estelas por rareza:** 26 skins y 20 estelas (común, rara, épica, legendaria, mítica),
+  por récord, mundo alcanzado, nivel, puntos totales, monedas o packs. Las raras en adelante
+  tienen efectos (chispas, rayos, aura, arcoíris...); las míticas piden 500 y 1000 puntos.
 - **Logros:** 34 (récords hasta 1000, mundo 15, 100.000 puntos totales, 1000 partidas, todas las
   skins...). Funcionan sin conexión (pantalla RANKING ▸ LOGROS) y se sincronizan con Google
   Play Games si está conectado.
@@ -188,13 +206,14 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
   límite (miles). El nombre de la cuenta de Play Games aparece en el menú con tu puesto mundial,
   y al terminar cada partida se muestra tu puesto MUNDIAL y REGIONAL (con aviso si fue récord).
 - **Nube:** Saved Games de Play Games. Al conectar se descarga y fusiona: récords y desbloqueos
-  se combinan (nunca bajan); monedas y boosts siguen la copia más reciente. Se sube al terminar
+  se combinan (nunca bajan, incluido nivel y habilidades); las monedas siguen la copia más reciente. Se sube al terminar
   cada partida.
 - **Compartir:** botón en Game Over; comparte una captura con el texto de la puntuación (plugin
   godot-share). Sin plugin, copia el texto al portapapeles.
 - **Idiomas:** inglés, español, portugués (Portugal) y portugués (Brasil). Detecta el del
   teléfono; se cambia en AJUSTES. Fuente pixel con Á É Í Ó Ú Ñ Ç Ã Õ Â Ê Ô ¡ ¿.
-- **Ajustes:** sonido, música, vibración, idioma, nube (conectar) y privacidad (vuelve a abrir el
+- **Ajustes:** sonido, música, vibración, idioma, región del ranking (AUTO o manual), nube
+  (conectar), versión del juego y privacidad (vuelve a abrir el
   formulario de consentimiento de AdMob, obligatorio en la UE).
 
 ### Configurar Google Play Games (pendiente, en Play Console)

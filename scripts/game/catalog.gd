@@ -44,7 +44,7 @@ const LEGACY_SKINS := ["poppy", "minty", "berry", "frosty", "ember", "cosmo", "g
 ## Trails by rarity. style: how OrbitPlayer draws it (see _draw_trail), cols: palette.
 const TRAILS := [
 	{"id": "classic", "name": "CLASSIC", "rarity": "common", "need": ["best", 0], "style": "squares", "cols": []},
-	{"id": "dots", "name": "DOTS", "rarity": "common", "need": ["level", 3], "style": "dots", "cols": [Color8(255, 255, 255), Color8(140, 230, 255)]},
+	{"id": "dots", "name": "DOTS", "rarity": "common", "need": ["level", 3], "style": "dots", "cols": [Color8(255, 255, 255), Color8(60, 140, 255)]},
 	{"id": "dash", "name": "DASH", "rarity": "common", "need": ["coins", 300], "style": "dash", "cols": [Color8(255, 230, 90), Color8(255, 255, 255)]},
 	{"id": "sparkle", "name": "SPARKLE", "rarity": "rare", "need": ["coins", 800], "style": "sparkle", "cols": [Color8(255, 255, 255), Color8(255, 240, 140)]},
 	{"id": "bubbles", "name": "BUBBLES", "rarity": "rare", "need": ["world", 3], "style": "rings", "cols": [Color8(170, 230, 255), Color8(255, 255, 255)]},
@@ -53,8 +53,8 @@ const TRAILS := [
 	{"id": "hearts", "name": "HEARTS", "rarity": "rare", "need": ["shop", "trail_pack"], "style": "hearts", "cols": [Color8(255, 100, 150), Color8(255, 170, 200)]},
 	{"id": "smoke", "name": "SMOKE", "rarity": "rare", "need": ["level", 10], "style": "smoke", "cols": [Color8(220, 220, 236), Color8(170, 170, 196)]},
 	{"id": "fire", "name": "FIRE", "rarity": "epic", "need": ["world", 5], "style": "fire", "cols": [Color8(255, 230, 80), Color8(255, 140, 40), Color8(230, 60, 40)]},
-	{"id": "ice", "name": "ICE", "rarity": "epic", "need": ["world", 6], "style": "crystals", "cols": [Color8(200, 245, 255), Color8(120, 200, 255)]},
-	{"id": "bolt", "name": "BOLT", "rarity": "epic", "need": ["level", 15], "style": "bolt", "cols": [Color8(255, 240, 110), Color8(255, 255, 255)]},
+	{"id": "ice", "name": "ICE", "rarity": "epic", "need": ["world", 6], "style": "crystals", "cols": [Color8(150, 230, 255), Color8(60, 140, 255)]},
+	{"id": "bolt", "name": "BOLT", "rarity": "epic", "need": ["level", 15], "style": "bolt", "cols": [Color8(255, 220, 40), Color8(255, 150, 30)]},
 	{"id": "notes", "name": "NOTES", "rarity": "epic", "need": ["coins", 3000], "style": "notes", "cols": [Color8(200, 140, 255), Color8(255, 140, 220)]},
 	{"id": "stars", "name": "STARS", "rarity": "epic", "need": ["shop", "trail_pack"], "style": "stars", "cols": [Color8(255, 220, 60), Color8(255, 250, 200)]},
 	{"id": "neon", "name": "NEON", "rarity": "epic", "need": ["level", 20], "style": "neon", "cols": [Color8(60, 240, 255), Color8(255, 70, 220)]},
