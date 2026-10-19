@@ -17,7 +17,7 @@ const PRODUCT_INFO := {
 const FALLBACK_PRICES := {"starter": "$1.99", "no_ads": "$2.99", "star_pack": "$1.99", "trail_pack": "$0.99",
 	"supporter": "$3.99", "coins_1500": "$0.99"}
 ## Extra goodies granted once when a bundle is first bought.
-const BUNDLE_BONUS := {"starter": {"coins": 500, "boosts": {"shield": 2}}, "supporter": {"coins": 1000}}
+const BUNDLE_BONUS := {"starter": {"coins": 1000}, "supporter": {"coins": 1500}}
 ## Starter offer pops up once after this many runs (then stays in the shop until bought).
 const STARTER_AFTER_GAMES := 8
 
@@ -28,15 +28,9 @@ const FREE_COIN_ADS_PER_DAY := 3
 const FREE_COIN_AD_REWARD := 60
 ## Daily gift streak (resets if a day is missed). Day 7 is the big one.
 const DAILY_REWARDS := [
-	{"coins": 30}, {"coins": 40}, {"coins": 50, "boost": "rush"}, {"coins": 60},
-	{"coins": 80}, {"coins": 100, "boost": "shield"}, {"coins": 250, "boost": "shield"},
+	{"coins": 30}, {"coins": 40}, {"coins": 70}, {"coins": 60},
+	{"coins": 80}, {"coins": 140}, {"coins": 300},
 ]
-## Boosts: bought with coins, max one of each per run.
-const BOOSTS := {
-	"shield": {"name": "B_SHIELD", "desc": "B_SHIELD_D", "price": 150, "icon": "shield"},
-	"rush": {"name": "B_RUSH", "desc": "B_RUSH_D", "price": 100, "icon": "rush"},
-	"teleport": {"name": "B_TELEPORT", "desc": "B_TELEPORT_D", "price": 120, "icon": "teleport"},
-}
 
 ## Interstitial pacing (only ever between runs, never during one).
 const INTERSTITIAL_GRACE_GAMES := 3     # first interstitial after the 3rd run at the earliest

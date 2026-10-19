@@ -1,26 +1,40 @@
 extends Node
-## Daily missions (10, one per day, cycling), achievements, local top scores,
-## leaderboard submission (global + regional) and cloud save sync.
+## Missions (3 a day from a pool of 15 + 1 weekly challenge), player XP and levels,
+## achievements, local top scores, leaderboard submission (global + regional) and cloud save sync.
 
 signal mission_completed(text: String, reward: int)
 signal achievement_unlocked(name: String)
+signal level_up(level: int)
 
 const PlayGames := preload("res://scripts/services/play_games.gd")
 const Sharer := preload("res://scripts/services/sharer.gd")
 
-## kind: how progress is counted. "sum" adds per event, "max" keeps the best value.
+## mode: "sum" adds per event, "max" keeps the best value. reward: coins, xp: player XP.
 const MISSIONS := [
-	{"id": "runs", "text": "M_RUNS", "goal": 3, "reward": 60, "mode": "sum"},
-	{"id": "score_run", "text": "M_SCORE_RUN", "goal": 25, "reward": 80, "mode": "max"},
-	{"id": "near", "text": "M_NEAR", "goal": 10, "reward": 80, "mode": "sum"},
-	{"id": "bubble", "text": "M_BUBBLE", "goal": 8, "reward": 70, "mode": "sum"},
-	{"id": "world", "text": "M_WORLD", "goal": 3, "reward": 100, "mode": "max"},
-	{"id": "flip", "text": "M_FLIP", "goal": 150, "reward": 60, "mode": "sum"},
-	{"id": "score_total", "text": "M_SCORE_TOTAL", "goal": 120, "reward": 90, "mode": "sum"},
-	{"id": "near_run", "text": "M_NEAR_RUN", "goal": 4, "reward": 100, "mode": "max"},
-	{"id": "time_run", "text": "M_TIME_RUN", "goal": 45, "reward": 90, "mode": "max"},
-	{"id": "score_run", "text": "M_SCORE_RUN", "goal": 50, "reward": 150, "mode": "max"},
+	{"id": "runs", "text": "M_RUNS", "goal": 3, "reward": 60, "xp": 40, "mode": "sum"},
+	{"id": "score_run", "text": "M_SCORE_RUN", "goal": 25, "reward": 80, "xp": 50, "mode": "max"},
+	{"id": "near", "text": "M_NEAR", "goal": 10, "reward": 80, "xp": 50, "mode": "sum"},
+	{"id": "bubble", "text": "M_BUBBLE", "goal": 8, "reward": 70, "xp": 40, "mode": "sum"},
+	{"id": "world", "text": "M_WORLD", "goal": 3, "reward": 100, "xp": 60, "mode": "max"},
+	{"id": "flip", "text": "M_FLIP", "goal": 150, "reward": 60, "xp": 40, "mode": "sum"},
+	{"id": "score_total", "text": "M_SCORE_TOTAL", "goal": 120, "reward": 90, "xp": 60, "mode": "sum"},
+	{"id": "near_run", "text": "M_NEAR_RUN", "goal": 4, "reward": 100, "xp": 60, "mode": "max"},
+	{"id": "time_run", "text": "M_TIME_RUN", "goal": 45, "reward": 90, "xp": 60, "mode": "max"},
+	{"id": "score_run", "text": "M_SCORE_RUN", "goal": 50, "reward": 150, "xp": 90, "mode": "max"},
+	{"id": "bubble_run", "text": "M_BUBBLE_RUN", "goal": 3, "reward": 90, "xp": 60, "mode": "max"},
+	{"id": "runs", "text": "M_RUNS", "goal": 6, "reward": 100, "xp": 60, "mode": "sum"},
+	{"id": "score_total", "text": "M_SCORE_TOTAL", "goal": 300, "reward": 150, "xp": 90, "mode": "sum"},
+	{"id": "near", "text": "M_NEAR", "goal": 25, "reward": 120, "xp": 70, "mode": "sum"},
+	{"id": "world", "text": "M_WORLD", "goal": 5, "reward": 150, "xp": 100, "mode": "max"},
 ]
+const WEEKLY := [
+	{"id": "score_total", "text": "M_SCORE_TOTAL", "goal": 2000, "reward": 600, "xp": 400, "mode": "sum"},
+	{"id": "runs", "text": "M_RUNS", "goal": 40, "reward": 500, "xp": 300, "mode": "sum"},
+	{"id": "world", "text": "M_WORLD", "goal": 7, "reward": 800, "xp": 500, "mode": "max"},
+	{"id": "bubble", "text": "M_BUBBLE", "goal": 150, "reward": 500, "xp": 300, "mode": "sum"},
+	{"id": "near", "text": "M_NEAR", "goal": 150, "reward": 600, "xp": 400, "mode": "sum"},
+]
+const DAILY_COUNT := 3
 
 ## stat: Save.stats key (or "best"/"games"/"total"/"skins"), name: [l10n key, arg]
 const ACHIEVEMENTS := [
@@ -79,46 +93,94 @@ func _ready() -> void:
 
 # ------------------------------------------------------------------ missions
 
-func mission_index() -> int:
-	return posmod(Save.day_number(), MISSIONS.size())
+## Pool indices of today's missions (3 distinct, the set rotates every day).
+static func daily_indices(day: int) -> Array:
+	var base := posmod(day * 7, MISSIONS.size())
+	return [base, (base + 5) % MISSIONS.size(), (base + 10) % MISSIONS.size()]
 
 
-func mission() -> Dictionary:
-	_roll_day()
-	var m: Dictionary = MISSIONS[mission_index()]
-	return {"text": L.t(m["text"], m["goal"]), "goal": int(m["goal"]), "reward": int(m["reward"]),
-		"progress": mini(int(Save.mission["progress"]), int(m["goal"])), "done": bool(Save.mission["done"])}
-
-
-func _roll_day() -> void:
+func _roll() -> void:
 	var today := Save.day_number()
-	if int(Save.mission.get("day", -1)) != today:
-		Save.mission = {"day": today, "progress": 0, "done": false}
+	if int(Save.missions.get("day", -1)) != today:
+		var list: Array = []
+		for i in daily_indices(today):
+			list.append({"i": i, "p": 0, "done": false})
+		Save.missions["day"] = today
+		Save.missions["list"] = list
+	var week := floori(today / 7.0)
+	if int(Save.missions.get("week", -1)) != week:
+		Save.missions["week"] = week
+		Save.missions["weekly"] = {"i": posmod(week, WEEKLY.size()), "p": 0, "done": false}
+
+
+func _view(def: Dictionary, st: Dictionary) -> Dictionary:
+	return {"text": L.t(def["text"], def["goal"]), "goal": int(def["goal"]), "reward": int(def["reward"]), "xp": int(def["xp"]),
+		"progress": mini(int(st["p"]), int(def["goal"])), "done": bool(st["done"])}
+
+
+## Today's 3 missions: [{text, goal, reward, xp, progress, done}]
+func missions() -> Array:
+	_roll()
+	var out: Array = []
+	for st in Save.missions["list"]:
+		out.append(_view(MISSIONS[int(st["i"])], st))
+	return out
+
+
+func weekly() -> Dictionary:
+	_roll()
+	var st: Dictionary = Save.missions["weekly"]
+	return _view(WEEKLY[int(st["i"])], st)
+
+
+func missions_left() -> int:
+	return missions().filter(func(m): return not m["done"]).size()
 
 
 func _mission_feed(id: String, value: int) -> void:
-	_roll_day()
-	var m: Dictionary = MISSIONS[mission_index()]
-	if m["id"] != id or Save.mission["done"]:
-		return
-	if m["mode"] == "sum":
-		Save.mission["progress"] = int(Save.mission["progress"]) + value
-	else:
-		Save.mission["progress"] = maxi(int(Save.mission["progress"]), value)
-	if int(Save.mission["progress"]) >= int(m["goal"]):
-		Save.mission["done"] = true
-		Save.coins += int(m["reward"])
-		Save.stats["missions_done"] = int(Save.stats.get("missions_done", 0)) + 1
-		var txt := L.t("MISSION_DONE") + " " + L.t("PLUS_COINS", int(m["reward"]))
-		pending.append(txt)
-		mission_completed.emit(L.t(m["text"], m["goal"]), int(m["reward"]))
-		_check_achievements()
+	_roll()
+	var entries: Array = []
+	for st in Save.missions["list"]:
+		entries.append([MISSIONS[int(st["i"])], st])
+	entries.append([WEEKLY[int(Save.missions["weekly"]["i"])], Save.missions["weekly"]])
+	for e in entries:
+		var m: Dictionary = e[0]
+		var st: Dictionary = e[1]
+		if m["id"] != id or st["done"]:
+			continue
+		st["p"] = int(st["p"]) + value if m["mode"] == "sum" else maxi(int(st["p"]), value)
+		if int(st["p"]) >= int(m["goal"]):
+			st["done"] = true
+			Save.coins += int(m["reward"])
+			Save.stats["missions_done"] = int(Save.stats.get("missions_done", 0)) + 1
+			pending.append(L.t("MISSION_DONE") + " " + L.t("PLUS_COINS", int(m["reward"])))
+			mission_completed.emit(L.t(m["text"], m["goal"]), int(m["reward"]))
+			award_xp(int(m["xp"]))
+			_check_achievements()
+
+
+# ------------------------------------------------------------------ level
+
+## Adds player XP; level-ups pay coins and may unlock abilities (messages shown after the run).
+func award_xp(n: int) -> Array:
+	var levels: Array = Save.add_xp(n)
+	for lv in levels:
+		pending.append(L.t("LEVEL_UP", lv) + " " + L.t("PLUS_COINS", Upgrades.level_coins(lv)))
+		for a in Upgrades.unlocked_at(lv):
+			pending.append(L.t("NEW_ABILITY", L.t("AB_" + str(a["id"]).to_upper())))
+		level_up.emit(lv)
+	return levels
+
+
+## Leaderboard region: the player's choice, or the one guessed from the device locale.
+func region() -> String:
+	return Save.region if PlayGamesConfig.REGION_NAMES.has(Save.region) else PlayGamesConfig.region()
 
 
 # ------------------------------------------------------------------ run events
 
 func run_started() -> void:
-	_run = {"near": 0, "score": 0}
+	_run = {"near": 0, "score": 0, "bubbles": 0}
 
 
 ## Gameplay events: flip, switch, near, bubble, teleport, score_now(value), world(value)
@@ -136,8 +198,10 @@ func event(name: String, value := 1) -> void:
 			_mission_feed("near", 1)
 			_mission_feed("near_run", int(_run["near"]))
 		"bubble":
+			_run["bubbles"] = int(_run.get("bubbles", 0)) + 1
 			_stat_add("bubbles_total")
 			_mission_feed("bubble", 1)
+			_mission_feed("bubble_run", int(_run["bubbles"]))
 		"score_now":
 			_run["score"] = value
 			_mission_feed("score_run", value)
@@ -159,7 +223,7 @@ func run_finished(score: int, world_no: int, time_s := 0.0) -> void:
 	_check_achievements()
 	Save.save_data()
 	games.submit_score("GLOBAL", Save.best)
-	games.submit_score(PlayGamesConfig.region(), Save.best)
+	games.submit_score(region(), Save.best)
 	games.save_cloud(Save.export_data())
 
 
@@ -209,7 +273,7 @@ func _sync_all() -> void:
 	for id in Save.achievements:
 		games.unlock(id)
 	games.submit_score("GLOBAL", Save.best)
-	games.submit_score(PlayGamesConfig.region(), Save.best)
+	games.submit_score(region(), Save.best)
 
 
 func _on_cloud(data: Dictionary) -> void:

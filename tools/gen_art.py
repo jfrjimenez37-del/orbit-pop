@@ -838,32 +838,100 @@ for name, deg, sat in [("violet", 255, 0.9), ("mint", 140, 0.85), ("gold", 30, 1
     for sz, img in sized.items():
         hue_shift(img, deg, sat).save(os.path.join(SPR, "planet_%s_%s.png" % (name, sz)))
 
+TRAIL_ART = {  # id: (style, palette) mirroring Catalog.TRAILS
+    "classic": ("squares", [(255, 212, 60), (255, 255, 255)]),
+    "dots": ("dots", [(255, 255, 255), (140, 230, 255)]),
+    "dash": ("dash", [(255, 230, 90), (255, 255, 255)]),
+    "sparkle": ("plus", [(255, 255, 255), (255, 240, 140)]),
+    "bubbles": ("ring", [(170, 230, 255), (255, 255, 255)]),
+    "leaves": ("leaf", [(120, 220, 90), (70, 170, 70)]),
+    "pixel": ("checker", [(255, 110, 160), (255, 255, 255)]),
+    "hearts": ("heart", [(255, 100, 150), (255, 170, 200)]),
+    "smoke": ("smoke", [(220, 220, 236), (170, 170, 196)]),
+    "fire": ("fire", [(255, 230, 80), (255, 140, 40), (230, 60, 40)]),
+    "ice": ("crystal", [(200, 245, 255), (120, 200, 255)]),
+    "bolt": ("bolt", [(255, 240, 110), (255, 255, 255)]),
+    "notes": ("note", [(200, 140, 255), (255, 140, 220)]),
+    "stars": ("plus", [(255, 220, 60), (255, 250, 200)]),
+    "neon": ("neon", [(60, 240, 255), (255, 70, 220)]),
+    "rainbow": ("squares", [(255, 92, 92), (255, 170, 60), (255, 230, 70), (110, 220, 110), (90, 170, 255), (170, 110, 255)]),
+    "galaxy": ("galaxy", [(150, 100, 255), (80, 120, 255), (255, 255, 255)]),
+    "comet": ("comet", [(255, 255, 255), (140, 210, 255), (80, 120, 255)]),
+    "gold": ("coin", [(255, 206, 50), (255, 250, 200)]),
+    "aurora": ("squares", [(120, 255, 200), (110, 200, 255), (170, 130, 255), (255, 130, 220), (120, 255, 200), (110, 200, 255)]),
+}
+TRAIL_SHAPES = {
+    "heart": [(-1, -1), (1, -1), (-1, 0), (0, 0), (1, 0), (0, 1)],
+    "plus": [(0, -1), (-1, 0), (0, 0), (1, 0), (0, 1)],
+    "ring": [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)],
+    "leaf": [(0, -1), (1, -1), (-1, 0), (0, 0), (1, 0), (-1, 1)],
+    "note": [(1, -2), (1, -1), (2, -2), (1, 0), (0, 0), (0, 1), (-1, 1)],
+    "crystal": [(0, -2), (0, -1), (-1, 0), (0, 0), (1, 0), (0, 1), (0, 2)],
+    "coin": [(0, 0), (1, 0), (0, 1), (1, 1)],
+}
+
 def trail_icon(kind):
+    style, pal = TRAIL_ART[kind]
     im = new(16, 16)
-    rainbow = [(255, 90, 90), (255, 170, 60), (255, 230, 70), (110, 220, 110), (90, 170, 255), (170, 110, 255)]
-    for i in range(6):
-        x, y = 2 + i * 2, 12 - i * 2
-        if kind == "classic":
-            c = (255, 212, 60) if i % 2 == 0 else (255, 255, 255)
-            for dx in range(max(1, i // 2) + 1):
-                put(im, x + dx, y, c); put(im, x + dx, y + 1, c)
-        elif kind == "sparkle":
-            c = (255, 255, 255) if i % 2 else (255, 240, 140)
-            put(im, x, y, c); put(im, x + 1, y, c); put(im, x, y - 1, c); put(im, x - 1, y, c); put(im, x, y + 1, c)
-        elif kind == "rainbow":
+    pts = [(3 + i * 2, 12 - i * 2) for i in range(6)]     # diagonal tail, newest at the top right
+    for i, (x, y) in enumerate(pts):
+        c = pal[i % len(pal)]
+        sz = 1 + i // 2
+        if style in TRAIL_SHAPES:
+            if i % 2 == 1:
+                for dx, dy in TRAIL_SHAPES[style]:
+                    put(im, x + dx, y + dy, pal[0] if style != "plus" else pal[i // 2 % len(pal)])
+                if style == "coin":
+                    put(im, x, y, pal[1])
+        elif style == "squares":
+            for dy in range(sz):
+                for dx in range(sz):
+                    put(im, x + dx - sz // 2, y + dy - sz // 2, c)
+        elif style == "dots":
+            put(im, x, y, c)
+        elif style == "dash":
+            for dx in (-1, 0, 1):
+                put(im, x + dx, y, pal[i % 2])
+        elif style == "checker":
             for dy in range(2):
                 for dx in range(2):
-                    put(im, x + dx, y + dy, rainbow[i])
-        elif kind == "hearts" and i % 2 == 0:
-            for (dx, dy) in [(0, 0), (2, 0), (0, 1), (1, 1), (2, 1), (1, 2)]:
-                put(im, x + dx - 1, y + dy - 1, (255, 100, 150))
-        elif kind == "stars" and i % 2 == 0:
-            for (dx, dy) in [(1, 0), (0, 1), (1, 1), (2, 1), (1, 2)]:
-                put(im, x + dx - 1, y + dy - 1, (255, 220, 60))
+                    put(im, x + dx, y + dy, pal[(dx + dy + i) % 2])
+        elif style == "smoke":
+            r = 3 - i // 2
+            for dy in range(r):
+                for dx in range(r):
+                    put(im, x + dx - r // 2, y + dy - r // 2 - (2 - i // 2), pal[i % 2])
+        elif style == "fire":
+            fc = pal[min(2, (5 - i) // 2)]
+            for dy in range(sz):
+                for dx in range(sz):
+                    put(im, x + dx, y + dy - (5 - i) // 2, fc)
+        elif style == "bolt":
+            if i < 5:
+                nx, ny = pts[i + 1]
+                put(im, x, y, pal[0]); put(im, x + 1, y - (2 if i % 2 else 0), pal[0]); put(im, nx, ny, pal[0])
+        elif style == "neon":
+            for dy in range(sz + 2):
+                for dx in range(sz + 2):
+                    put(im, x + dx - 1, y + dy - 1, tuple(v // 3 + 40 for v in pal[i % 2]))
+            for dy in range(sz):
+                for dx in range(sz):
+                    put(im, x + dx, y + dy, pal[i % 2])
+        elif style == "galaxy":
+            for dy in range(sz):
+                for dx in range(sz):
+                    put(im, x + dx, y + dy, pal[i % 2])
+            if i % 2:
+                put(im, x + 2, y - 2, pal[2])
+        elif style == "comet":
+            cc = pal[min(2, (5 - i) // 2)]
+            for dy in range(sz + 1):
+                for dx in range(sz + 1):
+                    put(im, x + dx, y + dy, cc)
     outline(im)
     return im
 
-for k in ["classic", "sparkle", "rainbow", "hearts", "stars"]:
+for k in TRAIL_ART:
     save(trail_icon(k), "trail_%s.png" % k)
 
 WORLD_ICON = {"sky": ((70, 152, 255), (176, 230, 255), (255, 142, 108)),
@@ -905,10 +973,17 @@ MORE_ICONS = {
     "globe": ["..###....", ".#.#.#...", "#..#..#..", "#######..", "#..#..#..", ".#.#.#...", "..###....", "........."],
     "left": ["...#.....", "..##.....", ".###.....", "####.....", ".###.....", "..##.....", "...#.....", "........."],
     "right": ["#........", "##.......", "###......", "####.....", "###......", "##.......", "#........", "........."],
+    "bolt": ["....##...", "...##....", "..##.....", ".######..", "....##...", "...##....", "..##.....", ".#......."],
+    "slowmo": ["#######..", ".#...#...", "..#.#....", "...#.....", "..#.#....", ".#.#.#...", "#######..", "........."],
+    "magnet": ["##...##..", "##...##..", "##...##..", "##...##..", "##...##..", ".##.##...", "..###....", "........."],
+    "rocket": ["...#.....", "..###....", "..#.#....", "..###....", "..###....", ".#####...", "#.#.#.#..", "..#.#...."],
+    "heart": [".##.##...", "#######..", "#######..", "#######..", ".#####...", "..###....", "...#.....", "........."],
+    "level": ["...#.....", "..###....", ".#####...", "...#.....", "..###....", ".#####...", "...#.....", "........."],
 }
 MORE_COL = {"coin": (255, 206, 50), "gift": (255, 110, 160), "shield": (120, 220, 255), "rush": (140, 230, 255),
             "trail": (255, 230, 90), "teleport": (200, 140, 255), "mission": (255, 240, 200), "trophy": (255, 206, 50), "pause": (255, 255, 255),
-            "gear": (220, 226, 240), "share": (140, 230, 160), "globe": (120, 200, 255), "world": (120, 220, 140), "left": (255, 255, 255), "right": (255, 255, 255)}
+            "gear": (220, 226, 240), "share": (140, 230, 160), "globe": (120, 200, 255), "world": (120, 220, 140), "left": (255, 255, 255), "right": (255, 255, 255),
+            "bolt": (255, 220, 60), "slowmo": (150, 190, 255), "magnet": (255, 90, 100), "rocket": (255, 170, 80), "heart": (255, 100, 150), "level": (120, 230, 255)}
 for name, rows in MORE_ICONS.items():
     im = new(len(rows[0]) + 2, len(rows) + 2)
     for y, row in enumerate(rows):
@@ -922,6 +997,9 @@ for name, rows in MORE_ICONS.items():
     if name == "gift":
         for yy in range(3, 9):
             put(im, 5, yy, (255, 230, 90))
+    if name == "magnet":   # silver tips
+        for p in [(1, 1), (2, 1), (6, 1), (7, 1), (1, 2), (2, 2), (6, 2), (7, 2)]:
+            put(im, p[0], p[1], (230, 236, 250))
     outline(im, OUT, diag=True)
     save(im, "icon_%s.png" % name)
 print("art ok")

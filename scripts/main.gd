@@ -1,7 +1,7 @@
 extends Node2D
 ## ORBIT POP — game state machine and core loop.
 
-enum S { MENU, PLAYING, DYING, OVER, SKINS, PAUSED, RESUMING, SHOP, RANKING }
+enum S { MENU, PLAYING, DYING, OVER, SKINS, PAUSED, RESUMING, SHOP, RANKING, ABILITIES }
 
 const SUBSTEP := 1.0 / 120.0
 const HIT_STOP := 0.09
@@ -30,9 +30,14 @@ var bubbles_popped := 0
 var coins_awarded := 0        # coins already paid out for this run (continue-safe)
 var run_coins := 0            # coins shown on game over (doubled by a rewarded ad)
 var coins_doubled := false
-var armed := {"shield": false, "rush": false, "teleport": false}
-var shield_hit := false       # SHIELD boost still unused in this run
-var teleports := 0            # TELEPORT boost charges left in this run
+var shield_hits := 0          # SHIELD ability: hits left this run
+var shield_recharge_at := -1.0
+var teleports := 0            # TELEPORT ability charges left in this run
+var slowmo_charges := 0       # SLOW-MO ability charges left in this run
+var slowmo_left := 0.0        # real seconds of slow motion still running
+var second_life := false      # SECOND LIFE ability unused in this run
+var start_score := 0          # HEADSTART: points granted by the start world
+var xp_awarded := 0           # XP already paid out for this run (continue-safe)
 var stage := 0                # current world (Stages index)
 var world_no := 1             # world number shown to the player
 var _stage_pending := -1
@@ -71,28 +76,19 @@ func _ready() -> void:
 		if not Monetization.show_rewarded("double_coins"):
 			ui.toast(L.t("NO_AD"), Color8(255, 150, 160)))
 	ui.teleport_pressed.connect(use_teleport)
+	ui.slowmo_pressed.connect(use_slowmo)
 	ui.share_pressed.connect(_share)
 	ui.ranking_pressed.connect(open_ranking)
+	ui.abilities_pressed.connect(open_abilities)
 	ui.pause_pressed.connect(_pause)
 	ui.resume_pressed.connect(_resume)
 	ui.quit_pressed.connect(_quit_run)
 	ui.language_changed.connect(func(): get_tree().reload_current_scene())
 	ui.style_changed.connect(apply_style)
-	ui.boost_toggled.connect(_on_boost_toggled)
 	ui.daily_claim.connect(_on_daily_claim)
 	ui.free_coins_pressed.connect(func():
 		if Save.free_ads_left() > 0 and not Monetization.show_rewarded("free_coins"):
 			ui.toast(L.t("NO_AD"), Color8(255, 150, 160)))
-	ui.boost_buy.connect(func(id):
-		if Monetization.buy_boost(id):
-			Sfx.play("unlock")
-			ui.toast("+1 " + L.t(MonetizationConfig.BOOSTS[id]["name"]), Color8(120, 255, 200))
-		else:
-			Sfx.play("deny")
-			ui.toast(L.t("NOT_ENOUGH"), Color8(255, 150, 160))
-		if state == S.SHOP:
-			ui.refresh_shop()
-		ui.refresh_menu())
 	ui.buy_pressed.connect(func(id): Monetization.buy(id))
 	ui.restore_pressed.connect(func(): Monetization.restore())
 	Monetization.rewarded_finished.connect(_on_rewarded)
@@ -107,7 +103,7 @@ func _ready() -> void:
 
 func _layout() -> void:
 	var sz := get_viewport_rect().size
-	var cy := (sz.y + 8.0) * 0.5 if state in [S.MENU, S.SKINS, S.SHOP, S.RANKING] else sz.y * 0.5 + 14.0
+	var cy := (sz.y + 8.0) * 0.5 if state in [S.MENU, S.SKINS, S.SHOP, S.RANKING, S.ABILITIES] else sz.y * 0.5 + 14.0
 	_world_y_target = roundf(cy)
 
 
@@ -130,10 +126,7 @@ func go_menu() -> void:
 	player.happy = true
 	planet.mood = Planet.Mood.SMILE
 	_layout()
-	for k in armed:
-		if int(Save.boosts.get(k, 0)) <= 0:
-			armed[k] = false
-	ui.show_menu(armed)
+	ui.show_menu()
 	if Save.daily_available():
 		ui.show_daily()
 	elif Monetization.should_offer_starter():
@@ -145,6 +138,11 @@ func go_menu() -> void:
 func open_skins() -> void:
 	state = S.SKINS
 	ui.show_skins()
+
+
+func open_abilities() -> void:
+	state = S.ABILITIES
+	ui.show_abilities()
 
 
 func open_ranking() -> void:
@@ -169,9 +167,10 @@ func _quit_run() -> void:
 	Save.submit_run(score)
 	Monetization.on_game_over()
 	Progress.run_finished(score, world_no, gt)
-	var earned := int(floor(score * MonetizationConfig.COINS_PER_SCORE)) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE
+	var earned := _run_coins()
 	Save.add_coins(earned - coins_awarded)
 	coins_awarded = earned
+	_award_xp()
 	Monetization.between_runs(go_menu)
 
 
@@ -200,15 +199,6 @@ func _apply_world(i: int, animated: bool) -> void:
 	planet.set_world(w.get("planets", [w["planet"], w.get("planet2", w["planet"])]))
 
 
-func _on_boost_toggled(id: String) -> void:
-	if int(Save.boosts.get(id, 0)) <= 0:
-		armed[id] = false
-		return
-	armed[id] = not armed[id]
-	Sfx.play("select")
-	ui.refresh_boosts(armed)
-
-
 func _on_daily_claim(doubled: bool) -> void:
 	if doubled:
 		if not Monetization.show_rewarded("daily_double"):
@@ -221,10 +211,7 @@ func _give_daily(mult: int) -> void:
 	var g := Save.claim_daily(mult)
 	if g.is_empty():
 		return
-	var msg := L.t("PLUS_COINS", int(g["coins"]) * mult)
-	if g["boost"] != "":
-		msg += " +1 " + L.t(MonetizationConfig.BOOSTS[g["boost"]]["name"])
-	ui.toast(msg, Color8(255, 222, 70))
+	ui.toast(L.t("PLUS_COINS", int(g["coins"]) * mult), Color8(255, 222, 70))
 	Sfx.play("unlock")
 	ui.hide_popup()
 	ui.refresh_menu()
@@ -331,10 +318,17 @@ func start_run() -> void:
 	coins_doubled = false
 	Monetization.run_active = true
 	Monetization.hide_banner()
-	shield_hit = bool(armed["shield"]) and Save.use_boost("shield")
-	player.shield_boost = shield_hit
-	var rush: bool = armed["rush"] and Save.use_boost("rush")
-	teleports = 1 if bool(armed.get("teleport", false)) and Save.use_boost("teleport") else 0
+	shield_hits = Upgrades.shield_hits(Save.ability("shield"))
+	shield_recharge_at = -1.0
+	player.shield_boost = shield_hits > 0
+	player.shield_layers = shield_hits
+	teleports = Save.ability("teleport")
+	slowmo_charges = Save.ability("slowmo")
+	slowmo_left = 0.0
+	player.slowmo = false
+	second_life = Save.ability("secondlife") > 0
+	xp_awarded = 0
+	start_score = 0
 	stage = 0
 	world_no = 1
 	_stage_pending = -1
@@ -342,12 +336,19 @@ func start_run() -> void:
 	Orbit.reset()
 	_apply_world(0, false)
 	Progress.run_started()
-	for k in armed:
-		if int(Save.boosts.get(k, 0)) <= 0:
-			armed[k] = false
 	best_at_start = Save.best
 	director.reset(randi(), Save.recent_average())
-	director.bubble_rate = 2.0 if rush else 1.0
+	director.bubble_rate = 1.0
+	# HEADSTART: begin in a world already passed, with that world's points
+	var sw := Save.chosen_start_world()
+	if sw > 1:
+		stage = sw - 1
+		world_no = sw
+		start_score = int(Stages.LIST[stage]["score"])
+		score = start_score
+		Orbit.set_shape(Stages.LIST[stage]["orbits"], true)
+		_apply_world(stage, false)
+		director.stage = stage
 	player.reset(-PI * 0.5)
 	player.happy = false
 	player.omega = director.omega(0.0)
@@ -355,7 +356,10 @@ func start_run() -> void:
 	bg.speed_mul = 1.0
 	_layout()
 	ui.show_hud(best_at_start, Save.games < 5)
+	ui.set_score(score)
+	ui.set_world_progress(score, best_at_start)
 	ui.set_teleport(teleports)
+	ui.set_slowmo(slowmo_charges)
 	Sfx.play("go")
 
 
@@ -370,6 +374,9 @@ func _clear_field() -> void:
 
 
 func _die() -> void:
+	if second_life:
+		_use_second_life()
+		return
 	state = S.DYING
 	Monetization.run_active = false
 	_death_angle = player.angle
@@ -389,13 +396,15 @@ func _game_over() -> void:
 	var res := Save.submit_run(score)
 	Monetization.on_game_over()
 	Progress.run_finished(score, world_no, gt)
-	var earned := int(floor(score * MonetizationConfig.COINS_PER_SCORE)) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE
+	var earned := _run_coins()
 	Save.add_coins(earned - coins_awarded)
 	run_coins = earned - coins_awarded
 	coins_awarded = earned
+	var xp_gain := _award_xp()
 	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], Monetization.can_continue(score, continued),
 		Monetization.continue_is_free())
 	ui.set_over_coins(run_coins, run_coins > 0 and not coins_doubled and Monetization.rewarded_ready())
+	ui.set_over_xp(xp_gain)
 	for msg in Progress.take_pending():
 		ui.toast(msg, Color8(255, 236, 140))
 	if res["record"] and score > 0:
@@ -413,6 +422,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and event.keycode == KEY_T and state == S.PLAYING:
 		use_teleport()
+		return
+	if event is InputEventKey and event.pressed and event.keycode == KEY_S and state == S.PLAYING:
+		use_slowmo()
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE, KEY_P]:
 		if state == S.PLAYING:
@@ -468,7 +480,7 @@ func _notification(what: int) -> void:
 		match state:
 			S.PLAYING, S.RESUMING:
 				_pause()
-			S.PAUSED, S.OVER, S.SKINS, S.SHOP, S.RANKING:
+			S.PAUSED, S.OVER, S.SKINS, S.SHOP, S.RANKING, S.ABILITIES:
 				go_menu()
 			S.MENU:
 				get_tree().quit()
@@ -491,7 +503,7 @@ func _process(delta: float) -> void:
 	var sh := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
 	world.position = Vector2(roundf(get_viewport_rect().size.x * 0.5), roundf(_world_y)) + sh.round()
 	match state:
-		S.MENU, S.SKINS, S.SHOP, S.RANKING:
+		S.MENU, S.SKINS, S.SHOP, S.RANKING, S.ABILITIES:
 			_menu_flip -= delta
 			if _menu_flip <= 0.0:
 				_menu_flip = randf_range(1.6, 3.6)
@@ -499,6 +511,12 @@ func _process(delta: float) -> void:
 			player.advance(delta)
 		S.PLAYING:
 			var left := delta
+			if slowmo_left > 0.0:
+				slowmo_left -= delta
+				left *= Upgrades.SLOWMO_SCALE
+				if slowmo_left <= 0.0:
+					player.slowmo = false
+					bg.speed_mul = 1.0
 			while left > 0.0 and state == S.PLAYING:
 				var step := minf(SUBSTEP, left)
 				left -= step
@@ -544,12 +562,19 @@ func _sim(dt: float) -> void:
 	_tick_objects()
 	# collisions + near misses
 	var worry := false
+	if shield_recharge_at > 0.0 and gt >= shield_recharge_at:
+		shield_recharge_at = -1.0
+		shield_hits = 1
+		player.shield_boost = true
+		player.shield_layers = 1
+		fx.text(L.t("SHIELD_UP"), player.position + Vector2(0, -16), Color8(140, 230, 255))
+		Sfx.play("unlock", 1.3, -6.0)
 	var shielded := gt < shield_until
 	player.shield = maxf(0.0, shield_until - gt)
 	for h in hazards:
 		var c: float = h.clearance(gt, player.angle, player.orbit)
 		if c < 0.0 and not shielded:
-			if shield_hit:
+			if shield_hits > 0:
 				_break_shield()
 				shielded = true
 				continue
@@ -563,8 +588,13 @@ func _sim(dt: float) -> void:
 			h.scored = true
 			_award(h)
 	planet.mood = Planet.Mood.OH if worry else Planet.Mood.SMILE
+	var magnet := Save.ability("magnet")
 	for b in bubbles:
-		if b.t_end > gt and b.touches(player.angle, player.orbit):
+		if magnet > 0 and b.orbit == player.orbit and b.t_end > gt:
+			# MAGNET: nearby bubbles slide along the orbit towards the player
+			if absf(angle_difference(b.theta, player.angle)) < 0.35 + 0.12 * magnet:
+				b.theta = lerp_angle(b.theta, player.angle, 0.05 + 0.01 * magnet)
+		if b.t_end > gt and b.touches(player.angle, player.orbit, Upgrades.MAGNET_RANGE * magnet):
 			b.t_end = -1.0
 			_add_score(2)
 			bubbles_popped += 1
@@ -592,9 +622,55 @@ func use_teleport() -> void:
 	Progress.event("teleport")
 
 
+func use_slowmo() -> void:
+	if slowmo_charges <= 0 or state != S.PLAYING or slowmo_left > 0.0:
+		return
+	slowmo_charges -= 1
+	slowmo_left = Upgrades.SLOWMO_TIME
+	player.slowmo = true
+	fx.ring(player.position, Color8(150, 190, 255), 6.0, 40.0, 0.4)
+	fx.text(L.t("SLOWMO_FX"), player.position + Vector2(0, -14), Color8(170, 200, 255))
+	Sfx.play("pop", 0.7)
+	ui.set_slowmo(slowmo_charges)
+
+
+## SECOND LIFE ability: a fatal hit clears the field and the run goes on (once per run).
+func _use_second_life() -> void:
+	second_life = false
+	for h in hazards:
+		h.queue_free()
+	hazards.clear()
+	shield_until = gt + 2.0
+	director.next_t = gt + 1.0
+	_shake = 4.0
+	ui.flash()
+	fx.burst(player.position, 20, [Color8(255, 110, 150), Color.WHITE], 100.0, 0.5, 2.5)
+	fx.text(L.t("SECOND_LIFE_FX"), player.position + Vector2(0, -18), Color8(255, 130, 170), 1.0, 1.2)
+	Sfx.play("record")
+	Save.vibrate(50)
+
+
+## Coins earned this run (HEADSTART points are not paid), with the COINS+ ability.
+func _run_coins() -> int:
+	var base := floorf((score - start_score) * MonetizationConfig.COINS_PER_SCORE) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE
+	return int(floor(base * Upgrades.coin_mult(Save.ability("coins"))))
+
+
+## Pays the run's XP not given yet (a continue pays only the difference). Returns XP added now.
+func _award_xp() -> int:
+	var total_xp := Upgrades.run_xp(maxi(0, score - start_score), Save.games == 1)
+	var gain := total_xp - xp_awarded
+	xp_awarded = total_xp
+	Progress.award_xp(gain)
+	return gain
+
+
 func _break_shield() -> void:
-	shield_hit = false
-	player.shield_boost = false
+	shield_hits -= 1
+	player.shield_layers = shield_hits
+	player.shield_boost = shield_hits > 0
+	if shield_hits <= 0 and Save.ability("shield") >= 2:
+		shield_recharge_at = gt + Upgrades.SHIELD_RECHARGE
 	shield_until = gt + 1.0
 	_shake = 3.0
 	fx.burst(player.position, 16, [Color8(140, 230, 255), Color.WHITE], 90.0, 0.4, 2.0)
@@ -624,6 +700,7 @@ func _award(h) -> void:
 func _add_score(n: int) -> void:
 	score += n
 	ui.set_score(score)
+	ui.set_world_progress(score, best_at_start)
 	Progress.event("score_now", score)
 	var target := Stages.number_for_score(score)
 	if target > world_no and _stage_pending < 0:

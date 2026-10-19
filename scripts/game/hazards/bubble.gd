@@ -25,8 +25,9 @@ func tick(time: float) -> void:
 	queue_redraw()
 
 
-func touches(angle: float, k := 0) -> bool:
-	if t < t_spawn + 0.2 or Orbit.pos(k, angle).distance_to(Orbit.pos(orbit, theta)) > RADIUS + Orbit.PLAYER_R:
+## `extra`: additional pickup range (MAGNET ability).
+func touches(angle: float, k := 0, extra := 0.0) -> bool:
+	if t < t_spawn + 0.2 or Orbit.pos(k, angle).distance_to(Orbit.pos(orbit, theta)) > RADIUS + Orbit.PLAYER_R + extra:
 		return false
 	return true
 

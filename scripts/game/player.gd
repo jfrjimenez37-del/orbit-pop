@@ -16,8 +16,10 @@ var skin := 0
 var face_right := true
 var happy := false
 var shield := 0.0   # seconds of continue-shield left (blinking bubble)
-var shield_boost := false  # SHIELD boost armed: steady bubble until it absorbs a hit
-var trail_style := "classic"
+var shield_boost := false  # SHIELD ability: steady bubble until it absorbs a hit
+var shield_layers := 1     # 2 = SHIELD level 3 (absorbs two hits)
+var slowmo := false        # SLOW-MO active: blue time ripple
+var trail_style := "classic"   # Catalog.TRAILS id
 const RAINBOW := [Color8(255, 90, 90), Color8(255, 170, 60), Color8(255, 230, 70), Color8(110, 220, 110), Color8(90, 170, 255), Color8(170, 110, 255)]
 
 var _t := 0.0
@@ -115,32 +117,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	if tex == null:
 		return
-	var col := color()
-	for i in range(_trail.size() - 1, 1, -1):
-		var p := (_trail[i] - position).round()
-		var k := 1.0 - float(i) / TRAIL_LEN
-		var s := maxf(1.0, roundf(4.0 * k))
-		var c := col if i % 2 == 0 else Color(1, 1, 1)
-		match trail_style:
-			"sparkle":
-				c = Color(1, 1, 1) if (i + int(_t * 20.0)) % 3 else Color8(255, 240, 140)
-			"rainbow":
-				c = RAINBOW[i % RAINBOW.size()]
-			"hearts":
-				c = Color8(255, 100, 150)
-			"stars":
-				c = Color8(255, 220, 60)
-		c.a = 0.8 * k
-		if (trail_style == "hearts" or trail_style == "stars") and i % 3 == 0:
-			var shape := [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, 1)] \
-				if trail_style == "hearts" else [Vector2(0, -1), Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, 1)]
-			for o in shape:
-				draw_rect(Rect2(p + o, Vector2(1, 1)), c)
-		elif trail_style == "sparkle" and i % 2 == 0:
-			draw_rect(Rect2(p + Vector2(-1, 0), Vector2(3, 1)), c)
-			draw_rect(Rect2(p + Vector2(0, -1), Vector2(1, 3)), c)
-		elif trail_style == "classic" or trail_style == "rainbow":
-			draw_rect(Rect2((p - Vector2(s, s) * 0.5).round(), Vector2(s, s)), c)
+	_draw_trail()
 	var frame := 1
 	if not alive:
 		frame = 4
@@ -155,6 +132,10 @@ func _draw() -> void:
 	var flipx := 1.0 if face_right else -1.0
 	if shield_boost and alive:
 		draw_arc(Vector2(0, -1), 10.0 + roundf(sin(_t * 6.0)), 0.0, TAU, 20, Color(0.55, 0.9, 1.0, 0.95), 1.0)
+		if shield_layers > 1:
+			draw_arc(Vector2(0, -1), 12.0 + roundf(sin(_t * 6.0)), 0.0, TAU, 20, Color(0.55, 0.9, 1.0, 0.6), 1.0)
+	if slowmo and alive:
+		draw_arc(Vector2(0, -1), 14.0 + fmod(_t * 20.0, 6.0), 0.0, TAU, 24, Color(0.6, 0.75, 1.0, 0.5), 1.0)
 	if shield > 0.0 and alive:
 		if shield > 0.6 or fmod(shield, 0.2) < 0.1:
 			draw_arc(Vector2(0, -1), 10.0, 0.0, TAU, 20, Color(0.7, 0.95, 1.0, 0.9), 1.0)
@@ -166,6 +147,107 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	if not fx.is_empty() and alive:
 		_draw_fx(fx[0], fx[1], false)
+
+
+const SHAPES := {
+	"heart": [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, 1)],
+	"plus": [Vector2(0, -1), Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, 1)],
+	"ring": [Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1)],
+	"leaf": [Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(-1, 1)],
+	"note": [Vector2(1, -2), Vector2(1, -1), Vector2(2, -2), Vector2(1, 0), Vector2(0, 0), Vector2(0, 1), Vector2(-1, 1)],
+	"crystal": [Vector2(0, -2), Vector2(0, -1), Vector2(-1, 0), Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(0, 2)],
+	"coin": [Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1)],
+}
+
+
+func _shape(p: Vector2, shape: String, c: Color) -> void:
+	for o in SHAPES[shape]:
+		draw_rect(Rect2(p + o, Vector2(1, 1)), c)
+
+
+## Trail behind the critter. Index 0 is the newest point; k fades 1 -> 0 along the tail.
+func _draw_trail() -> void:
+	var tr: Dictionary = Catalog.TRAILS[Catalog.find("trails", trail_style)]
+	var style: String = tr["style"]
+	var cols: Array = tr["cols"]
+	var n := _trail.size()
+	for i in range(n - 1, 1, -1):
+		var p := (_trail[i] - position).round()
+		var k := 1.0 - float(i) / TRAIL_LEN
+		var a := 0.85 * k
+		var s := maxf(1.0, roundf(4.0 * k))
+		var c0: Color = cols[0] if not cols.is_empty() else color()
+		var c1: Color = cols[1] if cols.size() > 1 else Color.WHITE
+		var alt: Color = c0 if i % 2 == 0 else c1
+		match style:
+			"squares":
+				_sq(p, s, Color(color() if i % 2 == 0 else Color.WHITE, a))
+			"rainbow":
+				_sq(p, s, Color(RAINBOW[i % RAINBOW.size()], a))
+			"aurora":
+				_sq(p, s + 1.0, Color.from_hsv(fmod(_t * 0.4 + i * 0.06, 1.0), 0.6, 1.0, a))
+				if i % 3 == 0:
+					_sq(p + Vector2(0, -3 * sin(_t * 3.0 + i)), 1.0, Color(1, 1, 1, a))
+			"dots":
+				if i % 2 == 0:
+					_sq(p, 1.0, Color(alt, a))
+			"dash":
+				if i % 3 != 2:
+					draw_rect(Rect2(p - Vector2(1, 0), Vector2(3, 1)), Color(alt, a))
+			"sparkle":
+				if i % 2 == 0:
+					_shape(p, "plus", Color(c1 if (i + int(_t * 20.0)) % 3 == 0 else c0, a))
+			"rings":
+				if i % 3 == 0:
+					_shape(p + Vector2(0, -roundf((1.0 - k) * 3.0)), "ring", Color(alt, a))
+			"leaves":
+				if i % 3 == 0:
+					_shape(p + Vector2(roundf(sin(_t * 4.0 + i) * 1.5), 0), "leaf", Color(alt, a))
+			"checker":
+				_sq(p, 2.0, Color(c0 if (i + int(p.x + p.y)) % 2 == 0 else c1, a))
+			"hearts":
+				if i % 3 == 0:
+					_shape(p, "heart", Color(c0, a))
+			"stars":
+				if i % 3 == 0:
+					_shape(p, "plus", Color(c0 if i % 2 == 0 else c1, a))
+			"smoke":
+				var r := 1.0 + roundf((1.0 - k) * 3.0)
+				if i % 2 == 0:
+					_sq(p + Vector2(0, -roundf((1.0 - k) * 2.0)), r, Color(alt, a * 0.7))
+			"fire":
+				var fc: Color = cols[mini(int((1.0 - k) * 3.0), 2)]
+				_sq(p + Vector2(0, -roundf((1.0 - k) * 3.0 + sin(_t * 18.0 + i))), s, Color(fc, a))
+			"crystals":
+				if i % 3 == 0:
+					_shape(p, "crystal", Color(alt, a))
+			"bolt":
+				if i < n - 1:
+					var q := (_trail[i + 1] - position).round()
+					var jit := Vector2(0, 2 if (i + int(_t * 15.0)) % 2 == 0 else -2)
+					draw_line(p + jit, q - jit, Color(alt, a), 1.0)
+			"notes":
+				if i % 4 == 1:
+					_shape(p + Vector2(0, -roundf((1.0 - k) * 4.0)), "note", Color(alt, a))
+			"neon":
+				var nc: Color = c0 if int(_t * 6.0 + i * 0.5) % 2 == 0 else c1
+				_sq(p, s + 2.0, Color(nc, a * 0.25))
+				_sq(p, s, Color(nc, a))
+			"galaxy":
+				_sq(p, maxf(1.0, s - 1.0), Color(cols[i % 2], a * 0.8))
+				if (i + int(_t * 8.0)) % 5 == 0:
+					_sq(p + Vector2(2, -2), 1.0, Color(cols[2], a))
+			"comet":
+				var cc: Color = cols[mini(int((1.0 - k) * 3.0), 2)]
+				_sq(p, s + 1.0, Color(cc, a))
+			"coins":
+				if i % 3 == 0:
+					_shape(p, "coin", Color(c0, a))
+					_sq(p, 1.0, Color(c1, a))
+
+
+func _sq(p: Vector2, s: float, c: Color) -> void:
+	draw_rect(Rect2((p - Vector2(s, s) * 0.5).round(), Vector2(s, s)), c)
 
 
 func _px(p: Vector2, c: Color, s := 1.0) -> void:

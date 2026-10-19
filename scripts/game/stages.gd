@@ -56,3 +56,17 @@ static func number_for_score(score: int) -> int:
 
 static func world(i: int) -> Dictionary:
 	return Catalog.WORLDS[Catalog.find("worlds", LIST[i]["world"])]
+
+
+## Score range [start, next world) of the world the score is in (for the HUD progress bar).
+static func bounds(score: int) -> Vector2i:
+	if score >= LOOP_FROM:
+		var lo := LOOP_FROM + ((score - LOOP_FROM) / LOOP_EVERY) * LOOP_EVERY
+		return Vector2i(lo, lo + LOOP_EVERY)
+	var lo := 0
+	for e in LIST:
+		var s := int(e["score"])
+		if score < s:
+			return Vector2i(lo, s)
+		lo = s
+	return Vector2i(lo, LOOP_FROM)

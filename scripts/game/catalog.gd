@@ -1,6 +1,7 @@
 class_name Catalog
 ## Every cosmetic in the game. `need` = [kind, value]:
-##   "best" / "total" -> score goal, "world" -> world number reached, "shop" -> product id, "coins" -> coin price.
+##   "best" / "total" -> score goal, "world" -> world number reached, "level" -> player level,
+##   "shop" -> product id, "coins" -> coin price.
 
 ## Rarity tiers (ordered). Skins are listed by rarity; "fx" = particle effect around the critter.
 const RARITIES := ["common", "rare", "epic", "legendary", "mythic"]
@@ -40,12 +41,28 @@ const SKINS := [
 ## Old saves stored the skin as an index into this original order.
 const LEGACY_SKINS := ["poppy", "minty", "berry", "frosty", "ember", "cosmo", "goldie", "neon", "panda", "cookie", "bubbly", "robo", "drake"]
 
+## Trails by rarity. style: how OrbitPlayer draws it (see _draw_trail), cols: palette.
 const TRAILS := [
-	{"id": "classic", "name": "CLASSIC", "need": ["best", 0]},
-	{"id": "sparkle", "name": "SPARKLE", "need": ["coins", 200]},
-	{"id": "rainbow", "name": "RAINBOW", "need": ["shop", "trail_pack"]},
-	{"id": "hearts", "name": "HEARTS", "need": ["shop", "trail_pack"]},
-	{"id": "stars", "name": "STARS", "need": ["shop", "trail_pack"]},
+	{"id": "classic", "name": "CLASSIC", "rarity": "common", "need": ["best", 0], "style": "squares", "cols": []},
+	{"id": "dots", "name": "DOTS", "rarity": "common", "need": ["level", 3], "style": "dots", "cols": [Color8(255, 255, 255), Color8(140, 230, 255)]},
+	{"id": "dash", "name": "DASH", "rarity": "common", "need": ["coins", 300], "style": "dash", "cols": [Color8(255, 230, 90), Color8(255, 255, 255)]},
+	{"id": "sparkle", "name": "SPARKLE", "rarity": "rare", "need": ["coins", 800], "style": "sparkle", "cols": [Color8(255, 255, 255), Color8(255, 240, 140)]},
+	{"id": "bubbles", "name": "BUBBLES", "rarity": "rare", "need": ["world", 3], "style": "rings", "cols": [Color8(170, 230, 255), Color8(255, 255, 255)]},
+	{"id": "leaves", "name": "LEAVES", "rarity": "rare", "need": ["level", 5], "style": "leaves", "cols": [Color8(120, 220, 90), Color8(70, 170, 70)]},
+	{"id": "pixel", "name": "PIXEL", "rarity": "rare", "need": ["coins", 1500], "style": "checker", "cols": [Color8(255, 110, 160), Color8(255, 255, 255)]},
+	{"id": "hearts", "name": "HEARTS", "rarity": "rare", "need": ["shop", "trail_pack"], "style": "hearts", "cols": [Color8(255, 100, 150), Color8(255, 170, 200)]},
+	{"id": "smoke", "name": "SMOKE", "rarity": "rare", "need": ["level", 10], "style": "smoke", "cols": [Color8(220, 220, 236), Color8(170, 170, 196)]},
+	{"id": "fire", "name": "FIRE", "rarity": "epic", "need": ["world", 5], "style": "fire", "cols": [Color8(255, 230, 80), Color8(255, 140, 40), Color8(230, 60, 40)]},
+	{"id": "ice", "name": "ICE", "rarity": "epic", "need": ["world", 6], "style": "crystals", "cols": [Color8(200, 245, 255), Color8(120, 200, 255)]},
+	{"id": "bolt", "name": "BOLT", "rarity": "epic", "need": ["level", 15], "style": "bolt", "cols": [Color8(255, 240, 110), Color8(255, 255, 255)]},
+	{"id": "notes", "name": "NOTES", "rarity": "epic", "need": ["coins", 3000], "style": "notes", "cols": [Color8(200, 140, 255), Color8(255, 140, 220)]},
+	{"id": "stars", "name": "STARS", "rarity": "epic", "need": ["shop", "trail_pack"], "style": "stars", "cols": [Color8(255, 220, 60), Color8(255, 250, 200)]},
+	{"id": "neon", "name": "NEON", "rarity": "epic", "need": ["level", 20], "style": "neon", "cols": [Color8(60, 240, 255), Color8(255, 70, 220)]},
+	{"id": "rainbow", "name": "RAINBOW", "rarity": "legendary", "need": ["shop", "trail_pack"], "style": "rainbow", "cols": []},
+	{"id": "galaxy", "name": "GALAXY", "rarity": "legendary", "need": ["world", 8], "style": "galaxy", "cols": [Color8(150, 100, 255), Color8(80, 120, 255), Color8(255, 255, 255)]},
+	{"id": "comet", "name": "COMET", "rarity": "legendary", "need": ["level", 30], "style": "comet", "cols": [Color8(255, 255, 255), Color8(140, 210, 255), Color8(80, 120, 255)]},
+	{"id": "gold", "name": "GOLD", "rarity": "legendary", "need": ["coins", 8000], "style": "coins", "cols": [Color8(255, 206, 50), Color8(255, 250, 200)]},
+	{"id": "aurora", "name": "AURORA", "rarity": "mythic", "need": ["level", 50], "style": "aurora", "cols": []},
 ]
 
 ## In-run worlds (free, see Stages): top/bottom sky colors, planet sprite, cloud tint, starfield

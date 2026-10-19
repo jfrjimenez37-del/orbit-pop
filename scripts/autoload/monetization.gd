@@ -201,15 +201,6 @@ func starter_listed() -> bool:
 	return not Save.owns("starter") and not Save.owns("no_ads")
 
 
-## Coin shop for boosts. Returns true on success.
-func buy_boost(id: String) -> bool:
-	var price: int = MonetizationConfig.BOOSTS[id]["price"]
-	if not Save.spend(price):
-		return false
-	Save.add_boost(id)
-	return true
-
-
 ## GDPR: re-open the consent / privacy options form. Returns false when there is no real form (PC/test).
 func show_privacy_options() -> bool:
 	if ads != null and ads.has_method("show_privacy"):

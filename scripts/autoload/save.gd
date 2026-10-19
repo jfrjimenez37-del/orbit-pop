@@ -1,10 +1,13 @@
 extends Node
-## Local persistent progress: stats, coins, cosmetics, purchases, daily gift and settings.
+## Local persistent progress: stats, coins, player level and abilities, cosmetics, purchases,
+## daily gift, missions and settings.
 
 signal changed
 
 const PATH := "user://orbitpop_save.cfg"
-const VERSION := 2
+const VERSION := 3
+## Old consumable boosts are refunded in coins when an old save loads (they became abilities).
+const BOOST_REFUND := {"shield": 150, "rush": 100, "teleport": 120}
 const SKINS := Catalog.SKINS
 
 var best := 0
@@ -20,7 +23,11 @@ var seen_unlocks: Array = ["poppy"] # skin ids the player was already told about
 var purchases: Array = []     # owned non-consumable product ids (mirrors the store)
 var coins := 0
 var owned_items: Array = []   # "cat:id" bought with coins
-var boosts := {"shield": 0, "rush": 0, "teleport": 0}
+var level := 1
+var xp := 0                   # XP inside the current level
+var abilities := {}           # ability id -> level (see Upgrades)
+var start_world := 1          # chosen HEADSTART world (1 = normal start)
+var region := ""              # leaderboard region, "" = from the device locale
 var daily_day := 0            # last claimed streak day (1..7)
 var daily_last := ""          # local date of the last claim (YYYY-MM-DD)
 var free_ads_date := ""
@@ -31,7 +38,8 @@ var lang := ""                # "" = follow the device
 var stats := {}               # near_total, bubbles_total, switch_total, teleport_total, missions_done, best_world
 var achievements: Array = []  # unlocked achievement ids
 var top_scores: Array = []    # [{"s": score, "w": world, "d": "YYYY-MM-DD"}] best 10
-var mission := {"day": -1, "progress": 0, "done": false}
+## daily: {"day", "list": [{"i", "p", "done"}]}, weekly: {"week", "i", "p", "done"}
+var missions := {"day": -1, "list": [], "week": -1, "weekly": {}}
 var saved_at := 0
 var path := PATH
 var clock_override := -1.0    # tests: fake unix time
@@ -57,9 +65,14 @@ func load_data() -> void:
 	purchases = cfg.get_value("shop", "purchases", [])
 	coins = int(cfg.get_value("shop", "coins", 0))
 	owned_items = cfg.get_value("shop", "owned_items", [])
-	boosts = cfg.get_value("shop", "boosts", {"shield": 0, "rush": 0, "teleport": 0})
-	if not boosts.has("teleport"):
-		boosts["teleport"] = 0
+	var old_boosts: Dictionary = cfg.get_value("shop", "boosts", {})
+	for b in old_boosts:
+		coins += int(old_boosts[b]) * int(BOOST_REFUND.get(b, 100))
+	level = clampi(int(cfg.get_value("player", "level", 1)), 1, Upgrades.MAX_LEVEL)
+	xp = int(cfg.get_value("player", "xp", 0))
+	abilities = cfg.get_value("player", "abilities", {})
+	start_world = int(cfg.get_value("player", "start_world", 1))
+	region = str(cfg.get_value("settings", "region", ""))
 	starter_seen = bool(cfg.get_value("shop", "starter_seen", false))
 	daily_day = int(cfg.get_value("daily", "day", 0))
 	daily_last = str(cfg.get_value("daily", "last", ""))
@@ -72,7 +85,7 @@ func load_data() -> void:
 	stats = cfg.get_value("progress", "stats", {})
 	achievements = cfg.get_value("progress", "achievements", [])
 	top_scores = cfg.get_value("progress", "top_scores", [])
-	mission = cfg.get_value("progress", "mission", {"day": -1, "progress": 0, "done": false})
+	missions = cfg.get_value("progress", "missions", {"day": -1, "list": [], "week": -1, "weekly": {}})
 	saved_at = int(cfg.get_value("meta", "saved_at", 0))
 	if skin < 0 or skin >= SKINS.size() or not is_unlocked(skin):
 		skin = 0
@@ -94,7 +107,11 @@ func save_data() -> void:
 	cfg.set_value("shop", "purchases", purchases)
 	cfg.set_value("shop", "coins", coins)
 	cfg.set_value("shop", "owned_items", owned_items)
-	cfg.set_value("shop", "boosts", boosts)
+	cfg.set_value("player", "level", level)
+	cfg.set_value("player", "xp", xp)
+	cfg.set_value("player", "abilities", abilities)
+	cfg.set_value("player", "start_world", start_world)
+	cfg.set_value("settings", "region", region)
 	cfg.set_value("shop", "starter_seen", starter_seen)
 	cfg.set_value("daily", "day", daily_day)
 	cfg.set_value("daily", "last", daily_last)
@@ -107,7 +124,7 @@ func save_data() -> void:
 	cfg.set_value("progress", "stats", stats)
 	cfg.set_value("progress", "achievements", achievements)
 	cfg.set_value("progress", "top_scores", top_scores)
-	cfg.set_value("progress", "mission", mission)
+	cfg.set_value("progress", "missions", missions)
 	saved_at = int(_now())
 	cfg.set_value("meta", "saved_at", saved_at)
 	cfg.save(path)
@@ -186,8 +203,6 @@ func grant(product: String) -> void:
 		purchases.append(product)
 		var bonus: Dictionary = MonetizationConfig.BUNDLE_BONUS.get(product, {})
 		coins += int(bonus.get("coins", 0))
-		for b in bonus.get("boosts", {}):
-			boosts[b] = int(boosts.get(b, 0)) + int(bonus["boosts"][b])
 	note_unlocks()
 	save_data()
 
@@ -206,6 +221,8 @@ func unlocked(cat: String, i: int) -> bool:
 			return total >= int(need[1])
 		"world":
 			return int(stats.get("best_world", 1)) >= int(need[1])
+		"level":
+			return level >= int(need[1])
 	return best >= int(need[1])
 
 
@@ -228,6 +245,8 @@ func need_text(cat: String, i: int) -> String:
 			return "TOTAL %d" % need[1]
 		"world":
 			return "WORLD %d" % need[1]
+		"level":
+			return "LEVEL %d" % need[1]
 	return "BEST %d" % need[1]
 
 
@@ -270,7 +289,7 @@ func world_data() -> Dictionary:
 	return Catalog.WORLDS[Catalog.find("worlds", world)]
 
 
-# ------------------------------------------------------------------ coins & boosts
+# ------------------------------------------------------------------ coins
 
 func add_coins(n: int) -> void:
 	coins += maxi(0, n)
@@ -285,17 +304,56 @@ func spend(n: int) -> bool:
 	return true
 
 
-func add_boost(id: String, n := 1) -> void:
-	boosts[id] = int(boosts.get(id, 0)) + n
+# ------------------------------------------------------------------ level & abilities
+
+## Adds XP. Returns the player levels reached (each grants coins; abilities may unlock).
+func add_xp(n: int) -> Array:
+	var gained: Array = []
+	if level >= Upgrades.MAX_LEVEL:
+		return gained
+	xp += maxi(0, n)
+	while level < Upgrades.MAX_LEVEL and xp >= Upgrades.xp_next(level):
+		xp -= Upgrades.xp_next(level)
+		level += 1
+		gained.append(level)
+		coins += Upgrades.level_coins(level)
+		for a in Upgrades.unlocked_at(level):
+			if not a.has("buy"):
+				abilities[a["id"]] = maxi(1, int(abilities.get(a["id"], 0)))
+	if level >= Upgrades.MAX_LEVEL:
+		xp = 0
+	note_unlocks()
 	save_data()
+	return gained
 
 
-func use_boost(id: String) -> bool:
-	if int(boosts.get(id, 0)) <= 0:
+func ability(id: String) -> int:
+	return int(abilities.get(id, 0))
+
+
+func ability_unlocked(id: String) -> bool:
+	return level >= int(Upgrades.find(id)["unlock"])
+
+
+## Buys the next level of an ability with coins. Returns true on success.
+func buy_ability(id: String) -> bool:
+	var cost := Upgrades.price(id, ability(id))
+	if cost < 0 or not ability_unlocked(id) or coins < cost:
 		return false
-	boosts[id] = int(boosts[id]) - 1
+	coins -= cost
+	abilities[id] = ability(id) + 1
 	save_data()
 	return true
+
+
+## Highest world the player may start in (HEADSTART), never above a world already passed.
+func headstart_max() -> int:
+	var cap: int = Upgrades.HEADSTART_WORLD[mini(ability("headstart"), Upgrades.HEADSTART_WORLD.size() - 1)]
+	return maxi(1, mini(cap, int(stats.get("best_world", 1)) - 1))
+
+
+func chosen_start_world() -> int:
+	return clampi(start_world, 1, headstart_max())
 
 
 # ------------------------------------------------------------------ daily gift
@@ -329,8 +387,8 @@ func vibrate(ms: int) -> void:
 
 # ------------------------------------------------------------------ cloud save
 
-const _CLOUD_KEYS := ["best", "games", "total", "coins", "owned_items", "purchases", "boosts", "stats",
-	"achievements", "top_scores", "seen_unlocks", "skin", "trail", "daily_day", "daily_last", "mission", "saved_at"]
+const _CLOUD_KEYS := ["best", "games", "total", "coins", "owned_items", "purchases", "stats", "level", "xp", "abilities",
+	"achievements", "top_scores", "seen_unlocks", "skin", "trail", "daily_day", "daily_last", "missions", "saved_at"]
 
 
 func export_data() -> Dictionary:
@@ -341,7 +399,7 @@ func export_data() -> Dictionary:
 	return d
 
 
-## Merges a cloud snapshot: records and unlocks are combined, wallet/boosts follow the newer save.
+## Merges a cloud snapshot: records, level and unlocks are combined, the wallet follows the newer save.
 ## Returns true if anything changed.
 func merge(d: Dictionary) -> bool:
 	var before := JSON.stringify(export_data())
@@ -355,6 +413,13 @@ func merge(d: Dictionary) -> bool:
 		for v in d.get(key, []):
 			if not mine.has(v):
 				mine.append(v)
+	var lv := int(d.get("level", 1))
+	if lv > level or (lv == level and int(d.get("xp", 0)) > xp):
+		level = clampi(lv, 1, Upgrades.MAX_LEVEL)
+		xp = int(d.get("xp", 0))
+	var ab: Dictionary = d.get("abilities", {})
+	for k in ab:
+		abilities[k] = maxi(ability(k), int(ab[k]))
 	var st: Dictionary = d.get("stats", {})
 	for k in st:
 		stats[k] = maxi(int(stats.get(k, 0)), int(st[k]))
@@ -366,10 +431,9 @@ func merge(d: Dictionary) -> bool:
 		top_scores.resize(10)
 	if newer:
 		coins = int(d.get("coins", coins))
-		boosts = d.get("boosts", boosts)
 		daily_day = int(d.get("daily_day", daily_day))
 		daily_last = str(d.get("daily_last", daily_last))
-		mission = d.get("mission", mission)
+		missions = d.get("missions", missions)
 		skin = Catalog.skin_index(d.get("skin", SKINS[skin]["id"]))
 		trail = str(d.get("trail", trail))
 	if skin < 0 or skin >= SKINS.size() or not is_unlocked(skin):
@@ -383,13 +447,13 @@ func daily_available() -> bool:
 	return daily_last != _day_string()
 
 
-## The gift waiting today: {"day": 1..7, "coins": int, "boost": String}
+## The gift waiting today: {"day": 1..7, "coins": int}
 func daily_preview() -> Dictionary:
 	var day := 1
 	if daily_last == _day_string(-1):
 		day = daily_day % 7 + 1
 	var r: Dictionary = MonetizationConfig.DAILY_REWARDS[day - 1]
-	return {"day": day, "coins": int(r["coins"]), "boost": str(r.get("boost", ""))}
+	return {"day": day, "coins": int(r["coins"])}
 
 
 func claim_daily(multiplier := 1) -> Dictionary:
@@ -397,8 +461,6 @@ func claim_daily(multiplier := 1) -> Dictionary:
 		return {}
 	var g := daily_preview()
 	coins += int(g["coins"]) * multiplier
-	if g["boost"] != "":
-		boosts[g["boost"]] = int(boosts.get(g["boost"], 0)) + 1
 	daily_day = int(g["day"])
 	daily_last = _day_string()
 	save_data()
@@ -423,9 +485,10 @@ func reset_all() -> void:
 	best = 0; games = 0; total = 0; skin = 0
 	trail = "classic"; world = "sky"
 	recent = []; seen_unlocks = ["poppy"]; purchases = []
-	coins = 0; owned_items = []; boosts = {"shield": 0, "rush": 0, "teleport": 0}
+	coins = 0; owned_items = []
+	level = 1; xp = 0; abilities = {}; start_world = 1; region = ""
 	daily_day = 0; daily_last = ""; free_ads_date = ""; free_ads_used = 0
 	starter_seen = false
 	stats = {}; achievements = []; top_scores = []
-	mission = {"day": -1, "progress": 0, "done": false}
+	missions = {"day": -1, "list": [], "week": -1, "weekly": {}}
 	save_data()
