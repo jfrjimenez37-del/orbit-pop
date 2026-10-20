@@ -20,6 +20,19 @@ static var prev_defs: Array = BASE.duplicate(true)
 static var blend := 1.0
 ## Each crossing: {"k": [orbit i, orbit j], "a": [angle on i, angle on j], "sign": dir multiplier}
 static var crossings: Array = []
+## Per orbit: true when it is a plain circle around its center (exact closed-form collisions).
+static var round_k: Array = [true]
+## Per orbit: largest |d radius / d angle| (px/rad), bounds how close a non-round orbit can get.
+static var slope_k: Array = [0.0]
+## Per orbit: smallest / largest distance from its center (fast rejection in collisions).
+static var rmin_k: Array = [60.0]
+static var rmax_k: Array = [60.0]
+## Bumped whenever the geometry changes, so hazards can cache per-orbit samples.
+static var version := 0
+## Per orbit: SAMPLES points [angle, x, y, ...] (world space), for hazards that test the
+## orbit against a shape instead of a point.
+const SAMPLES := 128
+static var samples_k: Array = []
 
 
 static func reset() -> void:
@@ -190,11 +203,52 @@ static func _tangent(k: int, a: float) -> Vector2:
 	return (pos(k, a + 0.01) - pos(k, a - 0.01)).normalized()
 
 
+static func samples(k: int) -> PackedFloat32Array:
+	return samples_k[mini(k, samples_k.size() - 1)]
+
+
+static func is_round(k: int) -> bool:
+	return round_k[mini(k, round_k.size() - 1)]
+
+
+static func max_slope(k: int) -> float:
+	return slope_k[mini(k, slope_k.size() - 1)]
+
+
 static func _refresh() -> void:
 	var s := 0.0
 	for i in 16:
 		s += radius(0, TAU * i / 16.0)
 	R = s / 16.0
+	version += 1
+	samples_k.clear()
+	round_k.clear()
+	slope_k.clear()
+	rmin_k.clear()
+	rmax_k.clear()
+	for k in count():
+		var lo := INF
+		var hi := 0.0
+		for i in 64:
+			var r := radius(k, TAU * i / 64.0)
+			lo = minf(lo, r)
+			hi = maxf(hi, r)
+		rmin_k.append(lo - 0.5)
+		rmax_k.append(hi + 0.5)
+		var smp := PackedFloat32Array()
+		for i in SAMPLES:
+			var a := wrapf(TAU * i / SAMPLES, -PI, PI)
+			var p := pos(k, a)
+			smp.append_array([a, p.x, p.y])
+		samples_k.append(smp)
+		var rnd: bool = _def(defs, k)["kind"] == "circle" and (blend >= 1.0 or _def(prev_defs, k)["kind"] == "circle")
+		var sl := 0.0
+		if not rnd:
+			for i in 64:
+				var a := TAU * i / 64.0
+				sl = maxf(sl, absf(radius(k, a + 0.02) - radius(k, a - 0.02)) / 0.04)
+		round_k.append(rnd)
+		slope_k.append(sl * 1.1 + 0.5)
 	crossings.clear()
 	if count() < 2:
 		return

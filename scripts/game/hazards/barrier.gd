@@ -40,15 +40,12 @@ func danger(time: float, out: Array, k := 0) -> void:
 	if Orbit.center(k).distance_to(home) < 1.0:
 		out.append(Vector2(wrapf(a, -PI, PI), asin((Orbit.PLAYER_R + BEAM_HALF) / Orbit.radius(k, a))))
 		return
-	# beam of another planet: sample it as a chain of small dangerous points
+	# beam of another planet: orbit samples close enough to the beam segment are dangerous
 	var d := Vector2(cos(a), sin(a))
 	var mid := home + d * (R_IN + r_out) * 0.5
-	if mid.distance_to(Orbit.center(k)) > Orbit.max_radius(k) + (r_out - R_IN) * 0.5 + 8.0:
+	if mid.distance_to(Orbit.center(k)) > Orbit.rmax_k[mini(k, Orbit.rmax_k.size() - 1)] + (r_out - R_IN) * 0.5 + 8.0:
 		return
-	var r := R_IN
-	while r <= r_out:
-		point_danger(home + d * r, Orbit.PLAYER_R + BEAM_HALF + 1.5, k, out)
-		r += 3.0
+	segment_danger(home + d * R_IN, home + d * r_out, Orbit.PLAYER_R + BEAM_HALF + 1.5, k, out)
 
 
 func _draw() -> void:

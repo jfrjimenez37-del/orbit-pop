@@ -12,6 +12,9 @@ var t_fire := 0.0
 var _rr := RADIUS + Orbit.PLAYER_R
 var _r_far := 80.0
 var _pr := Orbit.PLANET_R
+## Per orbit samples, time independent: [angle, distance from home, angle from home, slack]
+var _samples: Array = []
+var _samples_ver := -1
 
 
 func setup(p_gap: float, p_t_spawn: float, warn: float, p_gap_half: float, p_speed := 70.0, p_home := 0) -> Pulse:
@@ -47,19 +50,33 @@ func danger(time: float, out: Array, k := 0) -> void:
 	if time < t_danger_start or time > t_danger_end:
 		return
 	var rw := wave_r(time)
-	var n := 64
-	var step := TAU / n
-	for i in n:
-		var a := step * i
-		var p := Orbit.pos(k, a)
-		var v := p - home
-		if absf(v.length() - rw) >= _rr:
+	if _samples_ver != Orbit.version or Orbit.morphing():
+		_build_samples()
+	var smp: PackedFloat32Array = _samples[mini(k, _samples.size() - 1)]
+	var half := STEP * 0.5 + 0.01
+	for i in range(0, smp.size(), 4):
+		if absf(smp[i + 1] - rw) >= _rr:
 			continue
 		# safe gap, widened by the angular size of the sample step as seen from the planet
-		var slack := step * 0.5 * Orbit.radius(k, a) / maxf(v.length(), 1.0)
-		if absf(Orbit.ang_diff(v.angle(), gap)) < gap_half - slack:
+		if absf(Orbit.ang_diff(smp[i + 2], gap)) < gap_half - smp[i + 3]:
 			continue
-		out.append(Vector2(wrapf(a, -PI, PI), step * 0.5 + 0.01))
+		out.append(Vector2(smp[i], half))
+
+
+const N_SAMPLES := 64
+const STEP := TAU / N_SAMPLES
+
+
+func _build_samples() -> void:
+	_samples.clear()
+	_samples_ver = Orbit.version
+	for k in Orbit.count():
+		var smp := PackedFloat32Array()
+		for i in N_SAMPLES:
+			var a := STEP * i
+			var v := Orbit.pos(k, a) - home
+			smp.append_array([wrapf(a, -PI, PI), v.length(), v.angle(), STEP * 0.5 * Orbit.radius(k, a) / maxf(v.length(), 1.0)])
+		_samples.append(smp)
 
 
 func _draw() -> void:

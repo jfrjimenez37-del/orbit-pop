@@ -14,6 +14,7 @@ var bubble_rate := 1.0     # BUBBLE RUSH boost: 2.0 = twice as many bubbles
 var hold := false          # world change in progress: no new spawns
 var stage := 0             # current Stages index (unlocks obstacles)
 var human_check := true    # require human timing slack when committing (off only for A/B audits)
+var react_check := true    # require a reaction-time window before the first needed tap (A/B audits)
 
 # name, unlock time (effective seconds), base weight
 const PATTERNS := [
@@ -60,6 +61,11 @@ func omega(t: float) -> float:
 	return lerpf(2.45, 3.45, level(t))
 
 
+## d omega / dt (rad/s^2), used by the fairness check for long patterns.
+func omega_rate(t: float) -> float:
+	return omega(t + 0.5) - omega(t - 0.5)
+
+
 ## Returns {"hazards": [...], "bubbles": [...]} to add this frame (possibly empty).
 func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictionary:
 	var out := {"hazards": [], "bubbles": []}
@@ -73,13 +79,15 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 	if t < next_t:
 		return out
 	var w := omega(t)
+	var cache := {}   # danger masks of the hazards already on screen, shared by all attempts
 	for attempt in 5:
 		var name: String = "lead" if not spawned_first else _pick(t)
 		var res := _build(name, t, angle, dir, w, level(t), attempt, k)
 		var hs: Array = res["hazards"]
 		var all := active.duplicate()
 		all.append_array(hs)
-		var fair := Survival.can_survive(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP) \
+		var fair := Survival.can_survive(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP,
+			Survival.HUMAN_REACT if react_check else 0.0, omega_rate(t), cache, active.size()) \
 			if human_check else Survival.can_survive(all, t, angle, dir, w, true, k)
 		if fair:
 			spawned_first = true

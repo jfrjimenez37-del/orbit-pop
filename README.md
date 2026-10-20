@@ -57,10 +57,15 @@ tests/                    suite headless, bot y capturas
 
 ## Diseño clave
 - **Equidad:** cada patrón candidato se simula con todos los estados alcanzables del jugador.
-  Para aceptarlo exige margen humano: la salida debe funcionar aunque el toque llegue 60 ms tarde
-  y sin tocar más rápido que cada 0,17 s. Si no hay salida, se descarta o simplifica.
-  `tests/audit.gd` juega los 10 mundos con un bot perfecto y otro "humano" (toques 0–70 ms tarde).
-  Las mismas funciones `danger()` deciden colisiones y validación.
+  Para aceptarlo exige margen humano: la salida debe funcionar aunque el toque llegue 60 ms tarde,
+  sin tocar más rápido que cada 0,17 s y **sin tocar durante los primeros 0,25 s** (tiempo de
+  reacción: nunca hace falta un toque instantáneo ante algo que acaba de aparecer). También tiene
+  en cuenta que la velocidad sube durante el patrón. Si no hay salida, se descarta o simplifica.
+  Las mismas funciones `danger()` deciden colisiones y validación; en órbitas no circulares
+  (elipses, descentradas) la zona de choque sigue la curva real (error < 2 px, siempre a favor
+  del jugador). `tests/audit.gd` juega los 10 mundos con un bot perfecto y otro "humano";
+  `tests/audit_react.gd` usa un humano que solo ve cada obstáculo 0,25 s después de aparecer y
+  clasifica cada muerte en "imposible" (perdida antes de poder verlo) o "error del jugador".
 - **Anti-campeo:** los meteoritos apuntan a la posición actual o prevista del jugador y las minas
   aparecen cerca: quedarse temblando en un sitio no es seguro.
 - **Puntos:** +1 por peligro superado, +2 por esquiva cercana ("CLOSE!"), +2 por burbuja ("POP!").
@@ -85,7 +90,7 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 134 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
+| 200 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
 | Guardado local, récords, estadísticas, 26 skins por rareza | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |

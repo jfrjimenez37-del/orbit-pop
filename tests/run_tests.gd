@@ -93,9 +93,79 @@ func test_geometry() -> void:
 	ok(bad <= 2, "barrier interval mismatch %d" % bad)
 	ok(not _inside(b, 0.3, 2.0), "barrier harmless during warning")
 	b.free()
+	# non-round orbits (ellipses, offset circles): collisions follow the real curve, so the
+	# player never dies more than a hair away from a hazard (hitbox is already smaller than the art)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var worst_ghost := 0.0
+	var big_miss := 0
+	var worst_seg := 0.0
+	var seg_miss := 0
+	for si in Stages.LIST.size():
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+		for k in Orbit.count():
+			for i in 60:
+				var a0 := rng.randf_range(-PI, PI)
+				var rr := rng.randf_range(6.0, 12.0)
+				var p := Orbit.pos(k, a0) + Vector2(cos(a0), sin(a0)) * rng.randf_range(-rr, rr)
+				var iv: Array = []
+				Hazard.point_danger(p, rr, k, iv)
+				var q0 := p + Vector2(rng.randf_range(-40, 40), rng.randf_range(-40, 40))
+				var siv: Array = []
+				Hazard.segment_danger(q0, p, 6.0, k, siv)
+				for j in 240:
+					var a := a0 + (j - 120) * 0.004
+					var pa := Orbit.pos(k, a)
+					var gap := pa.distance_to(p) - rr
+					if _in_iv(iv, a):
+						worst_ghost = maxf(worst_ghost, gap)
+					elif gap < -1.0:
+						big_miss += 1
+					var sd := Geometry2D.get_closest_point_to_segment(pa, q0, p).distance_to(pa) - 6.0
+					if _in_iv(siv, a):
+						worst_seg = maxf(worst_seg, sd)
+					elif sd < -1.0:
+						seg_miss += 1
+	Orbit.reset()
+	ok(worst_ghost < 2.0 and big_miss == 0, "point hazards exact on every orbit shape (ghost %.1f px, misses %d)" % [worst_ghost, big_miss])
+	ok(worst_seg < 3.0 and seg_miss == 0, "beams exact on every orbit shape (ghost %.1f px, misses %d)" % [worst_seg, seg_miss])
+
+
+func _in_iv(iv: Array, a: float) -> bool:
+	for v in iv:
+		if absf(Orbit.ang_diff(a, v.x)) < v.y:
+			return true
+	return false
 
 
 func test_survival() -> void:
+	# reaction time: a meteor that can only be dodged by tapping right away is fair for the
+	# perfect checker but not for a human, who needs ~0.25 s to see it first
+	var th := Meteor.time_to_orbit(0.05, 600.0, Orbit.R)
+	var quick := Meteor.new().setup(2.5 * th, 0.0, 0.05, 600.0)
+	var instant := Survival.can_survive([quick], 0.0, 0.0, 1, 2.5)
+	var human := Survival.can_survive([quick], 0.0, 0.0, 1, 2.5, true, 0, Survival.MARGIN, Survival.TAP_GAP, Survival.HUMAN_REACT)
+	ok(instant and not human, "pattern needing an instant tap is rejected for humans (hit at %.2fs)" % th)
+	quick.free()
+	# a slower meteor (seen in time) stays fair with the reaction window
+	var slow := Meteor.new().setup(2.5 * Meteor.time_to_orbit(0.3, 120.0, Orbit.R), 0.0, 0.3, 120.0)
+	ok(Survival.can_survive([slow], 0.0, 0.0, 1, 2.5, true, 0, Survival.MARGIN, Survival.TAP_GAP, Survival.HUMAN_REACT), "normal meteor fair with reaction time")
+	slow.free()
+	# shared cache gives the same answers as fresh checks
+	var field: Array = [Meteor.new().setup(1.0, 0.0, 0.3, 120.0), Spiky.new().setup(-1.2, 0.0, 0.5, 2.0)]
+	var cache := {}
+	var same := true
+	for i in 12:
+		var extra := Meteor.new().setup(i * 0.5, 0.2, 0.3, 140.0)
+		var all: Array = field.duplicate()
+		all.append(extra)
+		var fresh := Survival.can_survive(all, 0.0, 0.3, 1, 2.8, true, 0, 0.12, 0.17, 0.25)
+		var cached := Survival.can_survive(all, 0.0, 0.3, 1, 2.8, true, 0, 0.12, 0.17, 0.25, 0.0, cache, field.size())
+		same = same and fresh == cached
+		extra.free()
+	ok(same, "cached danger masks give the same answers")
+	for h in field:
+		h.free()
 	# a full ring of simultaneous mines can not be survived
 	var ring: Array = []
 	for i in 22:

@@ -10,6 +10,8 @@ var b_k := 1
 var _pts: Array = []   # sample points along the beam (fixed while it exists)
 var _p0 := Vector2.ZERO
 var _p1 := Vector2.ZERO
+var _iv: Array = []        # per orbit danger intervals (the beam never moves)
+var _iv_ver := -1
 
 
 func setup(p_a: int, p_b: int, p_t_spawn: float, warn: float, active: float) -> Link:
@@ -38,8 +40,14 @@ func label_angle(_time: float) -> float:
 func danger(time: float, out: Array, k := 0) -> void:
 	if time < t_danger_start or time > t_danger_end:
 		return
-	for p in _pts:
-		point_danger(p, Orbit.PLAYER_R + BEAM_HALF + 1.5, k, out)
+	if _iv_ver != Orbit.version or Orbit.morphing():
+		_iv.clear()
+		_iv_ver = Orbit.version
+		for o in Orbit.count():
+			var iv: Array = []
+			segment_danger(_p0, _p1, Orbit.PLAYER_R + BEAM_HALF + 1.5, o, iv)
+			_iv.append(iv)
+	out.append_array(_iv[mini(k, _iv.size() - 1)])
 
 
 func _draw() -> void:
