@@ -22,7 +22,7 @@ const MISSIONS := [
 	{"id": "time_run", "text": "M_TIME_RUN", "goal": 45, "reward": 90, "xp": 60, "mode": "max"},
 	{"id": "score_run", "text": "M_SCORE_RUN", "goal": 50, "reward": 150, "xp": 90, "mode": "max"},
 	{"id": "bubble_run", "text": "M_BUBBLE_RUN", "goal": 3, "reward": 90, "xp": 60, "mode": "max"},
-	{"id": "runs", "text": "M_RUNS", "goal": 6, "reward": 100, "xp": 60, "mode": "sum"},
+	{"id": "coins_run", "text": "M_COINS_RUN", "goal": 15, "reward": 100, "xp": 60, "mode": "max"},
 	{"id": "score_total", "text": "M_SCORE_TOTAL", "goal": 300, "reward": 150, "xp": 90, "mode": "sum"},
 	{"id": "near", "text": "M_NEAR", "goal": 25, "reward": 120, "xp": 70, "mode": "sum"},
 	{"id": "world", "text": "M_WORLD", "goal": 5, "reward": 150, "xp": 100, "mode": "max"},
@@ -180,10 +180,10 @@ func region() -> String:
 # ------------------------------------------------------------------ run events
 
 func run_started() -> void:
-	_run = {"near": 0, "score": 0, "bubbles": 0}
+	_run = {"near": 0, "score": 0, "bubbles": 0, "coins": 0}
 
 
-## Gameplay events: flip, switch, near, bubble, teleport, score_now(value), world(value)
+## Gameplay events: flip, switch, near, bubble, coin(value), teleport, score_now(value), world(value)
 func event(name: String, value := 1) -> void:
 	match name:
 		"flip":
@@ -202,6 +202,10 @@ func event(name: String, value := 1) -> void:
 			_stat_add("bubbles_total")
 			_mission_feed("bubble", 1)
 			_mission_feed("bubble_run", int(_run["bubbles"]))
+		"coin":
+			_run["coins"] = int(_run.get("coins", 0)) + value
+			_stat_add("coins_picked", value)
+			_mission_feed("coins_run", int(_run["coins"]))
 		"score_now":
 			_run["score"] = value
 			_mission_feed("score_run", value)

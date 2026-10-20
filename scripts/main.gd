@@ -27,6 +27,7 @@ var tapped_once := false
 var near_count := 0
 var continued := false        # rewarded continue already used this run
 var bubbles_popped := 0
+var picked_coins := 0         # coins collected on the orbits this run
 var coins_awarded := 0        # coins already paid out for this run (continue-safe)
 var run_coins := 0            # coins shown on game over (doubled by a rewarded ad)
 var coins_doubled := false
@@ -313,6 +314,7 @@ func start_run() -> void:
 	continued = false
 	shield_until = 0.0
 	bubbles_popped = 0
+	picked_coins = 0
 	coins_awarded = 0
 	run_coins = 0
 	coins_doubled = false
@@ -360,6 +362,7 @@ func start_run() -> void:
 	ui.set_world_progress(score, best_at_start)
 	ui.set_teleport(teleports)
 	ui.set_slowmo(slowmo_charges)
+	ui.set_run_coins(0)
 	Sfx.play("go")
 
 
@@ -588,23 +591,43 @@ func _sim(dt: float) -> void:
 			h.scored = true
 			_award(h)
 	planet.mood = Planet.Mood.OH if worry else Planet.Mood.SMILE
-	var magnet := Save.ability("magnet")
+	# pickups: touch them, or with MAGNET they fly to the player from any orbit
+	var reach: float = Upgrades.MAGNET_RADIUS[clampi(Save.ability("magnet"), 0, Upgrades.MAGNET_RADIUS.size() - 1)]
+	var me := Orbit.pos(player.orbit, player.angle)
 	for b in bubbles:
-		if magnet > 0 and b.orbit == player.orbit and b.t_end > gt:
-			# MAGNET: nearby bubbles slide along the orbit towards the player
-			if absf(angle_difference(b.theta, player.angle)) < 0.35 + 0.12 * magnet:
-				b.theta = lerp_angle(b.theta, player.angle, 0.05 + 0.01 * magnet)
-		if b.t_end > gt and b.touches(player.angle, player.orbit, Upgrades.MAGNET_RANGE * magnet):
-			b.t_end = -1.0
-			_add_score(2)
-			bubbles_popped += 1
-			Progress.event("bubble")
-			var p := Orbit.pos(b.orbit, b.theta)
-			fx.burst(p, 14, [Color.WHITE, Color8(120, 220, 255), Color8(255, 222, 70)], 70.0, 0.4, 2.0)
-			fx.ring(p, Color8(180, 240, 255), 4.0, 18.0, 0.3)
-			fx.text(L.t("POP_FX"), p + Vector2(0, -12), Color8(255, 236, 90))
-			Sfx.play("pop")
+		if b.t_end <= gt:
+			continue
+		var take := false
+		if b.flying or (reach > 0.0 and b.ready_to_take() and b.world_pos().distance_to(me) < reach):
+			take = b.fly_to(me, dt)
+		else:
+			take = b.touches(player.angle, player.orbit)
+		if take:
+			_collect(b)
 	bg.speed_mul = 1.0 + director.level(gt) * 1.5
+
+
+func _collect(b: Bubble) -> void:
+	var p := b.world_pos()
+	b.t_end = -1.0
+	b.visible = false
+	if b.is_coin():
+		picked_coins += b.value
+		Progress.event("coin", b.value)
+		ui.set_run_coins(picked_coins)
+		fx.burst(p, 6 if b.value == 1 else 14, [Color8(255, 222, 70), Color.WHITE], 50.0, 0.3, 1.5)
+		if b.value > 1:
+			fx.ring(p, Color8(255, 220, 90), 4.0, 16.0, 0.3)
+			fx.text("+%d" % b.value, p + Vector2(0, -10), Color8(255, 222, 70))
+		Sfx.play("coin", 1.0 + minf(0.3, 0.05 * (picked_coins % 7)), -3.0)
+		return
+	_add_score(2)
+	bubbles_popped += 1
+	Progress.event("bubble")
+	fx.burst(p, 14, [Color.WHITE, Color8(120, 220, 255), Color8(255, 222, 70)], 70.0, 0.4, 2.0)
+	fx.ring(p, Color8(180, 240, 255), 4.0, 18.0, 0.3)
+	fx.text(L.t("POP_FX"), p + Vector2(0, -12), Color8(255, 236, 90))
+	Sfx.play("pop")
 
 
 func use_teleport() -> void:
@@ -652,7 +675,8 @@ func _use_second_life() -> void:
 
 ## Coins earned this run (HEADSTART points are not paid), with the COINS+ ability.
 func _run_coins() -> int:
-	var base := floorf((score - start_score) * MonetizationConfig.COINS_PER_SCORE) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE
+	var base := floorf((score - start_score) * MonetizationConfig.COINS_PER_SCORE) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE \
+		+ picked_coins
 	return int(floor(base * Upgrades.coin_mult(Save.ability("coins"))))
 
 

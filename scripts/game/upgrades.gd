@@ -24,7 +24,8 @@ const HEADSTART_WORLD := [1, 3, 5, 8]   # highest start world per headstart leve
 const SLOWMO_TIME := 2.0
 const SLOWMO_SCALE := 0.5
 const SHIELD_RECHARGE := 60.0
-const MAGNET_RANGE := 3.0                # extra pickup px per magnet level
+## MAGNET: coins and bubbles closer than this (px, any orbit) fly to the player.
+const MAGNET_RADIUS := [0.0, 22.0, 30.0, 38.0, 46.0, 56.0]
 
 
 static func xp_next(level: int) -> int:

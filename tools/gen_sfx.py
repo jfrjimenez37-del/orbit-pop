@@ -106,4 +106,6 @@ for bar in range(bars):
                 if j < n:
                     buf[j] += v * (0.25 if s % 8 == 4 else 0.12)
 write("music", buf, 0.5)
+# in-run coin pickup: bright two-note "ding" (added last so earlier sounds stay identical)
+write("coin", cat(tone(1568, 1568, 0.04, lambda p: sq(p, 0.25), 0.4), tone(2093, 2093, 0.12, lambda p: sq(p, 0.25), 1.3)), 0.32)
 print("sfx ok")

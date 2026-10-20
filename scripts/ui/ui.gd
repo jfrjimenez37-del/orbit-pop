@@ -64,6 +64,8 @@ var _mission_badge: Label
 var _ab_badge: Label
 var _ab_box: Control
 var _ab_list: Control
+var _run_coins_box: Control
+var _run_coins_lbl: Label
 var _menu_level: Label
 var _menu_xp: ColorRect
 var _slowmo_btn: Button
@@ -510,10 +512,24 @@ func _build_hud() -> void:
 	_wp_best.color = Color8(255, 128, 178)
 	_wp_best.size = Vector2(1, 5)
 	top.add_child(_wp_best)
+	# coins picked up in this run (top right)
+	_run_coins_box = _container(hud)
+	_run_coins_box.anchor_left = 1.0; _run_coins_box.anchor_right = 1.0
+	_run_coins_box.offset_left = -40; _run_coins_box.offset_top = 7
+	_icon(_run_coins_box, "icon_coin", Vector2.ZERO)
+	_run_coins_lbl = _left_label(_run_coins_box, "0", Vector2(12, 1), GOLD)
 	_pause_btn = _button(hud, "white", "", "pause", Vector2(20, 20))
 	_pause_btn.position = Vector2(4, 4)
 	_pause_btn.pressed.connect(func(): pause_pressed.emit())
 	_pause_title = _label(hud, "", 4)
+
+
+func set_run_coins(n: int) -> void:
+	_run_coins_lbl.text = str(n)
+	if n > 0:
+		var tw := create_tween()
+		_run_coins_box.scale = Vector2(1.25, 1.25)
+		tw.tween_property(_run_coins_box, "scale", Vector2.ONE, 0.12)
 
 
 func show_hud(best: int, hint: bool) -> void:

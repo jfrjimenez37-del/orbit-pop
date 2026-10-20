@@ -116,8 +116,10 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
   una cuenta atrás; MENÚ termina la partida y la cuenta igual (récord, monedas, misiones).
 
 **Monedas (moneda blanda, sin compra obligatoria)**
-- Se ganan: (puntuación/3 + 1 por burbuja) × multiplicador de MONEDAS+, subidas de nivel
-  (20 × nivel), misiones, regalo diario y anuncios opcionales.
+- Se ganan: **recogiéndolas en la partida** (grupos de 3 monedas sobre la órbita cada ~8 s y una
+  moneda grande de 5 cada ~45 s; duran 6 s), + puntuación/10 + 1 por burbuja, todo × MONEDAS+.
+  También por subir de nivel (20 × nivel), misiones, regalo diario y anuncios opcionales.
+  Las monedas no dan puntos (el ranking sigue siendo solo de esquivar). Contador arriba a la derecha.
 - Regalo diario con racha de 7 días: 30, 40, 70, 60, 80, 140, 300. Si se salta un día, vuelve al día 1.
 - Se gastan en: mejoras de habilidades, skins (600 a 15000) y estelas (300 a 8000).
 
@@ -130,14 +132,15 @@ de jugador y luego se mejora con monedas (1000, 2500, 6000, 15000). Nada se gast
 |---|---|---|---|
 | MONEDAS+ | 2 | 5 | +10 % monedas por nivel |
 | ESCUDO | 3 | 3 | escudo al empezar; nv2 se recarga a los 60 s; nv3 aguanta 2 golpes |
-| IMÁN | 5 | 5 | atrae burbujas (+3 px de alcance por nivel) |
+| IMÁN | 5 | 5 | monedas y burbujas a menos de 22/30/38/46/56 px (cualquier órbita) vuelan hacia ti |
 | CÁMARA LENTA | 8 | 3 | botón en partida: 2 s a media velocidad, 1 carga por nivel |
 | TELEPORT | 10 | 3 | botón en partida: salta al lado opuesto, 1 carga por nivel |
 | SALTO INICIAL | 12 | 3 | empezar en el mundo 3/5/8 (con sus puntos), sin pasar de tu mejor mundo −1 |
 | SEGUNDA VIDA | 15 | 1 | revive 1 vez por partida (se compra: 15000) |
 
 Simulación de la curva: un jugador medio (25 min/día) desbloquea todas en ~5 días, las mejora
-al máximo en ~2,5 meses y llega a nivel 50 en ~4 meses. Las partidas guardadas antiguas reciben
+al máximo en ~2 meses y llega a nivel 50 en ~4 meses. Con el imán al máximo se recogen ~80 % de
+las monedas sueltas (~23/min) frente a ~35 % sin él (~10/min). Las partidas guardadas antiguas reciben
 en monedas el valor de los boosts que tenían.
 
 **Compras (Google Play)**
@@ -194,7 +197,7 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
 órbita: un test hace sobrevivir al bot justo 45 s en cada forma de órbita.
 
 ## Misiones, logros, ranking, nube, compartir, idiomas
-- **Misiones:** 3 diarias (de un grupo de 15, en ciclo) + 1 reto semanal (de 5). Dan monedas y
+- **Misiones:** 3 diarias (de un grupo de 15, en ciclo; una pide recoger 15 monedas en una partida) + 1 reto semanal (de 5). Dan monedas y
   XP al completarse. Botón de pergamino en el menú (con el número pendiente).
 - **HUD:** barra de progreso hasta el siguiente mundo con una marca en tu récord.
 - **Skins y estelas por rareza:** 26 skins y 20 estelas (común, rara, épica, legendaria, mítica),

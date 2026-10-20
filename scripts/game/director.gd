@@ -6,6 +6,8 @@ extends RefCounted
 var rng := RandomNumberGenerator.new()
 var next_t := 0.0
 var next_bubble := 0.0
+var next_coin := 0.0       # next arc of coins
+var next_big := 0.0        # next big coin (worth 5)
 var offset := 0.0          # adaptive difficulty shift (s), from recent performance
 var rejected := 0          # stats for tests / tuning
 var committed := 0
@@ -33,6 +35,12 @@ const PATTERNS := [
 const STAGE_PATTERNS := [["pulse", 1, 2.2], ["saw", 2, 2.0], ["swap", 4, 2.6], ["cross_rain", 4, 1.6],
 	["link", 5, 2.4], ["comet", 5, 2.4], ["comet_rain", 7, 1.8], ["link_cage", 7, 1.6]]
 const MULTI_PLANET := ["link", "comet_rain", "link_cage"]
+## In-run coins (pickups, never hazards): an arc of COIN_ARC coins every COIN_ARC_EVERY s
+## and a big coin (5) every COIN_BIG_EVERY s, each lasting COIN_LIFE s.
+const COIN_ARC := 3
+const COIN_ARC_EVERY := Vector2(6.5, 9.5)
+const COIN_BIG_EVERY := Vector2(38.0, 52.0)
+const COIN_LIFE := 6.0
 
 
 func reset(seed_value: int, recent_avg: float) -> void:
@@ -40,6 +48,8 @@ func reset(seed_value: int, recent_avg: float) -> void:
 	offset = clampf((recent_avg - 12.0) * 0.5, -6.0, 12.0)
 	next_t = 1.1
 	next_bubble = rng.randf_range(4.0, 6.0)
+	next_coin = rng.randf_range(2.0, 3.0)
+	next_big = rng.randf_range(COIN_BIG_EVERY.x * 0.6, COIN_BIG_EVERY.y * 0.6)
 	rejected = 0
 	committed = 0
 	spawned_first = false
@@ -76,6 +86,18 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		var bo := rng.randi_range(0, Orbit.count() - 1)
 		var b := Bubble.new().setup(angle + PI + rng.randf_range(-0.7, 0.7), t, 5.0, bo)
 		out["bubbles"].append(b)
+	if t >= next_coin:
+		# arc of coins ahead of the player (or anywhere on another orbit)
+		next_coin = t + rng.randf_range(COIN_ARC_EVERY.x, COIN_ARC_EVERY.y)
+		var co := rng.randi_range(0, Orbit.count() - 1)
+		var a0 := angle + dir * rng.randf_range(1.0, 2.6) if co == k else rng.randf_range(-PI, PI)
+		var side := 1 if rng.randf() < 0.5 else -1
+		for i in COIN_ARC:
+			out["bubbles"].append(Bubble.new().setup(a0 + side * i * 0.17, t + i * 0.05, COIN_LIFE, co, "coin"))
+	if t >= next_big:
+		next_big = t + rng.randf_range(COIN_BIG_EVERY.x, COIN_BIG_EVERY.y)
+		var bo2 := rng.randi_range(0, Orbit.count() - 1)
+		out["bubbles"].append(Bubble.new().setup(angle + PI + rng.randf_range(-1.0, 1.0), t, COIN_LIFE, bo2, "big"))
 	if t < next_t:
 		return out
 	var w := omega(t)

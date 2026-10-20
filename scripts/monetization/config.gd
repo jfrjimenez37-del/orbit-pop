@@ -22,7 +22,7 @@ const BUNDLE_BONUS := {"starter": {"coins": 1000}, "supporter": {"coins": 1500}}
 const STARTER_AFTER_GAMES := 8
 
 ## Coins: earned every run, doubled with a rewarded ad.
-const COINS_PER_SCORE := 1.0 / 3.0
+const COINS_PER_SCORE := 1.0 / 10.0   # most coins now come from picking them up in the run
 const COINS_PER_BUBBLE := 1
 const FREE_COIN_ADS_PER_DAY := 3
 const FREE_COIN_AD_REWARD := 60

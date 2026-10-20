@@ -2,7 +2,7 @@ extends Node
 ## Tiny sound manager: a pool of players for effects plus one music player.
 ## The game runs fine if any sound is missing.
 
-const NAMES := ["flip", "score", "close", "pop", "hit", "record", "unlock", "select", "deny", "tick", "go", "warn"]
+const NAMES := ["flip", "score", "close", "pop", "hit", "record", "unlock", "select", "deny", "tick", "go", "warn", "coin"]
 const POOL := 8
 
 var _streams := {}

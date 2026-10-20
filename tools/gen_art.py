@@ -1002,4 +1002,28 @@ for name, rows in MORE_ICONS.items():
             put(im, p[0], p[1], (230, 236, 250))
     outline(im, OUT, diag=True)
     save(im, "icon_%s.png" % name)
+
+# ---- in-run coin pickups: 4-frame spin sheets (small 8x8 = 1 coin, big 12x12 = 5 coins)
+def coin_sheet(size, rx_list, ry):
+    gold, dark, light = (255, 206, 50), (214, 140, 20), (255, 246, 170)
+    sheet = new(size * len(rx_list), size)
+    c = (size - 1) / 2.0
+    for f, rx in enumerate(rx_list):
+        im = new(size, size)
+        for y in range(size):
+            for x in range(size):
+                dx, dy = (x - c) / max(rx, 0.6), (y - c) / ry
+                if dx * dx + dy * dy <= 1.0:
+                    edge = (x - c) / max(rx, 0.6)
+                    put(im, x, y, light if edge < -0.35 and rx > 1.5 else (dark if edge > 0.45 else gold))
+        if rx > 2.0:   # embossed mark in the middle
+            m = int(round(c))
+            for yy in range(m - int(ry // 2) + 1, m + int(ry // 2)):
+                put(im, m, yy, dark)
+        outline(im, (110, 60, 10, 255))
+        sheet.paste(im, (f * size, 0), im)
+    return sheet
+
+save(coin_sheet(8, [3.5, 2.4, 1.2, 2.4], 3.5), "coin_pick.png")
+save(coin_sheet(12, [5.5, 3.8, 1.6, 3.8], 5.5), "coin_big.png")
 print("art ok")

@@ -436,7 +436,7 @@ func test_economy(save) -> void:
 	main._die()
 	for f in 60:
 		main._process(1.0 / 60.0)
-	ok(save.coins == 12 + Upgrades.level_coins(2) and save.level == 2, "coins = score/3 + bubbles, first run reaches level 2 (%d)" % save.coins)
+	ok(save.coins == 3 + 2 + Upgrades.level_coins(2) and save.level == 2, "coins = score/10 + bubbles, first run reaches level 2 (%d)" % save.coins)
 	save.purchases = ["no_ads"]
 	ok(mon.can_continue(30, false) and mon.continue_is_free(), "NO ADS gives a free continue")
 	main._on_continue_pressed()
@@ -452,12 +452,12 @@ func test_economy(save) -> void:
 		main._process(1.0 / 60.0)
 	ok(main.state == main.S.PLAYING, "resume returns to play after the countdown")
 	ok(main.ui.blocks_tap(main.ui._pause_btn.get_global_rect().get_center()), "tapping the pause button does not flip")
-	main.score = 36
+	main.score = 60
 	main._die()
 	for f in 60:
 		main._process(1.0 / 60.0)
-	# level 2 unlocked COINS+ (x1.1): the whole run is now worth floor(14 * 1.1) = 15, 12 already paid
-	var paid: int = 12 + Upgrades.level_coins(2) + int(floor(14 * Upgrades.coin_mult(1))) - 12
+	# level 2 unlocked COINS+ (x1.1): the whole run is now worth floor((6 + 2) * 1.1) = 8, 5 already paid
+	var paid: int = 5 + Upgrades.level_coins(2) + int(floor(8 * Upgrades.coin_mult(1))) - 5
 	ok(save.coins == paid, "continued run only pays the new coins (%d)" % save.coins)
 	main.queue_free()
 	await process_frame
@@ -592,7 +592,7 @@ func test_progress(save) -> void:
 		prog.run_started()
 		prog.event("score_now", 60)
 		prog.event("world", 6)
-		prog.event("near"); prog.event("flip"); prog.event("bubble")
+		prog.event("near"); prog.event("flip"); prog.event("bubble"); prog.event("coin", 20)
 		for b in 3:
 			prog.event("bubble")
 		prog.run_finished(60, 6, 50.0)
@@ -696,6 +696,53 @@ func test_abilities(save) -> void:
 	ok(get_root().get_node("Progress").region() == "EUROPE", "region picked in settings wins")
 	save.region = ""
 	ok(get_root().get_node("Progress").region() == PlayGamesConfig.region(), "AUTO region follows the phone")
+	# in-run coins and MAGNET
+	var mc = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(mc)
+	await process_frame
+	mc.set_process(false)
+	mc.ui.hide_popup()
+	save.abilities = {}
+	mc.start_run()
+	var seen_coins := 0
+	var seen_big := 0
+	for f in 60 * 60:
+		mc.director.next_t = INF   # no hazards: just watch the pickups appear
+		mc._grace = 0.0
+		mc._process(1.0 / 60.0)
+		for b in mc.bubbles:
+			if not b.has_meta("seen"):
+				b.set_meta("seen", true)
+				seen_coins += 1 if b.kind == "coin" else 0
+				seen_big += 1 if b.kind == "big" else 0
+	ok(seen_coins >= 18 and seen_coins <= 33 and seen_big >= 1 and seen_big <= 2,
+		"coin arcs every ~8 s and a big coin every ~45 s (%d coins, %d big in 60 s)" % [seen_coins, seen_big])
+	ok(mc.picked_coins > 0 and mc.ui._run_coins_lbl.text == str(mc.picked_coins), "touching coins collects them, HUD counts them (%d)" % mc.picked_coins)
+	# magnet: a coin 25 px away on another spot only comes with magnet level >= 2 (30 px)
+	for b in mc.bubbles:
+		b.queue_free()
+	mc.bubbles.clear()
+	var me: Vector2 = Orbit.pos(mc.player.orbit, mc.player.angle)
+	var far_a: float = mc.player.angle + 25.0 / Orbit.R
+	var lone := Bubble.new().setup(far_a - mc.player.dir * 0.0, mc.gt - 1.0, 99.0, 0, "big")
+	mc.bubbles.append(lone); mc.hazards_root.add_child(lone)
+	var p0: int = mc.picked_coins
+	var hold_a: float = mc.player.angle   # keep the player in place between steps
+	mc._sim(1.0 / 60.0)
+	mc.player.angle = hold_a
+	ok(not lone.flying, "no magnet: a coin 25 px away stays put")
+	save.abilities = {"magnet": 2}
+	for f in 40:
+		mc.director.next_t = INF
+		mc._sim(1.0 / 60.0)
+		mc.player.angle = hold_a
+	ok(mc.picked_coins == p0 + 5, "MAGNET 2 pulls it in from 25 px (+5)")
+	ok(mc._run_coins() >= mc.picked_coins, "picked coins count for the run")
+	ok(me.distance_to(lone.fpos) < 8.0, "the coin flew to the player")
+	mc.queue_free()
+	await process_frame
+	Orbit.reset()
+	save.reset_all()
 	# in-run abilities
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
