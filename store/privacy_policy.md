@@ -28,4 +28,4 @@ El juego no está dirigido a menores de 13 años y no recopilamos a sabiendas da
 Si cambiamos esta política, publicaremos la nueva versión en esta misma página con su fecha de actualización.
 
 ## Contacto
-Para cualquier pregunta sobre esta política: [TU CORREO DE CONTACTO]
+Para cualquier pregunta sobre esta política: jfrjimenez37@gmail.com
