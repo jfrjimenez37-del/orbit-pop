@@ -111,7 +111,12 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
 - CONTINUE recompensado en Game Over (1 por partida, desde 5 puntos; con NO ADS es gratis y sin vídeo).
 - x2 MONEDAS recompensado en Game Over; x2 del regalo diario; FREE COINS (+60, máx. 3/día) en la tienda.
 - Intersticial obligatorio cada 3 reintentos (al pulsar OTRA/MENÚ, a partir de la 3.ª partida).
-- Banner pequeño solo en Tienda y en Ranking/Logros (oculto con NO ADS).
+- Banner pequeño en todas las pantallas del menú: skins/estelas, habilidades, tienda, ranking/logros
+  y las ventanas de misiones, ajustes y regalo diario. Nunca en el menú principal, en partida, en el
+  fin de partida ni junto a la oferta inicial. Las pantallas se colocan por encima del banner; en
+  teléfonos 16:9 (pantalla corta) skins y habilidades no llevan banner para no taparlas. Oculto con NO ADS.
+- `addons/orbitpop_plugins`: al abrir el editor reactiva todos los plugins instalados (AdMob,
+  Billing, Share, Play Games), por si `project.godot` se reemplaza con el de GitHub.
 - Pausa: botón arriba a la izquierda durante la partida (también tecla P/Esc). CONTINUAR hace
   una cuenta atrás; MENÚ termina la partida y la cuenta igual (récord, monedas, misiones).
 

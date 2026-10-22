@@ -139,11 +139,21 @@ func go_menu() -> void:
 func open_skins() -> void:
 	state = S.SKINS
 	ui.show_skins()
+	_menu_banner(ui.STYLE_H)
 
 
 func open_abilities() -> void:
 	state = S.ABILITIES
 	ui.show_abilities()
+	_menu_banner(ui.ABILITIES_H)
+
+
+## Banner on a menu screen, only when the screen has room for it below its box.
+func _menu_banner(box_h: int) -> void:
+	if ui.banner_room(box_h):
+		Monetization.show_banner()
+	else:
+		Monetization.hide_banner()
 
 
 func open_ranking() -> void:

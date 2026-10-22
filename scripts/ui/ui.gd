@@ -65,6 +65,7 @@ var _ab_badge: Label
 var _ab_box: Control
 var _ab_list: Control
 var _run_coins_box: Control
+var _style_box: Control
 var _run_coins_lbl: Label
 var _menu_level: Label
 var _menu_xp: ColorRect
@@ -775,7 +776,8 @@ func _build_style() -> void:
 	skins = _screen()
 	_dim(skins)
 	var box := _container(skins)
-	_place(box, 0.5, -152, 164, 304)
+	_style_box = box
+	_place(box, 0.5, -152, 164, STYLE_H)
 	_tabs(box, TABS, [L.t("SKINS"), L.t("TRAILS")], ["skins", "trail"], _style_tabs, func(id):
 		_style_tab = id
 		_style_page = 0
@@ -978,6 +980,7 @@ func _refresh_style() -> void:
 
 
 func show_skins() -> void:
+	_fit_above_banner(_style_box, STYLE_H)
 	_style_focus = Save.selected(_style_tab)
 	_style_page = _style_focus / 9
 	_refresh_style()
@@ -990,7 +993,7 @@ func _build_abilities() -> void:
 	abilities = _screen()
 	_dim(abilities)
 	_ab_box = _container(abilities)
-	_place(_ab_box, 0.5, -152, 164, 300)
+	_place(_ab_box, 0.5, -152, 164, ABILITIES_H)
 	var t := _label(_ab_box, L.t("ABILITIES"), 2)
 	_center_label(t, 164, 0)
 	var panel := _panel(_ab_box, Vector2(0, 21), Vector2(164, 252))
@@ -1081,6 +1084,7 @@ func refresh_abilities() -> void:
 
 
 func show_abilities() -> void:
+	_fit_above_banner(_ab_box, ABILITIES_H)
 	refresh_abilities()
 	_switch(abilities)
 
@@ -1315,12 +1319,24 @@ func _open_board(board: String) -> void:
 		toast(L.t("PLAY_GAMES_OFF"), Color8(255, 150, 160))
 
 
-func _fit_above_banner(box: Control) -> void:
-	var banner := 0 if Monetization.ads_removed() else MonetizationConfig.BANNER_HEIGHT
-	var top := maxf(4.0, roundf((root.size.y - banner - 280.0) * 0.5))
+## Banner ads sit at the bottom of every menu screen (not the main menu, runs or game over).
+const STYLE_H := 304
+const ABILITIES_H := 300
+const POPUP_BANNER_KINDS := ["mission", "settings", "daily"]
+
+
+## True if a box `h` px tall fits above the banner on this screen (short 16:9 phones: not
+## for the tallest screens, which then go without a banner rather than overlap it).
+func banner_room(h: int) -> bool:
+	return root.size.y - MonetizationConfig.BANNER_HEIGHT - h - 4 >= 0
+
+
+func _fit_above_banner(box: Control, h := 280) -> void:
+	var banner := MonetizationConfig.BANNER_HEIGHT if not Monetization.ads_removed() and banner_room(h) else 0
+	var top := maxf(4.0, roundf((root.size.y - banner - h) * 0.5))
 	box.anchor_top = 0.0; box.anchor_bottom = 0.0
 	box.offset_top = top
-	box.offset_bottom = top + 280
+	box.offset_bottom = top + h
 
 
 func show_ranking() -> void:
@@ -1356,6 +1372,8 @@ func _open_popup(title: String, kind := "", h := 136) -> NinePatchRect:
 		popup.visible = true
 		popup.modulate.a = 0.0
 		create_tween().tween_property(popup, "modulate:a", 1.0, 0.15)
+	if kind in POPUP_BANNER_KINDS and menu.visible:
+		Monetization.show_banner()
 	return p
 
 
@@ -1368,6 +1386,7 @@ func _close_button(p: Control, y: int) -> void:
 func hide_popup() -> void:
 	popup.visible = false
 	if menu.visible:
+		Monetization.hide_banner()
 		refresh_menu()
 
 

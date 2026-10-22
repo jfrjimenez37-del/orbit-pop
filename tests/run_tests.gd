@@ -32,6 +32,8 @@ func _initialize() -> void:
 	await test_economy(save)
 	print("== abilities")
 	await test_abilities(save)
+	print("== menu banners")
+	await test_banners(save)
 	print("== orbit shapes")
 	test_orbits()
 	print("== missions, achievements, cloud, l10n")
@@ -769,6 +771,64 @@ func test_abilities(save) -> void:
 	for f in 60:
 		main._process(1.0 / 60.0)
 	ok(main.run_coins == int(main.bubbles_popped * Upgrades.coin_mult(0)), "headstart points don't pay coins (%d)" % main.run_coins)
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
+	save.reset_all()
+
+
+## A banner on every menu screen (skins, abilities, shop, ranking and the mission / settings /
+## daily popups) but never on the main menu, during a run or on game over.
+func test_banners(save) -> void:
+	save.reset_all()
+	save.daily_last = save._day_string()
+	var mon = get_root().get_node("Monetization")
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	var tall: bool = main.ui.banner_room(main.ui.STYLE_H)
+	var shown := func() -> bool: return mon.ads._banner.visible
+	main.go_menu()
+	ok(not shown.call(), "no banner on the main menu")
+	main.open_skins()
+	ok(shown.call() == tall, "skins screen banner (if it fits: %s)" % tall)
+	main.go_menu()
+	main.open_abilities()
+	ok(shown.call() == main.ui.banner_room(main.ui.ABILITIES_H), "abilities screen banner")
+	main.go_menu()
+	main.open_shop()
+	ok(shown.call(), "shop banner")
+	main.go_menu()
+	main.open_ranking()
+	ok(shown.call(), "ranking banner")
+	main.go_menu()
+	ok(not shown.call(), "back to the menu hides it")
+	main.ui.show_mission()
+	ok(shown.call(), "missions popup banner")
+	main.ui.hide_popup()
+	ok(not shown.call(), "closing the popup hides it")
+	main.ui.show_settings()
+	ok(shown.call(), "settings popup banner")
+	main.ui.hide_popup()
+	main.ui.show_starter()
+	ok(not shown.call(), "no banner next to the starter offer")
+	main.ui.hide_popup()
+	main.open_shop()
+	main.start_run()
+	ok(not shown.call(), "no banner during a run")
+	main._die()
+	for f in 80:
+		main._process(1.0 / 60.0)
+	ok(main.state == main.S.OVER and not shown.call(), "no banner on game over")
+	# screens fit above the banner instead of overlapping it
+	main.go_menu()
+	main.open_skins()
+	var sb: Control = main.ui._style_box
+	ok(not tall or sb.offset_top + main.ui.STYLE_H <= main.ui.root.size.y - MonetizationConfig.BANNER_HEIGHT,
+		"skins box ends above the banner")
+	main.go_menu()
 	main.queue_free()
 	await process_frame
 	Orbit.reset()
