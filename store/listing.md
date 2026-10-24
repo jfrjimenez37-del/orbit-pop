@@ -1,61 +1,71 @@
-# Ficha de Google Play — ORBIT POP
+# Google Play listing — ORBIT POP
 
-**Nombre (máx. 30):** ORBIT POP
-**Categoría:** Juegos › Arcade · **Etiquetas:** casual, un toque, pixel art
+**App name (max 30):** ORBIT POP
+**Category:** Games › Arcade · **Tags:** Arcade, Casual, One-tap, Pixel art, Single player
+**Default language:** English (United States) – en-US. Translation: Spanish (Latin America) – es-419.
+**Graphics:** icon `store/icon_512.png` · feature graphic `store/feature_graphic_1024x500.png` (no text, any language)
+· phone screenshots `store/screenshots/en/` (en-US) and `store/screenshots/es/` (es-419), 8 each, 1080×1920.
 
-## Español (es-419 / es-ES)
-**Descripción breve (máx. 80):**
-¡Un toque invierte tu órbita! Esquiva, salta entre planetas y bate tu récord.
+## English (en-US) — default
 
-**Descripción completa:**
-ORBIT POP es un arcade de un solo dedo: tu pequeña criatura gira alrededor de un planeta y cada toque invierte su órbita. Esquiva meteoritos, estrellas espinosas, rayos eléctricos y cometas, revienta burbujas y supera tu récord.
-
-★ Se aprende en 5 segundos, cuesta dominarlo
-★ 10 mundos que cambian mientras juegas: órbitas grandes, estrechas, descentradas, cruzadas… ¡y sistemas de 2 y 3 planetas donde saltas de una órbita a otra!
-★ Partidas justas: cada obstáculo tiene salida posible
-★ Misión diaria, regalo diario y 16 logros
-★ Ranking mundial y por región con Google Play Juegos
-★ 13 skins, estelas de colores y poderes: escudo, lluvia de burbujas y teletransporte
-★ Pixel art colorido y música chiptune originales
-★ Funciona sin conexión · Español, inglés y portugués
-
-Una partida más. Esta vez superarás tu récord.
-
-## English (en-US)
-**Short description:** One tap flips your orbit! Dodge, jump between planets and beat your best.
+**Short description (max 80):**
+One tap to flip your orbit. Dodge, grab coins and conquer 10 wild worlds!
 
 **Full description:**
-ORBIT POP is a one-finger arcade game: your tiny critter orbits a planet and every tap flips its direction. Dodge meteors, spiky stars, electric beams and comets, pop bubbles and beat your high score.
+Spin around the planet and don't let anything touch you!
 
-★ Learn it in 5 seconds, master it for weeks
-★ 10 worlds that change as you play: big, tight, lopsided and crossing orbits… plus 2- and 3-planet systems where you jump from orbit to orbit!
-★ Fair by design: every obstacle can be escaped
-★ Daily mission, daily gift and 16 achievements
-★ Global and regional leaderboards with Google Play Games
-★ 13 skins, colorful trails and boosts: shield, bubble rush and teleport
-★ Original pixel art and chiptune music
-★ Plays offline · English, Spanish and Portuguese
+ORBIT POP is a one-tap arcade game: your little critter races around in orbit and every tap flips its direction. Dodge meteors, spiky mines, laser beams and shockwaves, grab coins and see how far you can go. Easy to learn, hard to master.
 
-One more run. This time you'll beat your record.
+🌍 10 WILD WORLDS
+Sky, lagoon, sunset, candy, night... and twin-planet and three-planet systems where you jump from orbit to orbit. Every world reshapes your orbit and brings new hazards.
 
-## Português (pt-BR)
-**Descrição curta:** Um toque inverte sua órbita! Desvie, pule entre planetas e bata seu recorde.
+⚡ LEVEL UP AND GET STRONGER
+Earn XP every run and unlock 7 permanent powers: shield, coin magnet, slow-mo, teleport, head start, second life and bonus coins. Upgrade them with the coins you collect.
 
-**Descrição completa:**
-ORBIT POP é um arcade de um dedo só: sua criaturinha gira em volta de um planeta e cada toque inverte a órbita. Desvie de meteoros, estrelas espinhosas, raios elétricos e cometas, estoure bolhas e supere seu recorde.
+🎨 26 SKINS AND 20 TRAILS
+Common, rare, epic, legendary and mythic characters, some with special effects. Unlock them by reaching new worlds, beating records or spending coins.
 
-★ Aprende em 5 segundos, difícil de dominar
-★ 10 mundos que mudam enquanto você joga: órbitas grandes, estreitas, tortas, cruzadas… e sistemas com 2 e 3 planetas onde você pula de uma órbita para outra!
-★ Justo: todo obstáculo tem saída
-★ Missão diária, presente diário e 16 conquistas
-★ Ranking mundial e regional com o Google Play Games
-★ 13 skins, rastros coloridos e poderes: escudo, chuva de bolhas e teletransporte
-★ Pixel art e música chiptune originais
-★ Funciona offline · Português, espanhol e inglês
+🏆 COMPETE
+Global and regional leaderboards with Google Play Games, 34 achievements, 3 daily missions and a weekly challenge.
 
-Só mais uma partida. Desta vez você bate seu recorde.
+✨ FAIR BY DESIGN
+Every obstacle pattern is checked before it appears, with time to react: there is always a way out.
 
-## Recursos gráficos (carpeta store/)
-- Icono 512×512: `icon_512.png`
-- Gráfico destacado 1024×500: `feature_graphic_1024x500.png`
-- Capturas de teléfono 1080×1920: `screenshots/1_menu.png` … `6_logros.png`
+• Quick runs, perfect for any moment
+• Original pixel art and chiptune music
+• Plays offline
+• Free to play, with ads and optional purchases
+
+How far can you orbit?
+
+## Español (es-419)
+
+**Descripción breve (máx. 80):**
+Un toque para girar. Esquiva meteoritos, recoge monedas y conquista 10 mundos.
+
+**Descripción completa:**
+¡Gira alrededor del planeta y no dejes que nada te toque!
+
+ORBIT POP es un arcade de un solo toque: tu personaje da vueltas en órbita y cada toque cambia su dirección. Esquiva meteoritos, minas, rayos y ondas de choque, recoge monedas y llega tan lejos como puedas. Fácil de aprender, difícil de dominar.
+
+🌍 10 MUNDOS DISTINTOS
+Cielo, laguna, atardecer, caramelo, noche... y mundos con dos y tres planetas donde puedes saltar de una órbita a otra. Cada mundo cambia la forma de la órbita y trae obstáculos nuevos.
+
+⚡ SUBE DE NIVEL Y HAZTE MÁS FUERTE
+Gana experiencia en cada partida y desbloquea 7 habilidades permanentes: escudo, imán de monedas, cámara lenta, teletransporte, salida avanzada, segunda vida y más monedas. Mejóralas con las monedas que recoges.
+
+🎨 26 SKINS Y 20 ESTELAS
+Personajes comunes, raros, épicos, legendarios y míticos, algunos con efectos especiales. Consíguelos llegando a nuevos mundos, batiendo récords o con monedas.
+
+🏆 COMPITE
+Rankings mundiales y regionales con Google Play Juegos, 34 logros, 3 misiones diarias y un reto semanal.
+
+✨ JUSTO DE VERDAD
+Cada patrón de obstáculos se comprueba antes de aparecer y te da tiempo para reaccionar: siempre hay una salida.
+
+• Partidas rápidas, ideales para cualquier momento
+• Pixel art y música originales
+• Funciona sin conexión
+• Gratis, con anuncios y compras opcionales
+
+¿Hasta qué mundo llegarás?

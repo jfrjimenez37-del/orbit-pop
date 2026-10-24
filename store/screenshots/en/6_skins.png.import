@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bb3vm7yn3oe1q"
-path="res://.godot/imported/2_noche.png-8d25b3afc9a28befd24db225e1113384.ctex"
+uid="uid://bgca0orsc6ay3"
+path="res://.godot/imported/6_skins.png-ad3ea1eec0c2e6869bb4d5a9f24ab810.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://store/screenshots/2_noche.png"
-dest_files=["res://.godot/imported/2_noche.png-8d25b3afc9a28befd24db225e1113384.ctex"]
+source_file="res://store/screenshots/en/6_skins.png"
+dest_files=["res://.godot/imported/6_skins.png-ad3ea1eec0c2e6869bb4d5a9f24ab810.ctex"]
 
 [params]
 

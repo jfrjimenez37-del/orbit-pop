@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b5cr1pr68a6qo"
-path="res://.godot/imported/3_trio.png-99867316b7a25d7888ea225cfb887e49.ctex"
+uid="uid://bvyavo7xpnv2l"
+path="res://.godot/imported/3_planets.png-aa6460b9bdabe77a8d9ff178f4aaaaa3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://store/screenshots/3_trio.png"
-dest_files=["res://.godot/imported/3_trio.png-99867316b7a25d7888ea225cfb887e49.ctex"]
+source_file="res://store/screenshots/es/3_planets.png"
+dest_files=["res://.godot/imported/3_planets.png-aa6460b9bdabe77a8d9ff178f4aaaaa3.ctex"]
 
 [params]
 

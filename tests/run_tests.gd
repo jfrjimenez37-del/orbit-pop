@@ -665,6 +665,14 @@ func test_progress(save) -> void:
 				if font.get_string_size(tx, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > 158 - 46 - 19 - 2:
 					too_wide.append(code + ":" + tx)
 	ok(too_wide.is_empty(), "ability texts fit their row %s" % str(too_wide))
+	# two-tab headers (skins/trails, packs/coins, ranking/awards): label + icon fit the tab
+	var tab_wide: Array = []
+	for code in l10n.LANGS:
+		l10n.set_lang(code)
+		for key in ["SKINS", "TRAILS", "PACKS", "COINS", "RANKING", "ACHIEVEMENTS"]:
+			if font.get_string_size(l10n.t(key), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > floori(164.0 / 2) - 4 - 6 - 13:
+				tab_wide.append(code + ":" + l10n.t(key))
+	ok(tab_wide.is_empty(), "tab labels fit their tab %s" % str(tab_wide))
 	l10n.set_lang("en")
 	save.reset_all()
 
@@ -698,6 +706,17 @@ func test_abilities(save) -> void:
 	ok(get_root().get_node("Progress").region() == "EUROPE", "region picked in settings wins")
 	save.region = ""
 	ok(get_root().get_node("Progress").region() == PlayGamesConfig.region(), "AUTO region follows the phone")
+	# in-app review: only after a record, after some runs, once a month, 3 times at most
+	ok(not Reviewer.should_ask(3, true, 80, 0, -9999, 100), "no review prompt in the first runs")
+	ok(not Reviewer.should_ask(20, false, 80, 0, -9999, 100), "no review prompt without a record")
+	ok(not Reviewer.should_ask(20, true, 10, 0, -9999, 100), "no review prompt for a tiny record")
+	ok(Reviewer.should_ask(20, true, 80, 0, -9999, 100), "review prompt after a good record")
+	ok(not Reviewer.should_ask(20, true, 80, 1, 90, 100) and Reviewer.should_ask(20, true, 80, 1, 70, 100), "at most once every 30 days")
+	ok(not Reviewer.should_ask(20, true, 80, 3, -9999, 100), "3 prompts at most")
+	save.games = 20
+	var rv: Reviewer = get_root().get_node("Progress").reviewer
+	ok(rv.maybe_ask(save, true, 80) and save.review_asks == 1 and not rv.maybe_ask(save, true, 90), "asking is remembered")
+	save.reset_all()
 	# in-run coins and MAGNET
 	var mc = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(mc)

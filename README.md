@@ -115,6 +115,13 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
   y las ventanas de misiones, ajustes y regalo diario. Nunca en el menú principal, en partida, en el
   fin de partida ni junto a la oferta inicial. Las pantallas se colocan por encima del banner; en
   teléfonos 16:9 (pantalla corta) skins y habilidades no llevan banner para no taparlas. Oculto con NO ADS.
+- **Valoración dentro del juego:** tras un récord (≥25 puntos, desde la 8.ª partida, máximo una vez
+  cada 30 días y 3 veces en total) se pide la hoja oficial de reseñas de Google Play. Necesita el
+  plugin "In-App Review" de Cengiz (AssetLib); sin él no hace nada.
+- **Tienda:** ficha en inglés (idioma principal, pensando en EE. UU.) y español en `store/listing.md`;
+  8 capturas con texto por idioma en `store/screenshots/en|es` (`tests/shots_store.gd` +
+  `tools/gen_store_shots.py`); política de privacidad bilingüe con derechos de estados de EE. UU.
+  en `store/privacy_policy.md`.
 - `addons/orbitpop_plugins`: al abrir el editor reactiva todos los plugins instalados (AdMob,
   Billing, Share, Play Games), por si `project.godot` se reemplaza con el de GitHub.
 - Pausa: botón arriba a la izquierda durante la partida (también tecla P/Esc). CONTINUAR hace

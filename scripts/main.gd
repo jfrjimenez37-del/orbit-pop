@@ -424,6 +424,8 @@ func _game_over() -> void:
 		Sfx.play("record")
 	elif not res["unlocked"].is_empty():
 		Sfx.play("unlock")
+	# a fresh record is the happiest moment to ask for a rating (Google shows its own sheet)
+	Progress.reviewer.maybe_ask(Save, res["record"], score)
 
 
 # ------------------------------------------------------------------ input

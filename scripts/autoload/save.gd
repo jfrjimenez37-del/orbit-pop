@@ -33,6 +33,8 @@ var daily_last := ""          # local date of the last claim (YYYY-MM-DD)
 var free_ads_date := ""
 var free_ads_used := 0
 var starter_seen := false
+var review_asks := 0          # times the Play review sheet was requested
+var review_day := -9999       # day_number() of the last request
 var vibration := true
 var lang := ""                # "" = follow the device
 var stats := {}               # near_total, bubbles_total, switch_total, teleport_total, missions_done, best_world
@@ -74,6 +76,8 @@ func load_data() -> void:
 	start_world = int(cfg.get_value("player", "start_world", 1))
 	region = str(cfg.get_value("settings", "region", ""))
 	starter_seen = bool(cfg.get_value("shop", "starter_seen", false))
+	review_asks = int(cfg.get_value("meta", "review_asks", 0))
+	review_day = int(cfg.get_value("meta", "review_day", -9999))
 	daily_day = int(cfg.get_value("daily", "day", 0))
 	daily_last = str(cfg.get_value("daily", "last", ""))
 	free_ads_date = str(cfg.get_value("daily", "free_ads_date", ""))
@@ -113,6 +117,8 @@ func save_data() -> void:
 	cfg.set_value("player", "start_world", start_world)
 	cfg.set_value("settings", "region", region)
 	cfg.set_value("shop", "starter_seen", starter_seen)
+	cfg.set_value("meta", "review_asks", review_asks)
+	cfg.set_value("meta", "review_day", review_day)
 	cfg.set_value("daily", "day", daily_day)
 	cfg.set_value("daily", "last", daily_last)
 	cfg.set_value("daily", "free_ads_date", free_ads_date)
@@ -489,6 +495,8 @@ func reset_all() -> void:
 	level = 1; xp = 0; abilities = {}; start_world = 1; region = ""
 	daily_day = 0; daily_last = ""; free_ads_date = ""; free_ads_used = 0
 	starter_seen = false
+	review_asks = 0
+	review_day = -9999
 	stats = {}; achievements = []; top_scores = []
 	missions = {"day": -1, "list": [], "week": -1, "weekly": {}}
 	save_data()
