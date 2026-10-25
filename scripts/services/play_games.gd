@@ -38,8 +38,11 @@ static func _client(cls: String) -> Node:
 func start() -> void:
 	var pgs := get_node_or_null("/root/GodotPlayGameServices")
 	if pgs == null or not OS.has_feature("android"):
+		Diag.log("playgames: not on android / autoload missing")
 		return
-	if int(pgs.call("initialize")) != 0:
+	var init := int(pgs.call("initialize"))
+	if init != 0:
+		Diag.log("playgames: plugin singleton NOT found (initialize=%d): plugin off in this build?" % init)
 		return
 	_sign = _client("PlayGamesSignInClient")
 	_lb = _client("PlayGamesLeaderboardsClient")
@@ -47,10 +50,12 @@ func start() -> void:
 	_snap = _client("PlayGamesSnapshotsClient")
 	_players = _client("PlayGamesPlayersClient")
 	if _sign == null or _lb == null or _ach == null or _snap == null or _players == null:
+		Diag.log("playgames: client classes missing")
 		return
 	for n in [_sign, _lb, _ach, _snap, _players]:
 		add_child(n)
 	available = true
+	Diag.log("playgames: ready, checking sign-in")
 	_sign.connect("user_authenticated", _on_auth)
 	_snap.connect("game_loaded", _on_game_loaded)
 	_players.connect("current_player_loaded", _on_player)
@@ -61,11 +66,13 @@ func start() -> void:
 
 
 func sign_in() -> void:
+	Diag.log("playgames: sign_in pressed (available %s)" % str(available))
 	if available:
 		_sign.call("sign_in")
 
 
 func _on_auth(ok: bool) -> void:
+	Diag.log("playgames: authenticated = %s" % str(ok))
 	signed_in = ok
 	signed_in_changed.emit(ok)
 	if ok:

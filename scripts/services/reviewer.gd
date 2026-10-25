@@ -23,6 +23,7 @@ static func plugin_script() -> Script:
 
 func start() -> void:
 	var scr := plugin_script()
+	Diag.log("review: plugin %s" % ("yes" if scr != null else "NO"))
 	if scr == null or not OS.has_feature("android"):
 		return
 	_node = scr.new()

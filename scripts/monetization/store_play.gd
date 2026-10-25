@@ -36,8 +36,12 @@ func start(ids: Array) -> void:
 		return
 	_client = scr.new()
 	_client.connect("connected", _on_connected)
-	_client.connect("disconnected", func(): _connected = false)
-	_client.connect("connect_error", func(_c, _m): _connected = false)
+	_client.connect("disconnected", func():
+		Diag.log("billing: disconnected")
+		_connected = false)
+	_client.connect("connect_error", func(c, m):
+		Diag.log("billing: connect ERROR %s %s" % [str(c), str(m)])
+		_connected = false)
 	_client.connect("query_product_details_response", _on_details)
 	_client.connect("query_purchases_response", _on_purchases.bind(true))
 	_client.connect("on_purchase_updated", _on_purchases.bind(false))
@@ -73,6 +77,7 @@ func restore() -> void:
 
 
 func _on_connected() -> void:
+	Diag.log("billing: connected")
 	_connected = true
 	_client.call("query_product_details", PackedStringArray(_ids), INAPP)
 	_client.call("query_purchases", INAPP)
@@ -80,7 +85,9 @@ func _on_connected() -> void:
 
 func _on_details(res: Dictionary) -> void:
 	if int(res.get("response_code", -1)) != OK_CODE:
+		Diag.log("billing: product details ERROR %s %s" % [str(res.get("response_code")), str(res.get("debug_message", ""))])
 		return
+	Diag.log("billing: %d products" % res.get("product_details", []).size())
 	for d in res.get("product_details", []):
 		var offers = d.get("one_time_purchase_offer_details_list")
 		if offers is Array and not offers.is_empty():

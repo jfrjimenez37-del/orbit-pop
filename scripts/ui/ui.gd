@@ -1523,6 +1523,43 @@ func show_settings() -> void:
 	_close_button(p, 8 + rows.size() * 22 + 2)
 	var ver := _label(p, "V" + str(ProjectSettings.get_setting("application/config/version", "")), 1, MUTED)
 	_center_label(ver, 156, 8 + rows.size() * 22 + 26)
+	# hidden: tap the version 5 times to see what the ads / Play Games / store plugins reported
+	var vb := Button.new()
+	vb.flat = true
+	vb.focus_mode = Control.FOCUS_NONE
+	vb.position = Vector2(48, 8 + rows.size() * 22 + 22)
+	vb.size = Vector2(60, 14)
+	p.add_child(vb)
+	vb.pressed.connect(func():
+		_diag_taps += 1
+		if _diag_taps >= 5:
+			_diag_taps = 0
+			show_diag())
+
+
+var _diag_taps := 0
+
+
+## Diagnostics popup (also copies the text so it can be pasted in a message).
+func show_diag() -> void:
+	var p := _open_popup("DIAG", "diag", 236)
+	var txt := Diag.text()
+	DisplayServer.clipboard_set(txt)
+	var lab := Label.new()
+	lab.add_theme_font_override("font", FONT_PLAIN)
+	lab.add_theme_font_size_override("font_size", 8)
+	lab.add_theme_color_override("font_color", INK)
+	lab.autowrap_mode = TextServer.AUTOWRAP_ARBITRARY
+	lab.position = Vector2(4, 4)
+	lab.size = Vector2(148, 200)
+	lab.clip_text = true
+	var shown: Array = txt.split("\n")
+	# the pixel font only has capitals and a few symbols
+	lab.text = "\n".join(shown.slice(maxi(0, shown.size() - 18))).to_upper().replace("=", ":").replace("_", "-")
+	p.add_child(lab)
+	var c := _left_label(p, L.t("COPIED"), Vector2(4, 206), GREEN_INK)
+	c.scale = Vector2.ONE
+	_close_button(p, 214)
 
 
 ## Queues short messages; they show one after another.

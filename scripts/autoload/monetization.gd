@@ -37,6 +37,9 @@ func _ready() -> void:
 		_set_store(StorePlay.new(), "play")
 	elif OS.is_debug_build() or force_mock:
 		_set_store(StoreMock.new(), "test")
+	Diag.log("ads=%s (admob plugin %s)  store=%s (billing plugin %s)" % [ads_mode if ads else "none",
+		"yes" if AdsAdmob.plugin_script() != null else "NO", store_mode if store else "none",
+		"yes" if StorePlay.plugin_script() != null else "NO"])
 
 
 func _set_ads(node: Node, mode: String) -> void:

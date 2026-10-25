@@ -29,6 +29,7 @@ func start() -> void:
 		return
 	_admob = scr.new()
 	_admob.set("is_real", not OS.is_debug_build())
+	Diag.log("admob: start, real ids %s" % str(not OS.is_debug_build()))
 	_admob.set("android_real_application_id", MonetizationConfig.ADMOB_APP_ID)
 	_admob.set("android_real_interstitial_id", MonetizationConfig.ADMOB_INTERSTITIAL_ID)
 	_admob.set("android_real_rewarded_id", MonetizationConfig.ADMOB_REWARDED_ID)
@@ -37,16 +38,28 @@ func start() -> void:
 	add_child(_admob)
 	_admob.connect("initialization_completed", func(_s): _on_init())
 	_admob.connect("consent_info_updated", _on_consent_info)
-	_admob.connect("consent_info_update_failed", func(_e): _on_consent_failed())
+	_admob.connect("consent_info_update_failed", func(e):
+		Diag.log("admob: consent update FAILED " + Diag.err(e))
+		_on_consent_failed())
+	_admob.connect("consent_form_failed_to_load", func(e): Diag.log("admob: consent form FAILED " + Diag.err(e)))
+	_admob.connect("banner_ad_failed_to_load", func(_a, e): Diag.log("admob: banner FAILED " + Diag.err(e)))
 	_admob.connect("consent_form_loaded", func(): _admob.call("show_consent_form"))
-	_admob.connect("rewarded_ad_loaded", func(_a, _r): _rewarded_loaded = true)
-	_admob.connect("rewarded_ad_failed_to_load", func(_a, _e): _retry_load("rewarded"))
+	_admob.connect("rewarded_ad_loaded", func(_a, _r):
+		Diag.log("admob: rewarded loaded")
+		_rewarded_loaded = true)
+	_admob.connect("rewarded_ad_failed_to_load", func(_a, e):
+		Diag.log("admob: rewarded FAILED " + Diag.err(e))
+		_retry_load("rewarded"))
 	_admob.connect("rewarded_ad_user_earned_reward", func(_a, _r): _earned = true)
 	_admob.connect("rewarded_ad_dismissed_full_screen_content", func(_a): _rewarded_closed())
 	_admob.connect("rewarded_ad_failed_to_show_full_screen_content", func(_a, _e): _rewarded_closed())
 	_admob.connect("banner_ad_loaded", func(_a, _r): _on_banner_loaded())
-	_admob.connect("interstitial_ad_loaded", func(_a, _r): _interstitial_loaded = true)
-	_admob.connect("interstitial_ad_failed_to_load", func(_a, _e): _retry_load("interstitial"))
+	_admob.connect("interstitial_ad_loaded", func(_a, _r):
+		Diag.log("admob: interstitial loaded")
+		_interstitial_loaded = true)
+	_admob.connect("interstitial_ad_failed_to_load", func(_a, e):
+		Diag.log("admob: interstitial FAILED " + Diag.err(e))
+		_retry_load("interstitial"))
 	_admob.connect("interstitial_ad_dismissed_full_screen_content", func(_a): _interstitial_closed())
 	_admob.connect("interstitial_ad_failed_to_show_full_screen_content", func(_a, _e): _interstitial_closed())
 	# GDPR / UMP consent first, then initialize the SDK.
@@ -55,6 +68,7 @@ func start() -> void:
 
 func _on_consent_info() -> void:
 	var st = _admob.call("get_consent_status")
+	Diag.log("admob: consent status %s" % (str(st.get("status")) if st != null else "null"))
 	# UserConsent.Status: 0 UNKNOWN, 1 NOT_REQUIRED, 2 REQUIRED, 3 OBTAINED
 	if st != null and int(st.get("status")) == 2 and bool(_admob.call("is_consent_form_available")):
 		_admob.call("load_consent_form")
@@ -71,12 +85,15 @@ func _on_consent_failed() -> void:
 
 
 func _on_init() -> void:
+	Diag.log("admob: initialized")
 	_admob.call("load_rewarded_ad")
 	if not Save.owns("no_ads"):
 		_admob.call("load_interstitial_ad")
 
 
 func _on_banner_loaded() -> void:
+	if not _banner_loaded:
+		Diag.log("admob: banner loaded")
 	_banner_loaded = true
 	if _banner_wanted:
 		_admob.call("show_banner_ad")
