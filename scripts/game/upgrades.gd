@@ -2,11 +2,11 @@ class_name Upgrades
 ## Player level (XP) and permanent abilities. An ability unlocks for free at its player level
 ## (level 1), then each further level is bought with coins. Nothing is consumed.
 ## Tuned with a progression simulation: an average player (25 min/day) unlocks every ability
-## in ~5 days, maxes them in ~2.5 months and reaches level 50 in ~4 months.
+## in ~5 days, maxes them in ~1.5 months and reaches level 50 in ~4 months.
 
 const MAX_LEVEL := 50
 ## Coins to buy ability level i+1 (index 0 = level 1, free on unlock).
-const PRICES := [0, 1000, 2500, 6000, 15000]
+const PRICES := [0, 300, 1200, 4000, 12000]   # first upgrade within the first session
 const RUN_XP_BONUS := 15          # XP for finishing any run, on top of the score
 const FIRST_RUN_XP := 50          # the very first run always reaches level 2
 
@@ -18,7 +18,7 @@ const ABILITIES := [
 	{"id": "slowmo", "icon": "slowmo", "unlock": 8, "max": 3, "active": true},
 	{"id": "teleport", "icon": "teleport", "unlock": 10, "max": 3, "active": true},
 	{"id": "headstart", "icon": "rocket", "unlock": 12, "max": 3},
-	{"id": "secondlife", "icon": "heart", "unlock": 15, "max": 1, "buy": 15000},
+	{"id": "secondlife", "icon": "heart", "unlock": 15, "max": 1, "buy": 10000},
 ]
 const HEADSTART_WORLD := [1, 3, 5, 8]   # highest start world per headstart level
 const SLOWMO_TIME := 2.0

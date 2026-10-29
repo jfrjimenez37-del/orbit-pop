@@ -138,7 +138,7 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
 **Nivel de jugador y habilidades permanentes** (`scripts/game/upgrades.gd`). Cada partida da XP
 = puntos + 15 (la primera, mínimo 50, para subir a nivel 2 enseguida). XP para pasar del nivel L:
 `40 + 10·L^1.8`, hasta nivel 50. Cada habilidad se desbloquea gratis (nivel 1) al llegar a su nivel
-de jugador y luego se mejora con monedas (1000, 2500, 6000, 15000). Nada se gasta al jugar.
+de jugador y luego se mejora con monedas (300, 1200, 4000, 12000). Nada se gasta al jugar.
 
 | Habilidad | Nivel | Máx. | Efecto |
 |---|---|---|---|
@@ -148,10 +148,10 @@ de jugador y luego se mejora con monedas (1000, 2500, 6000, 15000). Nada se gast
 | CÁMARA LENTA | 8 | 3 | botón en partida: 2 s a media velocidad, 1 carga por nivel |
 | TELEPORT | 10 | 3 | botón en partida: salta al lado opuesto, 1 carga por nivel |
 | SALTO INICIAL | 12 | 3 | empezar en el mundo 3/5/8 (con sus puntos), sin pasar de tu mejor mundo −1 |
-| SEGUNDA VIDA | 15 | 1 | revive 1 vez por partida (se compra: 15000) |
+| SEGUNDA VIDA | 15 | 1 | revive 1 vez por partida (se compra: 10000) |
 
 Simulación de la curva: un jugador medio (25 min/día) desbloquea todas en ~5 días, las mejora
-al máximo en ~2 meses y llega a nivel 50 en ~4 meses. Con el imán al máximo se recogen ~80 % de
+al máximo en ~1,5 meses y llega a nivel 50 en ~4 meses. Con el imán al máximo se recogen ~80 % de
 las monedas sueltas (~23/min) frente a ~35 % sin él (~10/min). Las partidas guardadas antiguas reciben
 en monedas el valor de los boosts que tenían.
 

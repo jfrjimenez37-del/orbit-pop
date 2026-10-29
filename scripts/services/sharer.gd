@@ -13,6 +13,10 @@ func start() -> void:
 			return
 
 
+func available() -> bool:
+	return _share != null
+
+
 func share_score(text: String, img: Image) -> bool:
 	var path := "user://orbitpop_score.png"
 	if img:

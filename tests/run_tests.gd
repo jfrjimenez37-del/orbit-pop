@@ -380,11 +380,12 @@ func test_economy(save) -> void:
 	var gained: Array = save.add_xp(Upgrades.xp_next(1))
 	ok(gained == [2] and save.level == lv_before + 1 and save.ability("coins") == 1, "level 2 unlocks COINS+ for free")
 	ok(save.coins == 5000 + Upgrades.level_coins(2), "level-up pays coins")
-	save.coins = 1000
+	save.coins = Upgrades.PRICES[1]
+	ok(Upgrades.PRICES[1] <= 400, "first upgrade is cheap (%d coins)" % Upgrades.PRICES[1])
 	ok(save.buy_ability("coins") and save.ability("coins") == 2 and save.coins == 0, "ability upgraded with coins")
 	ok(not save.buy_ability("coins"), "upgrade refused without coins")
 	save.level = 15
-	ok(save.ability("secondlife") == 0 and Upgrades.price("secondlife", 0) == 15000, "SECOND LIFE must be bought")
+	ok(save.ability("secondlife") == 0 and Upgrades.price("secondlife", 0) == 10000, "SECOND LIFE must be bought")
 	save.abilities["shield"] = 3
 	ok(Upgrades.price("shield", 3) == -1 and not save.buy_ability("shield"), "maxed ability can't be bought")
 	var xp50 := 0
@@ -673,6 +674,13 @@ func test_progress(save) -> void:
 			if font.get_string_size(l10n.t(key), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > floori(164.0 / 2) - 4 - 6 - 13:
 				tab_wide.append(code + ":" + l10n.t(key))
 	ok(tab_wide.is_empty(), "tab labels fit their tab %s" % str(tab_wide))
+	var panel_wide: Array = []
+	for code in l10n.LANGS:
+		l10n.set_lang(code)
+		for key in ["COINS_TIP", "STORE_OFFLINE", "STORE_PLAY", "AB_TIP", "PLAY_GAMES_OFF"]:
+			if font.get_string_size(l10n.t(key), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > 158:
+				panel_wide.append(code + ":" + l10n.t(key))
+	ok(panel_wide.is_empty(), "centered panel texts fit %s" % str(panel_wide))
 	l10n.set_lang("en")
 	save.reset_all()
 

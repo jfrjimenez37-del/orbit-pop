@@ -66,6 +66,9 @@ var _ab_box: Control
 var _ab_list: Control
 var _run_coins_box: Control
 var _style_box: Control
+var _menu_coin_box: Control
+var _hud_top: Control
+var _over_box: Control
 var _run_coins_lbl: Label
 var _menu_level: Label
 var _menu_xp: ColorRect
@@ -396,23 +399,12 @@ func _build_menu() -> void:
 	_menu_name = _label(best_box, "", 1, Color.WHITE)
 	_menu_name.position.y = 30
 	var cb := _container(menu)
-	cb.position = Vector2(4, 3)
+	cb.position = Vector2(6, 4)
+	_menu_coin_box = cb
 	_icon(cb, "icon_coin", Vector2.ZERO)
 	_menu_coins = _label(cb, "0", 1, GOLD)
 	_menu_coins.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_menu_coins.position = Vector2(11, 0)
-	var gift := _button(menu, "pink", "", "gift", Vector2(22, 20))
-	gift.anchor_left = 1.0; gift.anchor_right = 1.0
-	gift.offset_left = -25; gift.offset_right = -3; gift.offset_top = 2; gift.offset_bottom = 22
-	gift.pressed.connect(show_daily)
-	_gift_badge = _label(gift, "!", 1, GOLD)
-	_gift_badge.position = Vector2(17, -4)
-	var mis := _button(menu, "white", "", "mission", Vector2(22, 20))
-	mis.anchor_left = 1.0; mis.anchor_right = 1.0
-	mis.offset_left = -50; mis.offset_right = -28; mis.offset_top = 2; mis.offset_bottom = 22
-	mis.pressed.connect(show_mission)
-	_mission_badge = _label(mis, "!", 1, GOLD)
-	_mission_badge.position = Vector2(17, -4)
 	var play := _button(menu, "yellow", L.t("PLAY"), "", Vector2(84, 28), 2)
 	_place(play, 1.0, -64, 84, 28)
 	play.pressed.connect(func(): play_pressed.emit())
@@ -426,13 +418,20 @@ func _build_menu() -> void:
 	_place(rk, 1.0, -64, 26, 28)
 	rk.offset_left += 60; rk.offset_right += 60
 	rk.pressed.connect(func(): ranking_pressed.emit())
-	var row := [["skins", "white", func(): skins_pressed.emit()], ["cart", "pink", func(): shop_pressed.emit()],
-		["gear", "white", show_settings]]
+	# bottom row (kept off the top corners: rounded screens and camera notches cut them)
+	var row := [["mission", "white", show_mission], ["skins", "white", func(): skins_pressed.emit()],
+		["cart", "pink", func(): shop_pressed.emit()], ["gift", "pink", show_daily], ["gear", "white", show_settings]]
 	for i in row.size():
-		var b := _button(menu, row[i][1], "", row[i][0], Vector2(34, 22))
-		_place(b, 1.0, -31, 34, 22)
-		b.offset_left += (i - 1) * 38; b.offset_right += (i - 1) * 38
+		var b := _button(menu, row[i][1], "", row[i][0], Vector2(28, 22))
+		_place(b, 1.0, -31, 28, 22)
+		b.offset_left += (i - 2) * 31; b.offset_right += (i - 2) * 31
 		b.pressed.connect(row[i][2])
+		if row[i][0] == "mission":
+			_mission_badge = _label(b, "!", 1, GOLD)
+			_mission_badge.position = Vector2(23, -4)
+		elif row[i][0] == "gift":
+			_gift_badge = _label(b, "!", 1, GOLD)
+			_gift_badge.position = Vector2(23, -4)
 
 
 func refresh_menu() -> void:
@@ -462,8 +461,19 @@ func upgrade_affordable() -> bool:
 
 
 func show_menu() -> void:
+	_menu_coin_box.position.y = 4 + safe_top()
 	refresh_menu()
 	_switch(menu)
+
+
+## Height (viewport px) hidden at the top by a camera notch / status bar, 0 on PC.
+func safe_top() -> float:
+	if not OS.has_feature("mobile"):
+		return 0.0
+	var win := DisplayServer.window_get_size()
+	if win.y <= 0:
+		return 0.0
+	return roundf(DisplayServer.get_display_safe_area().position.y * root.size.y / float(win.y))
 
 
 # ------------------------------------------------------------------ HUD
@@ -471,6 +481,7 @@ func show_menu() -> void:
 func _build_hud() -> void:
 	hud = _screen()
 	var top := _container(hud)
+	_hud_top = top
 	_place(top, 0.0, 0, 180, 60)
 	_score_lbl = _label(top, "0", 3)
 	_hud_best = _label(top, "", 1, Color(1, 1, 1, 0.85))
@@ -534,6 +545,10 @@ func set_run_coins(n: int) -> void:
 
 
 func show_hud(best: int, hint: bool) -> void:
+	var st := safe_top()
+	_hud_top.offset_top = st; _hud_top.offset_bottom = st + 60
+	_pause_btn.position.y = 4 + st
+	_run_coins_box.offset_top = 7 + st
 	set_score(0)
 	_hud_best.text = L.t("BEST_N", best) if best > 0 else ""
 	_hud_best.modulate = Color(1, 1, 1, 0.85)
@@ -638,6 +653,7 @@ func _build_over() -> void:
 	over = _screen()
 	var box := _container(over)
 	_place(box, 0.5, -118, 136, 236)
+	_over_box = box
 	var title := _label(box, L.t("GAME_OVER"), 2)
 	_center_label(title, 136, 0)
 	var panel := _panel(box, Vector2(0, 24), Vector2(136, 200))
@@ -659,7 +675,7 @@ func _build_over() -> void:
 	_over_coins.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_over_coins.position = Vector2(42, 90)
 	_over_double = _button(panel, "pink", "X2", "video", Vector2(40, 18))
-	_over_double.position = Vector2(80, 85)
+	_over_double.position = Vector2(80, 82)
 	_over_double.pressed.connect(func(): double_pressed.emit())
 	_over_unlock = _label(panel, "", 1, GREEN_INK)
 	_over_rank = _label(panel, "", 1, Color8(70, 120, 220))
@@ -696,7 +712,10 @@ func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_co
 	if can_continue:
 		y += 28
 	_over_buttons[0].position = Vector2(14, y)
-	_over_buttons[1].position = Vector2(14, y + 34)
+	# share only when the native share sheet exists (otherwise the button seemed to do nothing)
+	var can_share: bool = Progress.sharer.available()
+	_over_buttons[2].visible = can_share
+	_over_buttons[1].position = Vector2(14 if can_share else 39, y + 34)
 	_over_buttons[2].position = Vector2(76, y + 34)
 	_over_panel.size.y = y + 66
 	_over_score.text = str(score)
@@ -1477,7 +1496,7 @@ func _mission_row(p: Control, m: Dictionary, y: int) -> void:
 
 
 func show_settings() -> void:
-	var p := _open_popup(L.t("SETTINGS"), "settings", 196)
+	var p := _open_popup(L.t("SETTINGS"), "settings", 210)
 	var rows := [
 		["SOUND", L.t("ON") if Save.sound else L.t("OFF"), func():
 			Save.sound = not Save.sound
@@ -1580,7 +1599,11 @@ func _next_toast() -> void:
 	var sz := root.size
 	var w := _text_w(_toast.text)
 	_toast.size = Vector2(w + 6, 16)
-	_toast.position = Vector2(roundf((sz.x - w - 6) * 0.5), roundf(sz.y * 0.5) - 8)
+	var ty := roundf(sz.y * 0.5) - 8
+	if over.visible:
+		# above the game over card, not on top of its coins / XP lines
+		ty = maxf(4.0 + safe_top(), _over_box.global_position.y - 28.0)
+	_toast.position = Vector2(roundf((sz.x - w - 6) * 0.5), ty)
 	_toast.visible = true
 	_toast.modulate.a = 1.0
 	var tw := create_tween()
