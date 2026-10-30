@@ -29,6 +29,18 @@ static var rmin_k: Array = [60.0]
 static var rmax_k: Array = [60.0]
 ## Bumped whenever the geometry changes, so hazards can cache per-orbit samples.
 static var version := 0
+## Moving worlds: geometry is a function of game time (see set_time). Empty = static world.
+static var motion: Dictionary = {}
+static var time := 0.0
+
+
+static func moving() -> bool:
+	return not motion.is_empty()
+
+
+## Geometry at game time t (moving worlds only; a no-op otherwise).
+static func set_time(t: float) -> void:
+	time = t
 ## Per orbit: SAMPLES points [angle, x, y, ...] (world space), for hazards that test the
 ## orbit against a shape instead of a point.
 const SAMPLES := 128

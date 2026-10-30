@@ -111,6 +111,10 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		var fair := Survival.can_survive(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP,
 			Survival.HUMAN_REACT if react_check else 0.0, omega_rate(t), cache, active.size()) \
 			if human_check else Survival.can_survive(all, t, angle, dir, w, true, k)
+		if fair and human_check and react_check:
+			# whatever the player does before they can see the new pattern must stay escapable
+			fair = Survival.robust(all, active.size(), t, angle, dir, w, k, Survival.human_margin(w), Survival.HUMAN_GAP,
+				Survival.HUMAN_REACT, omega_rate(t), cache)
 		if fair:
 			spawned_first = true
 			committed += 1
@@ -245,10 +249,11 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 				hs.append(_meteor(a - d * rng.randf_range(0.6, 1.2), t + warn * 0.5, x))
 			length = warn + 1.4
 		"pulse":
-			var spd := lerpf(62.0, 90.0, x)
+			# gap close to the player and wide enough that a wrong tap before seeing it is recoverable
+			var spd := lerpf(60.0, 70.0, x)
 			var cross_t := warn + (Orbit.R - Orbit.planet_r(k)) / spd
-			var gh := lerpf(0.8, 0.5, x)
-			hs.append(Pulse.new().setup(a + d * w * cross_t * rng.randf_range(0.3, 1.0), t, warn, gh, spd, k))
+			var gh := lerpf(1.05, 0.9, x)
+			hs.append(Pulse.new().setup(a + d * w * cross_t * rng.randf_range(0.0, 0.2), t, warn, gh, spd, k))
 			length = cross_t + 0.4
 		"saw":
 			var act3 := lerpf(1.0, 0.8, x)

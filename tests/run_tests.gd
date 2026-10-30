@@ -153,6 +153,20 @@ func test_survival() -> void:
 	var slow := Meteor.new().setup(2.5 * Meteor.time_to_orbit(0.3, 120.0, Orbit.R), 0.0, 0.3, 120.0)
 	ok(Survival.can_survive([slow], 0.0, 0.0, 1, 2.5, true, 0, Survival.MARGIN, Survival.TAP_GAP, Survival.HUMAN_REACT), "normal meteor fair with reaction time")
 	slow.free()
+	# reaction-proof check: a second meteor waits exactly where an early tap would take the
+	# player. Escapable if you do not touch, but unfair for someone who tapped before seeing it.
+	var w := 2.5
+	# the trap lands just after the reaction window, where a tap at 0.06 s would have taken you
+	var t_hit := Meteor.time_to_orbit(0.02, 360.0, Orbit.R)
+	var safe := Meteor.new().setup(w * Meteor.time_to_orbit(0.3, 120.0, Orbit.R) + 1.6, 0.0, 0.3, 120.0)
+	var trap := Meteor.new().setup(w * (2.0 * 0.06 - t_hit), 0.0, 0.02, 360.0)
+	var pair: Array = [safe, trap]
+	var plain := Survival.can_survive(pair, 0.0, 0.0, 1, w, true, 0, Survival.MARGIN, Survival.HUMAN_GAP, Survival.HUMAN_REACT)
+	var rob := Survival.robust(pair, 0, 0.0, 0.0, 1, w, 0, Survival.MARGIN, Survival.HUMAN_GAP, Survival.HUMAN_REACT)
+	ok(plain and not rob, "trap for an early tap is rejected by the reaction-proof check (%s %s)" % [plain, rob])
+	ok(Survival.robust([safe], 0, 0.0, 0.0, 1, w, 0, Survival.MARGIN, Survival.HUMAN_GAP, Survival.HUMAN_REACT), "a plain far meteor passes the reaction-proof check")
+	for h in pair:
+		h.free()
 	# shared cache gives the same answers as fresh checks
 	var field: Array = [Meteor.new().setup(1.0, 0.0, 0.3, 120.0), Spiky.new().setup(-1.2, 0.0, 0.5, 2.0)]
 	var cache := {}

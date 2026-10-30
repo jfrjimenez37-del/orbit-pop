@@ -28,6 +28,7 @@ var near_count := 0
 var continued := false        # rewarded continue already used this run
 var bubbles_popped := 0
 var picked_coins := 0         # coins collected on the orbits this run
+var _hist: Array = []         # [time, angle, dir, orbit, omega] every ~20 ms (death report)
 var coins_awarded := 0        # coins already paid out for this run (continue-safe)
 var run_coins := 0            # coins shown on game over (doubled by a rewarded ad)
 var coins_doubled := false
@@ -325,6 +326,7 @@ func start_run() -> void:
 	shield_until = 0.0
 	bubbles_popped = 0
 	picked_coins = 0
+	_hist.clear()
 	coins_awarded = 0
 	run_coins = 0
 	coins_doubled = false
@@ -387,6 +389,7 @@ func _clear_field() -> void:
 
 
 func _die() -> void:
+	_death_report()
 	if second_life:
 		_use_second_life()
 		return
@@ -560,8 +563,14 @@ func _process(delta: float) -> void:
 
 func _sim(dt: float) -> void:
 	gt += dt
+	Orbit.set_time(gt)
 	player.omega = director.omega(gt)
 	player.advance(dt)
+	# short history of the player's state for the death report
+	if _hist.is_empty() or gt - float(_hist[-1][0]) >= 0.02:
+		_hist.append([gt, player.angle, player.dir, player.orbit, player.omega])
+		if _hist.size() > 150:
+			_hist.pop_front()
 	_update_world(dt)
 	var spawn := director.update(gt, player.angle, player.dir, hazards, player.orbit)
 	for h in spawn["hazards"]:
@@ -617,6 +626,31 @@ func _sim(dt: float) -> void:
 		if take:
 			_collect(b)
 	bg.speed_mul = 1.0 + director.level(gt) * 1.5
+
+
+## Death report (Settings > tap the version 5 times): from the moment the newest hazard could
+## be seen (spawn + reaction time), was there still a way out? "IMPOSSIBLE" means a bug to fix.
+func _death_report() -> void:
+	if hazards.is_empty() or _hist.is_empty():
+		return
+	var newest := -INF
+	for h in hazards:
+		newest = maxf(newest, h.t_spawn)
+	var seen := newest + Survival.HUMAN_REACT
+	var st: Array = _hist[-1]
+	for e in _hist:
+		if float(e[0]) >= seen:
+			st = e
+			break
+	var keep := Orbit.time
+	var t0 := float(st[0])
+	if Orbit.moving():
+		Orbit.set_time(t0)
+	var ok := t0 >= gt or Survival.can_survive(hazards, t0, float(st[1]), int(st[2]), float(st[4]), true, int(st[3]))
+	if Orbit.moving():
+		Orbit.set_time(keep)
+	var names: Array = hazards.map(func(h): return h.get_script().get_global_name())
+	Diag.log("death w%d %dpts %s [%s]" % [world_no, score, "avoidable" if ok else "IMPOSSIBLE", ",".join(names)])
 
 
 func _collect(b: Bubble) -> void:
