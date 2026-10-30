@@ -61,9 +61,15 @@ tests/                    suite headless, bot y capturas
   sin tocar más rápido que cada 0,17 s y **sin tocar durante los primeros 0,25 s** (tiempo de
   reacción: nunca hace falta un toque instantáneo ante algo que acaba de aparecer). También tiene
   en cuenta que la velocidad sube durante el patrón. Si no hay salida, se descarta o simplifica.
+  Desde 1.0.11 hay una segunda comprobación **a prueba de reacción** (`Survival.robust`): con
+  conjuntos ganadores calculados hacia atrás y alcanzables hacia delante, exige que *cualquier*
+  secuencia de toques durante los 0,25 s en que el jugador aún no ha visto el obstáculo nuevo
+  deje una salida. Así un patrón nuevo nunca castiga algo que el jugador hizo antes de verlo.
+  En los mundos móviles la simulación mueve la geometría en cada paso (`Orbit.set_time`).
+  Cada muerte deja un informe en el diagnóstico (últimos 2 s, obstáculo, si era evitable).
   Las mismas funciones `danger()` deciden colisiones y validación; en órbitas no circulares
   (elipses, descentradas) la zona de choque sigue la curva real (error < 2 px, siempre a favor
-  del jugador). `tests/audit.gd` juega los 10 mundos con un bot perfecto y otro "humano";
+  del jugador). `tests/audit.gd` juega los 16 mundos con un bot perfecto y otro "humano";
   `tests/audit_react.gd` usa un humano que solo ve cada obstáculo 0,25 s después de aparecer y
   clasifica cada muerte en "imposible" (perdida antes de poder verlo) o "error del jugador".
 - **Anti-campeo:** los meteoritos apuntan a la posición actual o prevista del jugador y las minas
@@ -72,14 +78,14 @@ tests/                    suite headless, bot y capturas
 - **Dificultad:** velocidad orbital 2,45→3,45 rad/s, meteoritos más rápidos, avisos más cortos y
   patrones nuevos (pinza, minas, barreras, puerta, lluvia, barrera giratoria, jaula, estrella móvil)
   que se desbloquean entre 0 y 48 s. Se desplaza ±segundos según la media de las últimas 5 partidas.
-- **Skins (26, por rareza):** el color de la barra de la carta y la etiqueta indican la rareza.
+- **Skins (29, por rareza):** el color de la barra de la carta y la etiqueta indican la rareza.
   | Rareza | Skins y cómo se consiguen |
   |---|---|
   | COMÚN | POPPY (inicial), MINTY (récord 15), BERRY (récord 40), COOKIE (600), MELONY (900) |
   | RARA | FROSTY (mundo 3), EMBER (mundo 4), VOLT (mundo 5, chispas), PIXEL (2500 puntos totales), BUBBLY (1500), ROBO (2200), PANDA (STAR PACK) |
-  | ÉPICA (partículas) | GHOSTY (mundo 6, llamas), ALIEN (mundo 7), CRYSTAL (mundo 8), COSMO (récord 250, estrellas), NINJA (4000), DRAKE (5500), NEON (STAR PACK) |
-  | LEGENDARIA (aura) | MAGMA (mundo 9, brasas), ROYAL (mundo 10), SKULLY (9000), PRISM (15000, arcoíris), GOLDIE (STAR PACK) |
-  | MÍTICA | NOVA (récord 500), OMEGA (récord 1000) |
+  | ÉPICA (partículas) | GHOSTY (mundo 6, llamas), ALIEN (mundo 7), CRYSTAL (mundo 8), LUNA (mundo 11), COSMO (récord 250, estrellas), NINJA (4000), DRAKE (5500), NEON (STAR PACK) |
+  | LEGENDARIA (aura) | MAGMA (mundo 9, brasas), ROYAL (mundo 10), TITAN (mundo 13), SKULLY (9000), PRISM (15000, arcoíris), GOLDIE (STAR PACK) |
+  | MÍTICA | NOVA (récord 500), OMEGA (récord 1000), QUASAR (mundo 16) |
 
   Los números sueltos son precios en monedas. Las skins se guardan por id (las partidas antiguas
   se convierten solas).
@@ -90,10 +96,10 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 200 tests automáticos pasando | Ajuste fino de dificultad con jugadores reales |
+| 271 comprobaciones automáticas pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
-| Guardado local, récords, estadísticas, 26 skins por rareza | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
+| Guardado local, récords, estadísticas, 29 skins por rareza | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
 
 ## Monetización
 Arquitectura: `scripts/autoload/monetization.gd` (fachada + reglas) con proveedores intercambiables
@@ -108,13 +114,32 @@ en `scripts/monetization/`:
 Qué incluye (todo configurable en `scripts/monetization/config.gd`):
 
 **Anuncios (nunca durante una partida)**
-- CONTINUE recompensado en Game Over (1 por partida, desde 5 puntos; con NO ADS es gratis y sin vídeo).
+- CONTINUE recompensado en Game Over (1 por partida, desde 5 puntos). Con NO ADS el primero de
+  cada día es gratis y sin vídeo; después sigue disponible con vídeo (NO ADS quita lo obligatorio,
+  no lo que el jugador elige ver).
 - x2 MONEDAS recompensado en Game Over; x2 del regalo diario; FREE COINS (+60, máx. 3/día) en la tienda.
-- Intersticial obligatorio cada 3 reintentos (al pulsar OTRA/MENÚ, a partir de la 3.ª partida).
+- Intersticial obligatorio entre partidas solo si se cumplen **todas**: 3 reintentos desde el
+  último, 2,5 min desde el último anuncio de cualquier tipo, a partir de la 3.ª partida y de la
+  2.ª sesión (la primera sesión nunca ve uno), y nunca justo después de un récord.
+- **Niveles de habilidad con vídeos:** en HABILIDADES, el nivel 1→2 cuesta 3 vídeos y el 2→3,
+  5 vídeos (en lugar de monedas). Un nivel por día; el progreso se guarda si se deja a medias.
 - Banner pequeño en todas las pantallas del menú: skins/estelas, habilidades, tienda, ranking/logros
   y las ventanas de misiones, ajustes y regalo diario. Nunca en el menú principal, en partida, en el
   fin de partida ni junto a la oferta inicial. Las pantallas se colocan por encima del banner; en
   teléfonos 16:9 (pantalla corta) skins y habilidades no llevan banner para no taparlas. Oculto con NO ADS.
+- **Ofertas en el momento justo** (`scripts/monetization/offers.gd`), en el Game Over: como mucho
+  una por sesión y la misma no se repite en 3 días; nunca antes de la 5.ª partida, ni tras un récord
+  (momento de celebrar), ni si se acaba de pedir valoración. Elige la más relevante: tras un anuncio
+  obligatorio → NO ADS; a 1–3 puntos del récord → STARTER (o 5000 monedas); le faltan menos de 200
+  monedas para su siguiente mejora → 1500 monedas; hitos de 25/60/120 partidas → STAR PACK /
+  TRAIL PACK / SUPPORTER. Nunca ofrece algo que ya tiene.
+- **Siguiente objetivo:** el Game Over muestra lo próximo que se desbloquea (mundo, skin,
+  habilidad o mejora) y cuánto falta.
+- **Recordatorios (notificaciones locales):** plugin "Notification Scheduler" de Cengiz
+  (AssetLib). El permiso se pide tras la 3.ª partida, no al abrir. Como máximo una al día, a las
+  18:45 hora local: mañana (regalo diario/racha), a los 3 días y a los 7 días (monedas para
+  gastar). Se reprograman al salir del juego, así que quien juega a diario no las recibe. Se
+  desactivan en AJUSTES ▸ AVISOS. Sin el plugin no hace nada.
 - **Valoración dentro del juego:** tras un récord (≥25 puntos, desde la 8.ª partida, máximo una vez
   cada 30 días y 3 veces en total) se pide la hoja oficial de reseñas de Google Play. Necesita el
   plugin "In-App Review" de Cengiz (AssetLib); sin él no hace nada.
@@ -150,21 +175,47 @@ de jugador y luego se mejora con monedas (300, 1200, 4000, 12000). Nada se gasta
 | SALTO INICIAL | 12 | 3 | empezar en el mundo 3/5/8 (con sus puntos), sin pasar de tu mejor mundo −1 |
 | SEGUNDA VIDA | 15 | 1 | revive 1 vez por partida (se compra: 10000) |
 
-Simulación de la curva: un jugador medio (25 min/día) desbloquea todas en ~5 días, las mejora
+Simulación anterior (1.0.9): un jugador medio (25 min/día) desbloquea todas en ~5 días, las mejora
 al máximo en ~1,5 meses y llega a nivel 50 en ~4 meses. Con el imán al máximo se recogen ~80 % de
 las monedas sueltas (~23/min) frente a ~35 % sin él (~10/min). Las partidas guardadas antiguas reciben
 en monedas el valor de los boosts que tenían.
+
+**Calendario de desbloqueos (sesiones de 10 min)**: simulación con la economía real del juego
+(200 jugadores por perfil, mediana; habilidad que crece con las partidas). Casual: 1 sesión al día,
+5 días/semana, sin vídeos. Medio: 2 sesiones al día, 6 días/semana. Dedicado: 4 sesiones al día.
+
+| Hito | Casual | Medio | Dedicado |
+|---|---|---|---|
+| 1.ª mejora con monedas / IMÁN (nivel 5) | día 1 | día 1 | día 1 |
+| Mundo 5 | día 3 | día 1 | día 1 |
+| Mundo 8 | día 9 | día 4 | día 2 |
+| Todas las habilidades (nivel 15) | día 12 | día 5 | día 3 |
+| Mundo 11 (skin LUNA) | día 16 | día 5 | día 3 |
+| 1.ª skin/estela con monedas | día 19 | día 5 | día 4 |
+| Mundo 13, el primero móvil (TITAN) | día 73 | día 12 | día 4 |
+| Mundo 16 (QUASAR) | 41 % en un año | día 51 | día 14 |
+| Todas las mejoras al máximo | día 164 | día 64 | día 29 |
+| Todas las skins/estelas de monedas | día 191 | día 74 | día 34 |
+| Nivel 50 | día 352 | día 144 | día 61 |
+
+Primera sesión (jugador nuevo, mediana): nivel 2 en 0,5 min, MINTY + mundo 2 en 0,8 min, misión
+"3 partidas" en 1,6, ESCUDO en 1,9, mundo 3 en 2,4, BERRY en 3,2, primera mejora e IMÁN en 6,0,
+mundo 4 en 6,4 (78 %). Algo nuevo cada 1–2 minutos.
 
 **Compras (Google Play)**
 
 | ID | Tipo | Contenido | Precio sugerido |
 |---|---|---|---|
 | `starter` | único | NO ADS + 1000 monedas (oferta emergente tras 8 partidas) | $1.99 |
-| `no_ads` | único | sin intersticiales ni banner + CONTINUE gratis | $2.99 |
+| `no_ads` | único | sin intersticiales ni banner + 1 CONTINUE gratis al día | $2.99 |
 | `star_pack` | único | skins GOLDIE, NEON, PANDA | $1.99 |
 | `trail_pack` | único | estelas RAINBOW, HEARTS, STARS | $0.99 |
 | `supporter` | único | todos los packs + NO ADS + 1500 monedas | $3.99 |
+| `coins_x2` | único | x2 monedas para siempre (todas las partidas) | $2.99 |
 | `coins_1500` | consumible | 1500 monedas | $0.99 |
+| `coins_5000` | consumible | 5000 monedas | $2.99 |
+| `coins_12000` | consumible | 12000 monedas | $4.99 |
+| `coins_30000` | consumible | 30000 monedas | $9.99 |
 
 Activar lo real (requiere build Gradle, ver sección AAB):
 1. Plugins (Godot ▸ AssetLib o GitHub, carpeta `addons/`) y actívalos en Project Settings ▸ Plugins:
@@ -174,7 +225,8 @@ Activar lo real (requiere build Gradle, ver sección AAB):
 2. AdMob: crea la app y 3 bloques (intersticial, recompensado, banner) y pega los IDs en `config.gd`.
    En debug se usan los IDs de prueba de Google. Configura el formulario de consentimiento (UMP/GDPR):
    el adaptador lo pide antes de inicializar.
-3. Play Console: crea los productos de la tabla (todos únicos salvo `coins_1500`, consumible),
+3. Play Console: crea los productos de la tabla (todos únicos salvo las 4 bolsas `coins_*`
+   numeradas, que son consumibles),
    sube una build a prueba interna y añade testers de licencia.
 4. Política de privacidad (obligatoria con anuncios) y formulario "Seguridad de los datos".
 
@@ -185,17 +237,34 @@ interna" de Play antes de publicar.
 ## Mundos y órbitas (gratis, avanzan al jugar)
 | Puntos | Mundo | Órbita |
 |---|---|---|
-| 0 | 1 CIELO | círculo normal |
-| 30 | 2 LAGUNA | círculo más grande |
-| 65 | 3 ATARDECER | círculo estrecho (cerca del planeta) |
-| 105 | 4 CARAMELO | círculo descentrado: estrecha arriba, ancha abajo |
-| 150 | 5 NOCHE | 2 órbitas elípticas que se cruzan en 4 estrellas |
-| 200 | 6 PLANETAS GEMELOS | 2 planetas, cada uno con su órbita; se cruzan entre ambos (forma de 8) |
-| 255 | 7 SISTEMA BINARIO | 2 planetas distintos (círculo + elipse) en diagonal |
-| 315 | 8 TRÍO DE PLANETAS | 3 planetas en triángulo, cada órbita cruza a las otras dos |
-| 380 | 9 GRANDES Y PEQUEÑAS | 1 órbita grande y 2 pequeñas (planetas de 3 tamaños) |
-| 450 | 10 ÓRBITAS DEFORMES | 3 órbitas descentradas: anchas hacia el planeta vecino, estrechas al otro lado |
-| 520+ | 11, 12, … | se repiten 2–10 cada 60 puntos |
+| 0 | 1 SKY | círculo normal |
+| 15 | 2 LAGOON | círculo más grande |
+| 35 | 3 SUNSET | círculo estrecho (cerca del planeta) |
+| 60 | 4 CANDY | círculo descentrado: estrecha arriba, ancha abajo |
+| 90 | 5 NIGHT | 2 órbitas elípticas que se cruzan en 4 estrellas |
+| 125 | 6 TWIN PLANETS | 2 planetas, cada uno con su órbita; se cruzan entre ambos (forma de 8) |
+| 165 | 7 BINARY | 2 planetas distintos (círculo + elipse) en diagonal |
+| 210 | 8 TRIO | 3 planetas en triángulo, cada órbita cruza a las otras dos |
+| 260 | 9 GIANTS | 1 órbita grande y 2 pequeñas |
+| 315 | 10 WARPED | 3 órbitas descentradas: anchas hacia el planeta vecino |
+| 375 | 11 FOUR MOONS | 4 planetas en rombo; cada órbita cruza a sus dos vecinas |
+| 440 | 12 GIANT AND MOONS | un planeta grande y 3 lunas cuyas órbitas cortan la grande |
+| 510 | 13 PLANET CHAIN | 3 planetas en zigzag |
+| 585 | 14 BINARY DANCE | **móvil:** 2 planetas que giran uno alrededor del otro (16 s por vuelta) |
+| 665 | 15 PENDULUM | **móvil:** 2 planetas que suben y bajan en sentidos opuestos (±12 px, 5 s) |
+| 750 | 16 PULSAR | **móvil:** 2 órbitas que se acercan y se alejan (±7 px, 4 s) |
+| 830+ | 17, 18, … | se repiten 2–16 cada 60 puntos |
+
+Los mundos están más juntos que antes (el 10 llega a los 315 puntos en vez de 450). En los mundos
+móviles el movimiento arranca suave (3 s) y avisa "THE PLANETS ARE MOVING!"; los pulsos y rayos
+no aparecen mientras se mueven. **Ascenso:** el fondo baja poco a poco (nubes, estrellas con
+paralaje, mar de nubes al salir del cielo) y un marcador muestra la altitud, para que se sienta que
+los planetas suben; las órbitas oscilan suavemente arriba y abajo. AJUSTES ▸ MOVIMIENTO lo reduce
+(sin oscilación ni ascenso) para quien se maree.
+
+Auditoría 1.0.11 (`tests/audit_react.gd`, bot humano con 0,25 s de reacción, 5 partidas × 40 s por
+mundo): **0 muertes imposibles en los 16 mundos**; 5 muertes tardías (el bot vio el peligro pero no
+reaccionó a tiempo) en 3095 s, 0,10 muertes/min. El bot perfecto sobrevive 45 s en los 16.
 
 Al cambiar de mundo se espera a que el campo quede libre y la órbita se transforma en 1,3 s.
 En NOCHE, tocar dentro de la ventana de una estrella de cruce (±0,16 rad) **cambia de órbita**
