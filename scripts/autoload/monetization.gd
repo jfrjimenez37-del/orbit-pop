@@ -140,8 +140,33 @@ func should_show_interstitial() -> bool:
 
 
 ## Use between runs (retry / menu). Runs `then` right away, or after a paced interstitial.
+var ad_since_offer := false   # a forced ad was shown since the last offer (-> NO ADS offer)
+var offer_this_session := false
+
+
+## Offer to show on this game over (see Offers), or {}.
+func offer_for(score: int, record: bool) -> Dictionary:
+	if not store_available():
+		return {}
+	var cost := -1
+	for a in Upgrades.ABILITIES:
+		var c := Upgrades.price(a["id"], Save.ability(a["id"]))
+		if Save.ability_unlocked(a["id"]) and c > 0 and (cost < 0 or c < cost):
+			cost = c
+	var o := Offers.pick({"games": Save.games, "score": score, "best": Save.best, "record": record, "coins": Save.coins,
+		"upgrade_cost": cost, "ad_shown": ad_since_offer, "session_shown": offer_this_session, "today": Save.day_number(),
+		"owned": func(id): return Save.owns(id) and not MonetizationConfig.CONSUMABLES.has(id), "last_shown": Save.offers})
+	if not o.is_empty():
+		offer_this_session = true
+		ad_since_offer = false
+		Save.offers[o["id"]] = Save.day_number()
+		Save.save_data()
+	return o
+
+
 func between_runs(then: Callable) -> void:
 	if should_show_interstitial():
+		ad_since_offer = true
 		_after_interstitial = then
 		_runs_since_ad = 0
 		_last_ad_time = clock.call()

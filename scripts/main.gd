@@ -445,7 +445,13 @@ func _game_over() -> void:
 	elif not res["unlocked"].is_empty():
 		Sfx.play("unlock")
 	# a fresh record is the happiest moment to ask for a rating (Google shows its own sheet)
-	Progress.reviewer.maybe_ask(Save, res["record"], score)
+	var asked := Progress.reviewer.maybe_ask(Save, res["record"], score)
+	# otherwise maybe an offer at the right moment (near record, short of an upgrade...)
+	var offer: Dictionary = {} if asked else Monetization.offer_for(score, res["record"] and score > 0)
+	if not offer.is_empty():
+		get_tree().create_timer(0.7).timeout.connect(func():
+			if state == S.OVER:
+				ui.show_offer(offer["id"], offer["why"]))
 
 
 # ------------------------------------------------------------------ input

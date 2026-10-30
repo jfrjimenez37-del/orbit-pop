@@ -1484,6 +1484,27 @@ func show_starter() -> void:
 	later.pressed.connect(hide_popup)
 
 
+## Offer at the right moment (see Offers): why, what, price, later.
+func show_offer(id: String, why: String) -> void:
+	var info: Dictionary = MonetizationConfig.PRODUCT_INFO[id]
+	var p := _open_popup(L.t("OFFER"), "offer")
+	var w := _label(p, L.t(why), 1, Color8(214, 66, 128))
+	_center_label(w, 156, 10)
+	_icon(p, "icon_" + info["icon"], Vector2(70, 26), 2)
+	var n := _label(p, L.t(info["name"]), 1, INK)
+	_center_label(n, 156, 50)
+	var d := _label(p, L.t(info["desc"]), 1, MUTED)
+	_center_label(d, 156, 62)
+	var buy := _button(p, "pink", Monetization.price(id), "", Vector2(80, 24))
+	buy.position = Vector2(38, 78)
+	buy.pressed.connect(func():
+		hide_popup()
+		buy_pressed.emit(id))
+	var later := _button(p, "white", L.t("LATER"), "", Vector2(60, 20))
+	later.position = Vector2(48, 108)
+	later.pressed.connect(hide_popup)
+
+
 ## Today's 3 missions and the weekly challenge (rewards are paid automatically).
 func show_mission() -> void:
 	var p := _open_popup(L.t("MISSIONS"), "mission", 188)

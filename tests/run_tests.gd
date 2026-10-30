@@ -733,6 +733,23 @@ func test_progress(save) -> void:
 
 
 func test_abilities(save) -> void:
+	# offers at the right moment
+	var base := {"games": 30, "score": 10, "best": 50, "record": false, "coins": 0, "upgrade_cost": -1, "ad_shown": false,
+		"session_shown": false, "today": 100, "owned": func(_id): return false, "last_shown": {}}
+	var o := func(over: Dictionary) -> String:
+		var c := base.duplicate()
+		c.merge(over, true)
+		return str(Offers.pick(c).get("id", ""))
+	ok(o.call({"games": 3, "ad_shown": true}) == "", "no offers in the first runs")
+	ok(o.call({"record": true, "ad_shown": true}) == "", "never an offer after a record")
+	ok(o.call({"session_shown": true, "ad_shown": true}) == "", "one offer per session at most")
+	ok(o.call({"ad_shown": true}) == "no_ads", "after a forced ad: NO ADS")
+	ok(o.call({"ad_shown": true, "last_shown": {"no_ads": 99}}) == "star_pack", "same offer not again within 3 days")
+	ok(o.call({"score": 48}) == "starter", "2 points short of the record: starter pack")
+	ok(o.call({"score": 48, "owned": func(id): return id == "starter"}) == "coins_5000", "starter owned: a coin bag")
+	ok(o.call({"games": 70, "coins": 150, "upgrade_cost": 300}) == "coins_1500", "150 coins short of an upgrade: 1500 coins")
+	ok(o.call({"games": 65, "coins": 50, "upgrade_cost": 300}) == "trail_pack", "too far from the upgrade: no coin offer (milestone pack instead)")
+	ok(o.call({"games": 40}) == "", "nothing special: no offer")
 	# free ability levels by watching videos: 3 videos for level 2, 5 for level 3, one level a day
 	save.reset_all()
 	save.level = 5
