@@ -20,6 +20,11 @@ func set_home(k: int) -> void:
 	home = Orbit.center(home_k)
 
 
+## The home planet's center now: it travels with the planet in moving worlds.
+func home_now() -> Vector2:
+	return Orbit.center(home_k) if Orbit.moving() else home
+
+
 ## Danger interval on orbit k caused by a round object of radius `rr` at world point p.
 static func point_danger(p: Vector2, rr: float, k: int, out: Array) -> void:
 	var v := p - Orbit.center(k)
@@ -61,6 +66,12 @@ static func point_danger(p: Vector2, rr: float, k: int, out: Array) -> void:
 ## Danger on orbit k from a thick segment p0-p1 (half thickness w), tested on the orbit
 ## samples; each inside sample covers its share of the orbit plus a small pad.
 static func segment_danger(p0: Vector2, p1: Vector2, w: float, k: int, out: Array) -> void:
+	if Orbit.moving() and Orbit.is_round(k):
+		# moving circles: a chain of exact point tests is cheaper than rebuilding orbit samples
+		var n := maxi(2, ceili(p0.distance_to(p1) / 3.0))
+		for i in n + 1:
+			point_danger(p0.lerp(p1, float(i) / n), w + 1.0, k, out)
+		return
 	var smp := Orbit.samples(k)
 	var seg := p1 - p0
 	var len2 := maxf(seg.length_squared(), 0.001)

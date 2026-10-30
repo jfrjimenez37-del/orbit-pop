@@ -63,8 +63,9 @@ func _draw() -> void:
 	# crossing points: glowing diamonds, brighter when the player can switch there
 	if Orbit.count() >= 2 and not Orbit.morphing():
 		for c in Orbit.crossings:
-			var p2 := Orbit.pos(0, c["a"][0]).round()
-			var hot := absf(Orbit.ang_diff(player_angle, c["a"][mini(player_orbit, 1)])) <= Orbit.CROSS_WINDOW
+			var p2 := Orbit.pos(c["k"][0], c["a"][0]).round()
+			var side: int = c["k"].find(player_orbit)
+			var hot := side >= 0 and absf(Orbit.ang_diff(player_angle, c["a"][side])) <= Orbit.CROSS_WINDOW
 			var col := Color8(255, 236, 90) if hot else Color(1, 1, 1, 0.7)
 			var s := 3 + (1 if hot and fmod(_t, 0.2) < 0.1 else 0)
 			for dy in range(-s, s + 1):

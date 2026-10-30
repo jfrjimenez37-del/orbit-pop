@@ -77,6 +77,12 @@ const WORLDS := [
 	{"id": "giants", "name": "GIANTS", "need": ["best", 0], "top": Color8(60, 120, 220), "bottom": Color8(190, 240, 255), "planet": "planet_gold", "planets": ["planet_gold", "planet_mint", "planet_violet"], "cloud": Color(1, 1, 1), "stars": false},
 	{"id": "warped", "name": "WARPED", "need": ["best", 0], "top": Color8(26, 20, 70), "bottom": Color8(170, 70, 160), "planet": "planet", "planets": ["planet", "planet_gold", "planet_mint"], "cloud": Color(0.8, 0.7, 1.0, 0.7), "stars": true},
 	{"id": "binary", "name": "BINARY", "need": ["best", 0], "top": Color8(16, 92, 120), "bottom": Color8(120, 222, 204), "planet": "planet_gold", "planet2": "planet_violet", "cloud": Color(0.85, 1, 1, 0.85), "stars": true},
+	{"id": "moons", "name": "FOUR MOONS", "need": ["best", 0], "top": Color8(20, 30, 80), "bottom": Color8(70, 110, 190), "planet": "planet_mint", "planets": ["planet_mint", "planet_gold", "planet_violet", "planet"], "cloud": Color(0.7, 0.8, 1.0, 0.6), "stars": true},
+	{"id": "giant", "name": "GIANT", "need": ["best", 0], "top": Color8(90, 40, 120), "bottom": Color8(240, 140, 120), "planet": "planet_gold", "planets": ["planet_gold", "planet_mint", "planet_violet", "planet"], "cloud": Color(1, 0.85, 0.9, 0.8), "stars": true},
+	{"id": "chain", "name": "CHAIN", "need": ["best", 0], "top": Color8(10, 70, 80), "bottom": Color8(90, 200, 170), "planet": "planet", "planets": ["planet", "planet_mint", "planet_gold"], "cloud": Color(0.8, 1, 0.95, 0.7), "stars": true},
+	{"id": "dance", "name": "DANCE", "need": ["best", 0], "top": Color8(60, 10, 70), "bottom": Color8(220, 80, 140), "planet": "planet_violet", "planet2": "planet_gold", "cloud": Color(1, 0.8, 0.95, 0.7), "stars": true},
+	{"id": "pendulum", "name": "PENDULUM", "need": ["best", 0], "top": Color8(14, 18, 50), "bottom": Color8(60, 80, 150), "planet": "planet_mint", "planet2": "planet", "cloud": Color(0.7, 0.75, 1.0, 0.5), "stars": true},
+	{"id": "pulsar", "name": "PULSAR", "need": ["best", 0], "top": Color8(6, 6, 24), "bottom": Color8(40, 30, 110), "planet": "planet_gold", "planet2": "planet_violet", "cloud": Color(0.6, 0.6, 1.0, 0.4), "stars": true},
 ]
 
 const CATEGORIES := {"skins": SKINS, "trails": TRAILS, "worlds": WORLDS}  # worlds: not sold

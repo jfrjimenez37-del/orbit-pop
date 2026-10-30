@@ -37,30 +37,32 @@ func danger(time: float, out: Array, k := 0) -> void:
 	if time < t_danger_start or time > t_danger_end:
 		return
 	var a := theta_at(time)
-	if Orbit.center(k).distance_to(home) < 1.0:
+	var hc := home_now()
+	if Orbit.center(k).distance_to(hc) < 1.0:
 		out.append(Vector2(wrapf(a, -PI, PI), asin((Orbit.PLAYER_R + BEAM_HALF) / Orbit.radius(k, a))))
 		return
 	# beam of another planet: orbit samples close enough to the beam segment are dangerous
 	var d := Vector2(cos(a), sin(a))
-	var mid := home + d * (R_IN + r_out) * 0.5
+	var mid := hc + d * (R_IN + r_out) * 0.5
 	if mid.distance_to(Orbit.center(k)) > Orbit.rmax_k[mini(k, Orbit.rmax_k.size() - 1)] + (r_out - R_IN) * 0.5 + 8.0:
 		return
-	segment_danger(home + d * R_IN, home + d * r_out, Orbit.PLAYER_R + BEAM_HALF + 1.5, k, out)
+	segment_danger(hc + d * R_IN, hc + d * r_out, Orbit.PLAYER_R + BEAM_HALF + 1.5, k, out)
 
 
 func _draw() -> void:
+	var hc := home_now()
 	var a := theta_at(t)
 	var d := Vector2(cos(a), sin(a))
 	var n := Vector2(-d.y, d.x)
-	var p_in := home + d * R_IN
-	var p_out := home + d * r_out
+	var p_in := hc + d * R_IN
+	var p_out := hc + d * r_out
 	if t < t_danger_start:
 		var k := clampf((t - t_spawn) / (t_danger_start - t_spawn), 0.0, 1.0)
 		var on := fmod(t * (5.0 + 12.0 * k), 1.0) < 0.55
 		var r := R_IN
 		while r < r_out:
 			if on:
-				draw_rect(Rect2((home + d * r).floor(), Vector2(1, 1)), Color(1, 0.95, 0.4, 0.5 + 0.5 * k))
+				draw_rect(Rect2((hc + d * r).floor(), Vector2(1, 1)), Color(1, 0.95, 0.4, 0.5 + 0.5 * k))
 			r += 4.0
 		var gc := Color(1, 1, 1, 0.4 + 0.5 * k)
 		draw_texture(NODE_TEX, (p_in - Vector2(5, 5)).round(), gc)

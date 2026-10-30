@@ -131,6 +131,18 @@ static func bucket(angle: float) -> int:
 ## `cache` (same t_now, omega and margin), so their danger masks are computed only once.
 static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, omega: float, first_tap := true, orbit := 0,
 		margin := MARGIN, tap_gap := TAP_GAP, tap_from := 0.0, omega_rate := 0.0, cache = null, n_cached := 0) -> bool:
+	if not Orbit.moving():
+		return _survive(hazards, t_now, angle, dir, omega, first_tap, orbit, margin, tap_gap, tap_from, omega_rate, cache, n_cached, false)
+	# moving world: the geometry follows each step's time; put the clock back afterwards
+	var keep := Orbit.time
+	Orbit.set_time(t_now)
+	var res := _survive(hazards, t_now, angle, dir, omega, first_tap, orbit, margin, tap_gap, tap_from, omega_rate, cache, n_cached, true)
+	Orbit.set_time(keep)
+	return res
+
+
+static func _survive(hazards: Array, t_now: float, angle: float, dir: int, omega: float, first_tap: bool, orbit: int,
+		margin: float, tap_gap: float, tap_from: float, omega_rate: float, cache, n_cached: int, moving: bool) -> bool:
 	var horizon := t_now
 	for h in hazards:
 		horizon = maxf(horizon, h.t_danger_end)
@@ -172,6 +184,9 @@ static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, om
 	var s := -1
 	while t < horizon + dt:
 		s += 1
+		if moving:
+			Orbit.set_time(t)   # transitions start from the geometry of the current step
+			CM = cross_maps()
 		# one step = the time needed to travel one bucket at the current speed
 		t += BW / (omega + omega_rate * (t - t_now))
 		var tap := s >= tap0 and (s - tap0) % gap == 0 and (s > 0 or first_tap)
@@ -215,6 +230,8 @@ static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, om
 								if tb < 64: nmlo[o] |= 1 << tb
 								else: nmhi[o] |= 1 << (tb - 64)
 		alive = false
+		if moving:
+			Orbit.set_time(t)
 		for k in kc:
 			var d := _mask(base, rest, cache, t, s, k, margin)
 			plo[k] = nplo[k] & ~d[0]; phi[k] = nphi[k] & ~d[1]

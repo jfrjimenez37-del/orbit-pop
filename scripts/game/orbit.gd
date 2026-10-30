@@ -2,7 +2,7 @@ class_name Orbit
 ## Orbit geometry shared by gameplay, hazards, fairness checker and drawing.
 ## Each orbit k is a star-shaped closed curve around its own center (a planet):
 ##   pos(k, a) = center(k) + dir(a) * radius(k, a)      (a = angle around that center)
-## There can be 1 to 3 orbits. Where 2 orbits cross, a tap switches orbit instead of
+## There can be 1 to 4 orbits. Where 2 orbits cross, a tap switches orbit instead of
 ## reversing; when the orbits belong to different planets the angle and direction are
 ## remapped so the motion continues smoothly (figure-eight). The player always moves at
 ## the same angular speed. Shapes morph smoothly when the world changes (blend 0 -> 1).
@@ -30,8 +30,13 @@ static var rmax_k: Array = [60.0]
 ## Bumped whenever the geometry changes, so hazards can cache per-orbit samples.
 static var version := 0
 ## Moving worlds: geometry is a function of game time (see set_time). Empty = static world.
+## {"kind": "spin" | "swing" | "breathe", "period": s, "amp": px} — circles only.
+##   spin: planet centers turn around the middle · swing: centers go up / down in antiphase
+##   breathe: orbit radii grow / shrink in antiphase. The motion eases in over MOTION_RAMP s.
 static var motion: Dictionary = {}
 static var time := 0.0
+static var motion_t0 := 0.0
+const MOTION_RAMP := 3.0
 
 
 static func moving() -> bool:
@@ -41,6 +46,81 @@ static func moving() -> bool:
 ## Geometry at game time t (moving worlds only; a no-op otherwise).
 static func set_time(t: float) -> void:
 	time = t
+	if not motion.is_empty() and blend >= 1.0:
+		_refresh_moving()
+
+
+## Motion time eased in: the planets start still and speed up during MOTION_RAMP seconds.
+static func _motion_s() -> float:
+	var s := maxf(0.0, time - motion_t0)
+	return s * s / (2.0 * MOTION_RAMP) if s < MOTION_RAMP else s - MOTION_RAMP * 0.5
+
+
+static func _motion_amp() -> float:
+	return float(motion.get("amp", 0.0)) * clampf((time - motion_t0) / MOTION_RAMP, 0.0, 1.0)
+
+
+## Offset of orbit k's center from its definition (current world only).
+static func _coff(k: int) -> Vector2:
+	if motion.is_empty() or k >= defs.size():
+		return Vector2.ZERO
+	var ph := TAU * _motion_s() / float(motion["period"])
+	match motion["kind"]:
+		"spin":
+			var c: Vector2 = defs[k].get("center", Vector2.ZERO)
+			return c.rotated(ph) - c
+		"swing":
+			return Vector2(0.0, _motion_amp() * sin(ph + PI * (k % 2)))
+	return Vector2.ZERO
+
+
+static func _roff(k: int) -> float:
+	if motion.is_empty() or k >= defs.size() or motion["kind"] != "breathe":
+		return 0.0
+	return _motion_amp() * sin(TAU * _motion_s() / float(motion["period"]) + PI * (k % 2))
+
+
+## The current (moving) geometry frozen as plain definitions, to morph away from it.
+static func _baked_defs() -> Array:
+	var out: Array = defs.duplicate(true)
+	for k in out.size():
+		out[k]["center"] = center(k)
+		if out[k]["kind"] == "circle":
+			out[k]["r"] = float(out[k]["r"]) + _roff(k)
+	return out
+
+
+## Cheap refresh for moving worlds (all circles): exact circle-circle crossings.
+static func _refresh_moving() -> void:
+	version += 1
+	samples_k.clear()   # rebuilt on demand
+	R = radius(0, 0.0)
+	round_k.clear(); slope_k.clear(); rmin_k.clear(); rmax_k.clear()
+	for k in count():
+		var r := radius(k, 0.0)
+		round_k.append(true); slope_k.append(0.0)
+		rmin_k.append(r - 0.5); rmax_k.append(r + 0.5)
+	crossings.clear()
+	for i in count():
+		for j in range(i + 1, count()):
+			var c1 := center(i)
+			var c2 := center(j)
+			var r1 := radius(i, 0.0)
+			var r2 := radius(j, 0.0)
+			var v := c2 - c1
+			var d := v.length()
+			if d < 0.001 or d >= r1 + r2 or d <= absf(r1 - r2):
+				continue
+			var a := (r1 * r1 - r2 * r2 + d * d) / (2.0 * d)
+			var h := sqrt(maxf(0.0, r1 * r1 - a * a))
+			var base := c1 + v * (a / d)
+			var perp := Vector2(-v.y, v.x) / d
+			for p in [base + perp * h, base - perp * h]:
+				var ac := wrapf(angle_of(i, p), -PI, PI)
+				var ao := wrapf(angle_of(j, p), -PI, PI)
+				var ti := Vector2(-sin(ac), cos(ac))
+				var tj := Vector2(-sin(ao), cos(ao))
+				crossings.append({"k": [i, j], "a": [ac, ao], "sign": 1 if ti.dot(tj) >= 0.0 else -1})
 ## Per orbit: SAMPLES points [angle, x, y, ...] (world space), for hazards that test the
 ## orbit against a shape instead of a point.
 const SAMPLES := 128
@@ -51,12 +131,17 @@ static func reset() -> void:
 	set_shape(BASE, true)
 
 
-## Starts (or instantly applies) a new shape.
-static func set_shape(new_defs: Array, instant := false) -> void:
-	prev_defs = defs.duplicate(true) if not instant else new_defs.duplicate(true)
+## Starts (or instantly applies) a new shape. `new_motion` makes it a moving world.
+static func set_shape(new_defs: Array, instant := false, new_motion := {}) -> void:
+	var from: Array = _baked_defs() if not motion.is_empty() and blend >= 1.0 else defs.duplicate(true)
+	prev_defs = from if not instant else new_defs.duplicate(true)
 	defs = new_defs.duplicate(true)
+	motion = new_motion.duplicate()
+	motion_t0 = time
 	blend = 1.0 if instant else 0.0
 	_refresh()
+	if not motion.is_empty() and blend >= 1.0:
+		_refresh_moving()
 
 
 static func set_blend(b: float) -> void:
@@ -64,6 +149,8 @@ static func set_blend(b: float) -> void:
 	if blend >= 1.0:
 		prev_defs = defs.duplicate(true)
 	_refresh()
+	if not motion.is_empty() and blend >= 1.0:
+		_refresh_moving()
 
 
 static func morphing() -> bool:
@@ -95,7 +182,7 @@ static func _def(list: Array, k: int) -> Dictionary:
 
 
 static func radius(k: int, a: float) -> float:
-	var new_r := _eval(_def(defs, k), a)
+	var new_r := _eval(_def(defs, k), a) + _roff(mini(k, defs.size() - 1))
 	if blend >= 1.0:
 		return new_r
 	return lerpf(_eval(_def(prev_defs, k), a), new_r, blend)
@@ -103,7 +190,7 @@ static func radius(k: int, a: float) -> float:
 
 ## Planet / orbit center of orbit k (world space, relative to the playfield origin).
 static func center(k: int) -> Vector2:
-	var c_new: Vector2 = _def(defs, k).get("center", Vector2.ZERO)
+	var c_new: Vector2 = _def(defs, k).get("center", Vector2.ZERO) + _coff(mini(k, defs.size() - 1))
 	if blend >= 1.0:
 		return c_new
 	var c_old: Vector2 = _def(prev_defs, k).get("center", Vector2.ZERO)
@@ -216,6 +303,15 @@ static func _tangent(k: int, a: float) -> Vector2:
 
 
 static func samples(k: int) -> PackedFloat32Array:
+	if samples_k.size() < count():
+		samples_k.clear()
+		for o in count():
+			var smp := PackedFloat32Array()
+			for i in SAMPLES:
+				var a := wrapf(TAU * i / SAMPLES, -PI, PI)
+				var p := pos(o, a)
+				smp.append_array([a, p.x, p.y])
+			samples_k.append(smp)
 	return samples_k[mini(k, samples_k.size() - 1)]
 
 

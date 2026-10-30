@@ -35,6 +35,8 @@ const PATTERNS := [
 const STAGE_PATTERNS := [["pulse", 1, 2.2], ["saw", 2, 2.0], ["swap", 4, 2.6], ["cross_rain", 4, 1.6],
 	["link", 5, 2.4], ["comet", 5, 2.4], ["comet_rain", 7, 1.8], ["link_cage", 7, 1.6]]
 const MULTI_PLANET := ["link", "comet_rain", "link_cage"]
+## Too costly to check against moving geometry: left out of the moving worlds.
+const NOT_WHILE_MOVING := ["pulse", "link", "link_cage"]
 ## In-run coins (pickups, never hazards): an arc of COIN_ARC coins every COIN_ARC_EVERY s
 ## and a big coin (5) every COIN_BIG_EVERY s, each lasting COIN_LIFE s.
 const COIN_ARC := 3
@@ -145,6 +147,8 @@ func _pick(t: float) -> String:
 	for sp in STAGE_PATTERNS:
 		var needs_two: bool = sp[0] in ["swap", "cross_rain"]
 		var needs_planets: bool = sp[0] in MULTI_PLANET
+		if Orbit.moving() and sp[0] in NOT_WHILE_MOVING:
+			continue
 		if stage >= sp[1] and (not needs_two or Orbit.count() >= 2) and (not needs_planets or Orbit.planets().size() >= 2):
 			pool.append([sp[0], sp[2]])
 			total += sp[2]

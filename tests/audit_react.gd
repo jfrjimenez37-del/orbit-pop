@@ -74,7 +74,7 @@ func _play(main, si: int, secs: float, seed_value: int, react: float) -> Diction
 	main.start_run()
 	main.director.rng.seed = seed_value
 	main.director.offset = 60.0
-	Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+	Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
 	main.stage = si
 	main.director.stage = si
 	main.world_no = 99

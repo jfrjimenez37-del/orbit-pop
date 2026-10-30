@@ -61,7 +61,7 @@ func _play(main, si: int, kind: String, secs: float, seed_value: int, human_chec
 	main.director.rng.seed = seed_value
 	main.director.offset = 60.0
 	main.director.human_check = human_check
-	Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+	Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
 	main.stage = si
 	main.director.stage = si
 	main.world_no = 99

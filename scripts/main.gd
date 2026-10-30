@@ -347,6 +347,7 @@ func start_run() -> void:
 	world_no = 1
 	_stage_pending = -1
 	_morph_t = -1.0
+	Orbit.set_time(0.0)
 	Orbit.reset()
 	_apply_world(0, false)
 	Progress.run_started()
@@ -360,7 +361,7 @@ func start_run() -> void:
 		world_no = sw
 		start_score = int(Stages.LIST[stage]["score"])
 		score = start_score
-		Orbit.set_shape(Stages.LIST[stage]["orbits"], true)
+		Orbit.set_shape(Stages.LIST[stage]["orbits"], true, Stages.motion(stage))
 		_apply_world(stage, false)
 		director.stage = stage
 	player.reset(-PI * 0.5)
@@ -790,14 +791,16 @@ func _update_world(dt: float) -> void:
 		for b in bubbles:
 			b.queue_free()
 		bubbles.clear()
-		Orbit.set_shape(Stages.LIST[_stage_pending]["orbits"])
+		Orbit.set_shape(Stages.LIST[_stage_pending]["orbits"], false, Stages.motion(_stage_pending))
 		_apply_world(_stage_pending, true)
 		planet.bump()
 		world_no = Stages.number_for_score(score)
 		var w := Stages.world(_stage_pending)
 		var orbits: Array = Stages.LIST[_stage_pending]["orbits"]
 		var tip := ""
-		if orbits.size() >= 2:
+		if not Stages.motion(_stage_pending).is_empty():
+			tip = L.t("MOVE_TIP")
+		elif orbits.size() >= 2:
 			tip = L.t("JUMP_TIP") if orbits[1].has("center") else L.t("CROSS_TIP")
 		ui.world_banner(world_no, L.t("WORLD_" + str(w["id"]).to_upper()), tip)
 		Sfx.play("unlock")

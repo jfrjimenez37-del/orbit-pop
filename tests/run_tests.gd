@@ -104,7 +104,7 @@ func test_geometry() -> void:
 	var worst_seg := 0.0
 	var seg_miss := 0
 	for si in Stages.LIST.size():
-		Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
 		for k in Orbit.count():
 			for i in 60:
 				var a0 := rng.randf_range(-PI, PI)
@@ -495,7 +495,7 @@ func test_orbits() -> void:
 	ok(Orbit.tap_result(c + 0.6, 0, 1).slice(0, 2) == [0, -1], "tap elsewhere reverses")
 	# two planets: figure-eight switching keeps the player on the same spot
 	for si in [5, 6]:
-		Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
 		ok(Orbit.planets().size() == 2 and Orbit.crossings.size() == 2, "%s: 2 planets, 2 crossings" % Stages.LIST[si]["world"])
 		var cx: Dictionary = Orbit.crossings[0]
 		var r2 := Orbit.tap_result(cx["a"][0], 0, 1)
@@ -507,7 +507,7 @@ func test_orbits() -> void:
 	# three planets: every orbit reachable, everything on screen, no orbit through a planet
 	for si in [7, 8, 9]:
 		var nm: String = Stages.LIST[si]["world"]
-		Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
 		ok(Orbit.planets().size() == 3 and Orbit.crossings.size() >= 4, "%s: 3 planets, %d crossings" % [nm, Orbit.crossings.size()])
 		var reach := {0: true}
 		for it in 3:
@@ -632,7 +632,12 @@ func test_progress(save) -> void:
 	for a in prog.ACHIEVEMENTS:
 		if a["id"] == "skins_all":
 			ok(int(a["goal"]) == Catalog.SKINS.size(), "EVERY SKIN goal matches the catalog")
-	ok(Stages.index_for_score(29) == 0 and Stages.index_for_score(30) == 1 and Stages.number_for_score(450) == 10, "wider world spacing")
+	ok(Stages.index_for_score(14) == 0 and Stages.index_for_score(15) == 1 and Stages.number_for_score(315) == 10
+		and Stages.number_for_score(750) == 16 and Stages.number_for_score(830) == 17, "world spacing: closer early, 16 worlds")
+	var gaps_grow := true
+	for i in range(2, Stages.LIST.size()):
+		gaps_grow = gaps_grow and int(Stages.LIST[i]["score"]) - int(Stages.LIST[i - 1]["score"]) >= int(Stages.LIST[i - 1]["score"]) - int(Stages.LIST[i - 2]["score"])
+	ok(gaps_grow, "each world is at least as long as the previous one")
 	# cloud merge: fresh install restores progress
 	var cloud: Dictionary = save.export_data()
 	cloud["best"] = 99; cloud["coins"] = 777; cloud["saved_at"] = save.saved_at + 100
@@ -721,8 +726,8 @@ func test_abilities(save) -> void:
 	ok(save.chosen_start_world() == 3, "headstart never skips past your best world - 1")
 	save.abilities["headstart"] = 0
 	ok(save.chosen_start_world() == 1, "no headstart starts at world 1")
-	ok(Stages.bounds(0) == Vector2i(0, 30) and Stages.bounds(70) == Vector2i(65, 105)
-		and Stages.bounds(530) == Vector2i(520, 580), "world progress bounds")
+	ok(Stages.bounds(0) == Vector2i(0, 15) and Stages.bounds(70) == Vector2i(60, 90)
+		and Stages.bounds(850) == Vector2i(830, 890), "world progress bounds")
 	# region override
 	save.region = "EUROPE"
 	ok(get_root().get_node("Progress").region() == "EUROPE", "region picked in settings wins")
@@ -887,7 +892,7 @@ func test_worlds(save) -> void:
 	for si in Stages.LIST.size():
 		main.start_run()
 		main.director.offset = 60.0
-		Orbit.set_shape(Stages.LIST[si]["orbits"], true)
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
 		main.stage = si
 		main.director.stage = si
 		main.world_no = 99  # no further world changes during this test
