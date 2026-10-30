@@ -2,7 +2,9 @@ extends SceneTree
 ## Store promo video (portrait, ~27 s, with the game's own music and sounds). Run with:
 ##   xvfb-run -a -s "-screen 0 1200x2000x24" godot47 --path . --write-movie /tmp/orbitpop.avi \
 ##       --fixed-fps 30 --script tests/promo_video.gd
-##   ffmpeg -i /tmp/orbitpop.avi -c:v libx264 -pix_fmt yuv420p -crf 18 -c:a aac store/promo_video.mp4
+##   ffmpeg -i /tmp/orbitpop.avi -vf scale=1080:1920:flags=neighbor -c:v libx264 -pix_fmt yuv420p \
+##       -crf 20 -c:a aac -b:a 128k -movflags +faststart store/promo_video.mp4
+## (the movie is recorded at the game's 180x320 and scaled x6 without smoothing)
 ## A bot plays (same one as the fairness tests); the worlds are jumped to so the video shows many.
 
 const FPS := 30
@@ -12,13 +14,13 @@ var cap: Label
 var cap_bg: ColorRect
 var segments := [
 	# [start s, what, caption]
-	[0.0, "menu", "ONE-TAP ARCADE"],
-	[2.5, "run:0", "TAP TO FLIP YOUR ORBIT"],
-	[8.0, "world:5", "JUMP BETWEEN PLANETS"],
-	[12.5, "world:10", "16 WORLDS TO EXPLORE"],
-	[17.0, "world:13", "PLANETS IN MOTION!"],
-	[21.5, "duel", "DUEL YOUR FRIENDS"],
-	[24.5, "end", "FREE ON GOOGLE PLAY"],
+	[0.0, "menu", "ONE-TAP\nARCADE"],
+	[2.5, "run:0", "TAP TO FLIP\nYOUR ORBIT"],
+	[8.0, "world:5", "JUMP BETWEEN\nPLANETS"],
+	[12.5, "world:10", "16 WORLDS\nTO EXPLORE"],
+	[17.0, "world:13", "PLANETS IN\nMOTION!"],
+	[21.5, "duel", "DUEL YOUR\nFRIENDS"],
+	[24.5, "end", "FREE ON\nGOOGLE PLAY"],
 ]
 const END := 27.5
 var seg := -1
@@ -51,13 +53,16 @@ func _initialize() -> void:
 	layer.add_child(cap)
 
 
+## Two short lines, centered, in a band at the bottom (below the orbits).
 func _caption(text: String) -> void:
 	cap.text = text
-	var w: float = load("res://assets/font/pixel.fnt").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x * 2
 	var vw: float = main.get_viewport().get_visible_rect().size.x
-	cap.position = Vector2(roundf((vw - w) * 0.5), 246)
-	cap_bg.position = Vector2(0, 241)
-	cap_bg.size = Vector2(vw, 26)
+	var vh: float = main.get_viewport().get_visible_rect().size.y
+	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cap.size = Vector2(vw / 2.0, 20)
+	cap.position = Vector2(0, vh - 47)
+	cap_bg.position = Vector2(0, vh - 50)
+	cap_bg.size = Vector2(vw, 50)
 
 
 func _jump(si: int) -> void:
@@ -71,7 +76,7 @@ func _jump(si: int) -> void:
 	main.director.offset = 20.0
 	main.ui.set_score(main.score)
 	var w := Stages.world(si)
-	var tip := get_root().get_node("L").t("MOVE_TIP") if not Stages.motion(si).is_empty() else ""
+	var tip: String = get_root().get_node("L").t("MOVE_TIP") if not Stages.motion(si).is_empty() else ""
 	main.ui.world_banner(main.world_no, get_root().get_node("L").t("WORLD_" + str(w["id"]).to_upper()), tip)
 
 

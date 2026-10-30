@@ -6,7 +6,7 @@ so many of them show). Re-record:
 
     xvfb-run -a -s "-screen 0 1200x2000x24" godot47 --path . --write-movie /tmp/orbitpop.avi \
         --fixed-fps 30 --script tests/promo_video.gd
-    ffmpeg -i /tmp/orbitpop.avi -c:v libx264 -pix_fmt yuv420p -crf 20 -c:a aac -b:a 128k store/promo_video.mp4
+    ffmpeg -i /tmp/orbitpop.avi -vf scale=1080:1920:flags=neighbor -c:v libx264 -pix_fmt yuv420p -crf 20 -c:a aac -b:a 128k store/promo_video.mp4
 
 Google Play only takes a **YouTube link** (Play Console > Store presence > Main store listing >
 Video). Upload it to YouTube as **Public** or **Unlisted** (not Private), ads off, no age
