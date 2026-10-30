@@ -20,6 +20,10 @@ var director := Director.new()
 var gt := 0.0                 # gameplay clock (drives every hazard)
 var score := 0
 var best_at_start := 0
+## Duel run (see Duel): {seed, target (score to beat, -1 = my own new challenge), name, code}.
+## Same seed for everyone, no abilities, no continue.
+var duel := {}
+var duel_lead := false
 var record_announced := false
 var hazards: Array = []
 var bubbles: Array = []
@@ -64,8 +68,19 @@ func _ready() -> void:
 	player.set_skin(Save.skin)
 	apply_style()
 	player.reset()
-	ui.play_pressed.connect(start_run)
-	ui.retry_pressed.connect(func(): Monetization.between_runs(start_run))
+	ui.play_pressed.connect(func():
+		duel = {}
+		start_run())
+	ui.retry_pressed.connect(func():
+		duel = {}
+		Monetization.between_runs(start_run))
+	ui.duel_new_pressed.connect(func():
+		if state == S.OVER:   # rematch from the game over: same ad pacing as RETRY
+			Monetization.between_runs(func(): start_duel({}))
+		else:
+			start_duel({}))
+	ui.duel_accept_pressed.connect(start_duel)
+	ui.duel_send_pressed.connect(_send_duel)
 	ui.menu_pressed.connect(func():
 		if state == S.OVER:
 			Monetization.between_runs(go_menu)
@@ -117,6 +132,7 @@ func _layout() -> void:
 
 func go_menu() -> void:
 	state = S.MENU
+	duel = {}
 	Monetization.run_active = false
 	Monetization.hide_banner()
 	stage = 0
@@ -188,7 +204,52 @@ func _quit_run() -> void:
 	Save.add_coins(earned - coins_awarded)
 	coins_awarded = earned
 	_award_xp()
+	if not duel.is_empty():
+		var dr := _finish_duel()
+		if dr["pay"] > 0:
+			ui.toast(L.t("PLUS_COINS", dr["pay"]), Color8(255, 222, 70))
 	Monetization.between_runs(go_menu)
+
+
+# ------------------------------------------------------------------ duels
+
+## d: a decoded friend's duel (Duel.decode), or {} to create a new challenge on a fresh seed.
+func start_duel(d: Dictionary) -> void:
+	ui.hide_popup()
+	if d.is_empty():
+		duel = {"seed": Duel.new_seed(randi()), "target": -1, "name": "", "code": ""}
+	else:
+		duel = {"seed": int(d["seed"]), "target": int(d["score"]), "name": str(d["name"]), "code": str(d["code"])}
+		Save.duel_started(str(d["code"]))
+	start_run()
+
+
+## After a duel run: {mode: "new" | "reply", result, pay, mine, theirs, name, code (to send)}.
+func _finish_duel() -> Dictionary:
+	var me := Duel.clean_name(Progress.games.player_name)
+	var out := {"mine": score, "theirs": int(duel["target"]), "name": str(duel["name"]), "pay": 0, "result": "",
+		"code": Duel.encode(int(duel["seed"]), score, me)}
+	if int(duel["target"]) < 0:
+		out["mode"] = "new"
+	else:
+		out["mode"] = "reply"
+		out["result"] = Duel.outcome(score, int(duel["target"]))
+		out["pay"] = Save.duel_finished(out["result"])
+		Sfx.play("record" if out["result"] == "win" else "unlock")
+	Save.duel_created(str(out["code"]))
+	duel["last"] = out
+	return out
+
+
+## Shares my score on this run: a new challenge, or my answer to a friend's duel (won or tied).
+func _send_duel() -> void:
+	var last: Dictionary = duel.get("last", {})
+	if last.is_empty():
+		return
+	var key := "DUEL_SHARE" if last["mode"] == "new" else "DUEL_SHARE_BACK"
+	var text := L.t(key, [int(last["mine"]), str(last["code"])]) + "\n" + Progress.STORE_URL
+	if not Progress.sharer.share_score(text, null):
+		ui.toast(L.t("COPIED"), Color8(120, 255, 200))
 
 
 func _share() -> void:
@@ -349,15 +410,17 @@ func start_run() -> void:
 	coins_doubled = false
 	Monetization.run_active = true
 	Monetization.hide_banner()
-	shield_hits = Upgrades.shield_hits(Save.ability("shield"))
+	var dm := not duel.is_empty()
+	shield_hits = 0 if dm else Upgrades.shield_hits(Save.ability("shield"))
 	shield_recharge_at = -1.0
 	player.shield_boost = shield_hits > 0
 	player.shield_layers = shield_hits
-	teleports = Save.ability("teleport")
-	slowmo_charges = Save.ability("slowmo")
+	teleports = 0 if dm else Save.ability("teleport")
+	slowmo_charges = 0 if dm else Save.ability("slowmo")
 	slowmo_left = 0.0
 	player.slowmo = false
-	second_life = Save.ability("secondlife") > 0
+	second_life = not dm and Save.ability("secondlife") > 0
+	duel_lead = false
 	xp_awarded = 0
 	start_score = 0
 	stage = 0
@@ -369,10 +432,13 @@ func start_run() -> void:
 	_apply_world(0, false)
 	Progress.run_started()
 	best_at_start = Save.best
-	director.reset(randi(), Save.recent_average())
+	if dm:
+		director.reset(int(duel["seed"]), Duel.RECENT_AVG)
+	else:
+		director.reset(randi(), Save.recent_average())
 	director.bubble_rate = 1.0
 	# HEADSTART: begin in a world already passed, with that world's points
-	var sw := Save.chosen_start_world()
+	var sw := 1 if dm else Save.chosen_start_world()
 	if sw > 1:
 		stage = sw - 1
 		world_no = sw
@@ -394,6 +460,8 @@ func start_run() -> void:
 	ui.set_teleport(teleports)
 	ui.set_slowmo(slowmo_charges)
 	ui.set_run_coins(0)
+	if dm and int(duel["target"]) >= 0:
+		ui.set_duel_target(str(duel["name"]), int(duel["target"]))
 	ui.set_altitude(score)
 	bg.reset_climb()
 	Sfx.play("go")
@@ -438,8 +506,11 @@ func _game_over() -> void:
 	run_coins = earned - coins_awarded
 	coins_awarded = earned
 	var xp_gain := _award_xp()
-	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], Monetization.can_continue(score, continued),
+	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], duel.is_empty() and Monetization.can_continue(score, continued),
 		Monetization.continue_is_free())
+	if not duel.is_empty():
+		var dr := _finish_duel()
+		ui.show_duel_result(dr)
 	ui.set_over_coins(run_coins, run_coins > 0 and not coins_doubled and Monetization.rewarded_ready())
 	ui.set_over_xp(xp_gain)
 	for msg in Progress.take_pending():
@@ -449,6 +520,8 @@ func _game_over() -> void:
 	elif not res["unlocked"].is_empty():
 		Sfx.play("unlock")
 	# a fresh record is the happiest moment to ask for a rating (Google shows its own sheet)
+	if not duel.is_empty():
+		return   # the duel result is the moment: no rating request or offer on top of it
 	var asked := Progress.reviewer.maybe_ask(Save, res["record"], score)
 	Progress.notifier.maybe_ask_permission(Save)
 	# otherwise maybe an offer at the right moment (near record, short of an upgrade...)
@@ -662,7 +735,7 @@ func _sim(dt: float) -> void:
 			_award(h)
 	planet.mood = Planet.Mood.OH if worry else Planet.Mood.SMILE
 	# pickups: touch them, or with MAGNET they fly to the player from any orbit
-	var reach: float = Upgrades.MAGNET_RADIUS[clampi(Save.ability("magnet"), 0, Upgrades.MAGNET_RADIUS.size() - 1)]
+	var reach: float = 0.0 if not duel.is_empty() else Upgrades.MAGNET_RADIUS[clampi(Save.ability("magnet"), 0, Upgrades.MAGNET_RADIUS.size() - 1)]
 	var me := Orbit.pos(player.orbit, player.angle)
 	for b in bubbles:
 		if b.t_end <= gt:
@@ -827,7 +900,11 @@ func _add_score(n: int) -> void:
 	if target > world_no and _stage_pending < 0:
 		_stage_pending = Stages.index_for_score(score)
 		director.hold = true
-	if not record_announced and best_at_start > 0 and score > best_at_start:
+	if not duel.is_empty() and int(duel["target"]) >= 0 and not duel_lead and score > int(duel["target"]):
+		duel_lead = true
+		ui.announce_duel_lead()
+		Sfx.play("record")
+	if not record_announced and best_at_start > 0 and score > best_at_start and (duel.is_empty() or int(duel["target"]) < 0):
 		record_announced = true
 		ui.announce_record()
 		fx.text(L.t("NEW_BEST"), player.position + Vector2(0, -24), Color8(255, 128, 178), 1.0, 1.2)

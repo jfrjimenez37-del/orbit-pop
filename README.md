@@ -96,7 +96,7 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 295 comprobaciones automáticas pasando | Ajuste fino de dificultad con jugadores reales |
+| 315 comprobaciones automáticas pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
 | Guardado local, récords, estadísticas, 29 skins por rareza | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
@@ -289,6 +289,19 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
 órbita: un test hace sobrevivir al bot justo 45 s en cada forma de órbita.
 
 ## Misiones, logros, ranking, nube, compartir, idiomas
+- **Duelos (por turnos, sin servidores, `scripts/game/duel.gd`):** botón de espadas en el menú.
+  NUEVO DUELO juega una partida y crea un código `ORBIT-XXXXXXXXXXXX-NOMBRE` con la semilla, la
+  puntuación y el nombre (de Play Games). RETAR lo comparte por WhatsApp con el enlace de Play Store.
+  El amigo copia el mensaje y pulsa DUELO ▸ PEGAR CÓDIGO: juega **la misma partida** (misma semilla
+  para obstáculos, monedas y burbujas, dificultad fija) **sin habilidades** (ni escudo, imán, cámara
+  lenta, teleport, segunda vida, salida avanzada ni CONTINUAR) y con **un solo intento**. Gana quien
+  haga más puntos. Si gana o empata, RESPONDER devuelve su puntuación sobre la misma partida; si
+  pierde, REVANCHA crea un duelo nuevo. Premios: ganar +50, empatar +25, jugar +10, en los 3 primeros
+  duelos de cada día. **Nadie pierde monedas** (no se puede cobrar a quien no abre el resultado, y
+  apostar monedas que se compran con dinero real se parece a las apuestas que Play restringe).
+  El código lleva una verificación: si se edita la puntuación o el nombre, no vale. Tus propios
+  códigos y los duelos ya jugados no se aceptan. No se lee el portapapeles sin que el jugador pulse
+  PEGAR (Android avisa cada vez que una app lo lee).
 - **Misiones:** 3 diarias (de un grupo de 15, en ciclo; una pide recoger 15 monedas en una partida) + 1 reto semanal (de 5). Dan monedas y
   XP al completarse. Botón de pergamino en el menú (con el número pendiente).
 - **HUD:** barra de progreso hasta el siguiente mundo con una marca en tu récord.

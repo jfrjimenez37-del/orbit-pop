@@ -39,6 +39,7 @@ func _initialize() -> void:
 	print("== missions, achievements, cloud, l10n")
 	test_progress(save)
 	print("== fairness on every world shape")
+	await test_duels(save)
 	await test_worlds(save)
 	print("== gameplay simulation with fair bot")
 	await test_simulation(save)
@@ -681,7 +682,7 @@ func test_progress(save) -> void:
 	for key in l10n.T:
 		if l10n.T[key].size() != 4:
 			bad_keys += 1
-		if key == "SHARE_TEXT" or key.begins_with("NOTIF_"):
+		if key == "SHARE_TEXT" or key.begins_with("NOTIF_") or key.begins_with("DUEL_SHARE"):
 			continue   # shown by the system (share sheet / notifications), not the pixel font
 		for txt in l10n.T[key]:
 			for ch in txt:
@@ -1029,6 +1030,107 @@ func test_banners(save) -> void:
 
 
 ## Forces every world shape with all obstacles unlocked and checks the fair bot survives.
+func test_duels(save) -> void:
+	print("== duels")
+	save.reset_all()
+	# codes: round trip, inside a pasted message, lower case, edited score rejected
+	var all_ok := true
+	for i in 50:
+		var sd := (i * 7919 + 13) & ((1 << Duel.SEED_BITS) - 1)
+		var c := Duel.encode(sd, i * 37, "Ana %d" % i)
+		var d := Duel.decode("hey! " + c + " https://play.google.com")
+		all_ok = all_ok and d.get("seed", -1) == sd and d.get("score", -1) == i * 37 and d.get("name", "") == Duel.clean_name("Ana %d" % i)
+	ok(all_ok, "duel codes round-trip (50 codes)")
+	var code := Duel.encode(123456, 142, "José María")
+	ok(code.begins_with("ORBIT-") and code.ends_with("-JOSEMARIA") and code.length() <= 6 + Duel.CODE_LEN + 1 + Duel.NAME_MAX, "code format %s" % code)
+	ok(Duel.decode(code.to_lower()).get("score", -1) == 142, "pasted in lower case still works")
+	var body := code.substr(6, Duel.CODE_LEN)
+	var swapped := body.substr(0, 9) + ("Z" if body[9] != "Z" else "Y") + body.substr(10)
+	ok(Duel.decode("ORBIT-" + swapped + "-JOSEMARIA").is_empty(), "edited score: code rejected")
+	ok(Duel.decode(code.replace("JOSEMARIA", "JOSE")).is_empty(), "edited name: code rejected")
+	ok(Duel.decode("no code here").is_empty() and Duel.clean_name("") == "PLAYER", "no code / empty name")
+	ok(Duel.outcome(10, 9) == "win" and Duel.outcome(9, 9) == "tie" and Duel.outcome(8, 9) == "lose", "duel outcome")
+	# rewards: nobody loses coins; a few paid duels a day
+	var c0: int = save.coins
+	ok(save.duel_finished("win") == Duel.REWARD_WIN and save.duel_finished("lose") == Duel.REWARD_LOSS and save.duel_finished("tie") == Duel.REWARD_TIE, "win / lose / tie pay")
+	ok(save.duel_finished("win") == 0 and save.coins == c0 + Duel.REWARD_WIN + Duel.REWARD_LOSS + Duel.REWARD_TIE, "only %d paid duels a day, never coins lost" % Duel.REWARDS_PER_DAY)
+	ok(int(save.duels["wins"]) == 2 and int(save.duels["losses"]) == 1 and save.duel_rewards_left() == 0, "duel stats")
+	save.duel_created(code)
+	ok(save.duel_mine(Duel.decode(code)) and not save.duel_mine(Duel.decode(Duel.encode(123456, 150, "KAI"))), "own code recognised, a reply on the same run is not mine")
+	save.duel_started(code)
+	ok(save.duel_played(code), "a duel can only be played once")
+	# a duel run: same run for everyone, no abilities, no continue
+	save.reset_all()
+	save.level = 20
+	save.abilities = {"coins": 5, "shield": 3, "magnet": 5, "slowmo": 3, "teleport": 3, "headstart": 3, "secondlife": 1}
+	save.stats = {"best_world": 12}
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	var d2 := Duel.decode(Duel.encode(4242, 30, "KAI"))
+	main.start_duel(d2)
+	ok(main.shield_hits == 0 and main.teleports == 0 and main.slowmo_charges == 0 and not main.second_life and main.stage == 0 and main.score == 0,
+		"duel: no shield, teleport, slow-mo, second life or headstart")
+	var runs := []
+	for k in 2:
+		if k == 1:
+			main.start_duel(d2)
+		var frames := 0
+		while main.state == main.S.PLAYING and frames < 60 * 25:
+			if frames % 2 == 0 and TestBot.decide(main):
+				main._flip()
+			main._grace = 0.0
+			main._process(1.0 / 60.0)
+			frames += 1
+		runs.append([main.score, frames, main.director.committed])
+		if main.state == main.S.DYING:
+			main._game_over()
+	print("  duel runs (score, frames, patterns): ", runs)
+	ok(runs[0] == runs[1], "same code, same play: identical run %s / %s" % [str(runs[0]), str(runs[1])])
+	# the result: win against a low score, paid and counted
+	save.reset_all()
+	main.start_duel(Duel.decode(Duel.encode(77, 0, "LU")))
+	main.score = 5
+	main._game_over()
+	ok(int(save.duels.get("wins", 0)) == 1 and main.duel["last"]["result"] == "win" and main.duel["last"]["pay"] == Duel.REWARD_WIN, "beating a friend's score: win + coins")
+	ok(not main.ui._over_buttons[0].visible and main.ui._over_duel.visible and main.ui._over_duel_mode == "send", "duel game over: no retry, send the result")
+	ok(Duel.decode(main.duel["last"]["code"]).get("score", -1) == 5 and Duel.decode(main.duel["last"]["code"]).get("seed", -1) == 77, "reply code: my score, same run")
+	main.start_duel(Duel.decode(Duel.encode(78, 900, "LU")))
+	main.score = 5
+	main._game_over()
+	ok(main.duel["last"]["result"] == "lose" and main.ui._over_duel_mode == "rematch", "losing offers a rematch (new run)")
+	main.go_menu()
+	main.start_duel({})
+	main.score = 12
+	main._game_over()
+	ok(main.duel["last"]["mode"] == "new" and save.duel_mine(Duel.decode(main.duel["last"]["code"])), "new duel: code to send, marked as mine")
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
+	# every duel text fits where it is drawn
+	var l10n = get_root().get_node("L")
+	var font: FontFile = load("res://assets/font/pixel.fnt")
+	var w := func(t: String) -> float: return font.get_string_size(t, HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x
+	var wide: Array = []
+	for lang in l10n.LANGS:
+		l10n.set_lang(lang)
+		for k in ["DUEL_I1", "DUEL_I2", "DUEL_I3", "DUEL_HINT", "DUEL_DARES", "DUEL_RULES", "DUEL_LEFT", "DUEL_STATS", "DUEL_PAY"]:
+			var t: String = l10n.t(k, [99, 99]) if k in ["DUEL_STATS", "DUEL_PAY"] else (l10n.t(k, 3) if k == "DUEL_LEFT" else l10n.t(k))
+			if w.call(t) > 152: wide.append("%s %s" % [lang, k])
+		for k in ["DUEL_SEND_IT", "DUEL_WIN", "DUEL_TIE"]:
+			if w.call(l10n.t(k, 50) if k != "DUEL_SEND_IT" else l10n.t(k)) > 132: wide.append("%s %s" % [lang, k])
+		if w.call(l10n.t("DUEL_LOSE", ["ABCDEFGHIJ", 9999])) > 132: wide.append("%s DUEL_LOSE" % lang)
+		if w.call(l10n.t("DUEL_BEAT", ["ABCDEFGHIJ", 9999])) > 176: wide.append("%s DUEL_BEAT" % lang)
+		if w.call(l10n.t("DUEL_BEAT_N", 9999)) * 2 > 152: wide.append("%s DUEL_BEAT_N" % lang)
+		for k in ["DUEL_CHALLENGE", "DUEL_SEND_RESULT", "DUEL_REMATCH", "DUEL_NEW", "DUEL_PASTE"]:
+			if w.call(l10n.t(k)) > 108 - 6 - 13: wide.append("%s %s" % [lang, k])
+	l10n.set_lang("en")
+	ok(wide.is_empty(), "duel texts fit %s" % str(wide))
+	save.reset_all()
+
+
 func test_worlds(save) -> void:
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)

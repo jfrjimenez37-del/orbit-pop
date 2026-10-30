@@ -39,6 +39,7 @@ var free_continue_day := -1   # NO ADS: one free continue a day
 var video_up := {}            # {"id": ability, "n": videos watched, "day": day of the last video level}
 var offers := {}              # offer id -> day it was last shown
 var offer_live := {}          # the offer whose bonus is running: {id, until (unix s), bonus}
+var duels := {}               # {day, paid (rewards today), played: [codes], created: [codes I sent], wins, losses, ties}
 var notifications := true     # Settings: daily reminders
 var notif_asked := false      # Android permission already requested
 var review_asks := 0          # times the Play review sheet was requested
@@ -93,6 +94,7 @@ func load_data() -> void:
 	video_up = cfg.get_value("player", "video_up", {})
 	offers = cfg.get_value("shop", "offers", {})
 	offer_live = cfg.get_value("shop", "offer_live", {})
+	duels = cfg.get_value("player", "duels", {})
 	notifications = bool(cfg.get_value("settings", "notifications", true))
 	notif_asked = bool(cfg.get_value("meta", "notif_asked", false))
 	review_day = int(cfg.get_value("meta", "review_day", -9999))
@@ -142,6 +144,7 @@ func save_data() -> void:
 	cfg.set_value("player", "video_up", video_up)
 	cfg.set_value("shop", "offers", offers)
 	cfg.set_value("shop", "offer_live", offer_live)
+	cfg.set_value("player", "duels", duels)
 	cfg.set_value("settings", "notifications", notifications)
 	cfg.set_value("meta", "notif_asked", notif_asked)
 	cfg.set_value("meta", "review_day", review_day)
@@ -574,8 +577,67 @@ func reset_all() -> void:
 	video_up = {}
 	offers = {}
 	offer_live = {}
+	duels = {}
 	notifications = true
 	notif_asked = false
 	stats = {}; achievements = []; top_scores = []
 	missions = {"day": -1, "list": [], "week": -1, "weekly": {}}
 	save_data()
+
+
+# ------------------------------------------------------------------ duels (see Duel)
+
+func _duel_list(key: String) -> Array:
+	if not duels.has(key):
+		duels[key] = []
+	return duels[key]
+
+
+func duel_played(code: String) -> bool:
+	return code in _duel_list("played")
+
+
+## True if this code is one I made myself: no reward for playing yourself.
+func duel_mine(d: Dictionary) -> bool:
+	return str(d.get("code", "")) in _duel_list("created")
+
+
+func duel_created(code: String) -> void:
+	var l := _duel_list("created")
+	if code in l:
+		return
+	l.append(code)
+	while l.size() > Duel.KEEP:
+		l.pop_front()
+	save_data()
+
+
+## The attempt counts as soon as it starts (closing the app does not give a second try).
+func duel_started(code: String) -> void:
+	var l := _duel_list("played")
+	l.append(code)
+	while l.size() > Duel.KEEP:
+		l.pop_front()
+	save_data()
+
+
+func duel_rewards_left() -> int:
+	if int(duels.get("day", -1)) != day_number():
+		return Duel.REWARDS_PER_DAY
+	return maxi(0, Duel.REWARDS_PER_DAY - int(duels.get("paid", 0)))
+
+
+## Records the result of a friend's duel; returns the coins paid (0 once the daily limit is hit).
+func duel_finished(result: String) -> int:
+	var key: String = {"win": "wins", "lose": "losses", "tie": "ties"}[result]
+	duels[key] = int(duels.get(key, 0)) + 1
+	var pay := 0
+	if duel_rewards_left() > 0:
+		if int(duels.get("day", -1)) != day_number():
+			duels["day"] = day_number()
+			duels["paid"] = 0
+		duels["paid"] = int(duels["paid"]) + 1
+		pay = Duel.reward(result)
+		coins += pay
+	save_data()
+	return pay

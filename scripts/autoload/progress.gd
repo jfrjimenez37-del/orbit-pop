@@ -296,5 +296,8 @@ func _on_cloud(data: Dictionary) -> void:
 
 # ------------------------------------------------------------------ share
 
+const STORE_URL := "https://play.google.com/store/apps/details?id=com.barriogames.orbitpop"
+
+
 func share(score: int, img: Image) -> bool:
 	return sharer.share_score(L.t("SHARE_TEXT", score), img)

@@ -27,6 +27,9 @@ signal language_changed
 signal pause_pressed
 signal resume_pressed
 signal quit_pressed
+signal duel_new_pressed
+signal duel_accept_pressed(duel: Dictionary)
+signal duel_send_pressed
 
 const FONT := preload("res://assets/font/pixel.fnt")
 const FONT_PLAIN := preload("res://assets/font/pixel_plain.fnt")  # no outline: dark text on light UI
@@ -99,6 +102,8 @@ var _over_buttons: Array[Button] = []
 var _over_continue: Button
 var _over_continue_free: Button
 var _over_panel: NinePatchRect
+var _over_duel: Button           # duel game over: CHALLENGE! / SEND RESULT / REMATCH
+var _over_duel_mode := ""
 var _pause_title: Label
 # style screen
 var _style_tab := "skins"
@@ -429,21 +434,23 @@ func _build_menu() -> void:
 	rk.pressed.connect(func(): ranking_pressed.emit())
 	# bottom row (kept off the top corners: rounded screens and camera notches cut them)
 	var row := [["mission", "white", show_mission], ["skins", "white", func(): skins_pressed.emit()],
-		["cart", "pink", func(): shop_pressed.emit()], ["gift", "pink", show_daily], ["gear", "white", show_settings]]
+		["duel", "yellow", show_duel], ["cart", "pink", func(): shop_pressed.emit()], ["gift", "pink", show_daily],
+		["gear", "white", show_settings]]
 	for i in row.size():
-		var b := _button(menu, row[i][1], "", row[i][0], Vector2(28, 22))
-		_place(b, 1.0, -31, 28, 22)
-		b.offset_left += (i - 2) * 31; b.offset_right += (i - 2) * 31
+		var b := _button(menu, row[i][1], "", row[i][0], Vector2(26, 22))
+		_place(b, 1.0, -31, 26, 22)
+		var dx := roundf((i - (row.size() - 1) * 0.5) * 28)
+		b.offset_left += dx; b.offset_right += dx
 		b.pressed.connect(row[i][2])
 		if row[i][0] == "mission":
 			_mission_badge = _label(b, "!", 1, GOLD)
-			_mission_badge.position = Vector2(23, -4)
+			_mission_badge.position = Vector2(21, -4)
 		elif row[i][0] == "gift":
 			_gift_badge = _label(b, "!", 1, GOLD)
-			_gift_badge.position = Vector2(23, -4)
+			_gift_badge.position = Vector2(21, -4)
 		elif row[i][0] == "cart":
 			_shop_badge = _label(b, "!", 1, GOLD)
-			_shop_badge.position = Vector2(23, -4)
+			_shop_badge.position = Vector2(21, -4)
 
 
 func refresh_menu() -> void:
@@ -663,6 +670,19 @@ func set_score(v: int) -> void:
 		create_tween().tween_property(_score_lbl, "position:y", 8.0, 0.12)
 
 
+## Duel HUD: the score to beat instead of my best.
+func set_duel_target(name: String, target: int) -> void:
+	_hud_best.text = L.t("DUEL_BEAT", [name, target])
+	_hud_best.modulate = Color8(255, 170, 200)
+	_center_label(_hud_best, 180, 34)
+
+
+func announce_duel_lead() -> void:
+	_hud_best.text = L.t("DUEL_AHEAD")
+	_hud_best.modulate = GOLD
+	_center_label(_hud_best, 180, 34)
+
+
 func announce_record() -> void:
 	_hud_best.text = L.t("NEW_BEST")
 	_hud_best.modulate = PINK
@@ -727,7 +747,13 @@ func _build_over() -> void:
 	home.pressed.connect(func(): menu_pressed.emit())
 	var share := _button(panel, "green", "", "share", Vector2(46, 22))
 	share.pressed.connect(func(): share_pressed.emit())
-	_over_buttons = [retry, home, share, _over_continue, _over_continue_free, _over_double]
+	_over_duel = _button(panel, "pink", "DUEL", "share", Vector2(108, 28))
+	_over_duel.pressed.connect(func():
+		if _over_duel_mode == "rematch":
+			duel_new_pressed.emit()
+		else:
+			duel_send_pressed.emit())
+	_over_buttons = [retry, home, share, _over_continue, _over_continue_free, _over_double, _over_duel]
 
 
 func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_continue := false, free_continue := false) -> void:
@@ -739,6 +765,9 @@ func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_co
 	if can_continue:
 		y += 28
 	_over_buttons[0].position = Vector2(14, y)
+	_over_buttons[0].visible = true
+	_over_duel.visible = false
+	_over_duel.position = Vector2(14, y)
 	# share only when the native share sheet exists (otherwise the button seemed to do nothing)
 	var can_share: bool = Progress.sharer.available()
 	_over_buttons[2].visible = can_share
@@ -769,6 +798,36 @@ func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_co
 		for b in _over_buttons:
 			b.disabled = false)
 	_switch(over)
+
+
+## Duel game over: the result replaces the next goal, one button to send it (or a rematch).
+## dr: see main._finish_duel().
+func show_duel_result(dr: Dictionary) -> void:
+	_over_buttons[0].visible = false   # one try per duel: no RETRY
+	_over_buttons[2].visible = false
+	_over_duel.visible = true
+	var col := GREEN_INK
+	if dr["mode"] == "new":
+		_over_unlock.text = L.t("DUEL_SEND_IT")
+		_over_duel_mode = "send"
+		(_over_duel.get_node("Content/Icon") as TextureRect).texture = _tex("icon_share")
+		_set_button_text(_over_duel, L.t("DUEL_CHALLENGE"))
+	else:
+		match dr["result"]:
+			"win":
+				_over_unlock.text = L.t("DUEL_WIN", dr["pay"]) if dr["pay"] > 0 else L.t("DUEL_WIN_0")
+			"tie":
+				_over_unlock.text = L.t("DUEL_TIE", dr["pay"]) if dr["pay"] > 0 else L.t("DUEL_TIE_0")
+			_:
+				_over_unlock.text = L.t("DUEL_LOSE", [dr["name"], dr["theirs"]])
+				col = Color8(214, 66, 128)
+		_over_duel_mode = "rematch" if dr["result"] == "lose" else "send"
+		(_over_duel.get_node("Content/Icon") as TextureRect).texture = _tex("icon_duel" if _over_duel_mode == "rematch" else "icon_share")
+		_set_button_text(_over_duel, L.t("DUEL_REMATCH") if _over_duel_mode == "rematch" else L.t("DUEL_SEND_RESULT"))
+		if dr["result"] == "lose" and dr["pay"] > 0:
+			toast(L.t("PLUS_COINS", dr["pay"]), Color8(255, 222, 70))
+	_over_unlock.modulate = col
+	_center_label(_over_unlock, 136, 116)
 
 
 func set_over_xp(gain: int) -> void:
@@ -1419,7 +1478,7 @@ func _open_board(board: String) -> void:
 ## Banner ads sit at the bottom of every menu screen (not the main menu, runs or game over).
 const STYLE_H := 304
 const ABILITIES_H := 300
-const POPUP_BANNER_KINDS := ["mission", "settings", "daily"]
+const POPUP_BANNER_KINDS := ["mission", "settings", "daily", "duel"]
 
 
 ## True if a box `h` px tall fits above the banner on this screen (short 16:9 phones: not
@@ -1596,6 +1655,59 @@ func _tick_offer_clock() -> void:
 		_offer_clock.text = txt
 		if not _offer_clock_short:
 			_center_label(_offer_clock, _offer_clock_parent_w, float(_offer_clock.get_meta("y", 76)))
+
+
+## DUEL: start a new challenge, or paste a friend's code (copied from WhatsApp etc.).
+func show_duel() -> void:
+	var p := _open_popup(L.t("DUEL"), "duel", 158)
+	for i in 3:
+		var l := _label(p, L.t("DUEL_I%d" % (i + 1)), 1, INK if i < 2 else GREEN_INK)
+		_center_label(l, 156, 8 + i * 10)
+	var pay := _label(p, L.t("DUEL_PAY", [Duel.REWARD_WIN, Duel.REWARD_LOSS]), 1, COIN_INK)
+	_center_label(pay, 156, 42)
+	var left := _label(p, L.t("DUEL_LEFT", Save.duel_rewards_left()), 1, MUTED)
+	_center_label(left, 156, 52)
+	var st := _label(p, L.t("DUEL_STATS", [int(Save.duels.get("wins", 0)), int(Save.duels.get("losses", 0))]), 1, MUTED)
+	_center_label(st, 156, 62)
+	var nb := _button(p, "yellow", L.t("DUEL_NEW"), "duel", Vector2(108, 24))
+	nb.position = Vector2(24, 76)
+	nb.pressed.connect(func(): duel_new_pressed.emit())
+	var pb := _button(p, "white", L.t("DUEL_PASTE"), "", Vector2(108, 20))
+	pb.position = Vector2(24, 104)
+	pb.pressed.connect(_paste_duel)
+	var hint := _label(p, L.t("DUEL_HINT"), 1, MUTED)
+	_center_label(hint, 156, 126)
+	_close_button(p, 138)
+
+
+func _paste_duel() -> void:
+	var d := Duel.decode(DisplayServer.clipboard_get())
+	if d.is_empty():
+		toast(L.t("DUEL_NONE"), Color8(255, 150, 160))
+	elif Save.duel_mine(d):
+		toast(L.t("DUEL_OWN"), Color8(255, 150, 160))
+	elif Save.duel_played(str(d["code"])):
+		toast(L.t("DUEL_DONE"), Color8(255, 150, 160))
+	else:
+		show_duel_accept(d)
+
+
+func show_duel_accept(d: Dictionary) -> void:
+	var p := _open_popup(L.t("DUEL") + "!", "duel_accept", 128)
+	var n := _label(p, str(d["name"]), 2, Color8(214, 66, 128))
+	_center_label(n, 156, 8)
+	var c := _label(p, L.t("DUEL_DARES"), 1, INK)
+	_center_label(c, 156, 28)
+	var b := _label(p, L.t("DUEL_BEAT_N", int(d["score"])), 2, INK)
+	_center_label(b, 156, 42)
+	var r := _label(p, L.t("DUEL_RULES"), 1, MUTED)
+	_center_label(r, 156, 64)
+	var go := _button(p, "pink", L.t("PLAY"), "duel", Vector2(88, 24))
+	go.position = Vector2(34, 78)
+	go.pressed.connect(func(): duel_accept_pressed.emit(d))
+	var later := _button(p, "white", L.t("LATER"), "", Vector2(60, 20))
+	later.position = Vector2(48, 106)
+	later.pressed.connect(hide_popup)
 
 
 ## Today's 3 missions and the weekly challenge (rewards are paid automatically).
