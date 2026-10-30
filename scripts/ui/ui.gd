@@ -65,6 +65,7 @@ var _ab_badge: Label
 var _ab_box: Control
 var _ab_list: Control
 var _run_coins_box: Control
+var _alt_lbl: Label
 var _style_box: Control
 var _menu_coin_box: Control
 var _hud_top: Control
@@ -530,10 +531,19 @@ func _build_hud() -> void:
 	_run_coins_box.offset_left = -40; _run_coins_box.offset_top = 7
 	_icon(_run_coins_box, "icon_coin", Vector2.ZERO)
 	_run_coins_lbl = _left_label(_run_coins_box, "0", Vector2(12, 1), GOLD)
+	# altitude: the run is a climb (score -> km, miles in English)
+	_alt_lbl = _left_label(hud, "", Vector2(4, 27), Color(1, 1, 1, 0.8))
 	_pause_btn = _button(hud, "white", "", "pause", Vector2(20, 20))
 	_pause_btn.position = Vector2(4, 4)
 	_pause_btn.pressed.connect(func(): pause_pressed.emit())
 	_pause_title = _label(hud, "", 4)
+
+
+## Altitude shown under the pause button: 25 points = 1 km.
+func set_altitude(score: int) -> void:
+	var km := score * 0.04
+	var v := km * 0.621 if L.lang == "en" else km
+	_alt_lbl.text = "%.1f %s" % [v, L.t("ALT_UNIT")]
 
 
 func set_run_coins(n: int) -> void:
@@ -548,6 +558,7 @@ func show_hud(best: int, hint: bool) -> void:
 	var st := safe_top()
 	_hud_top.offset_top = st; _hud_top.offset_bottom = st + 60
 	_pause_btn.position.y = 4 + st
+	_alt_lbl.position.y = 27 + st
 	_run_coins_box.offset_top = 7 + st
 	set_score(0)
 	_hud_best.text = L.t("BEST_N", best) if best > 0 else ""
@@ -1496,7 +1507,7 @@ func _mission_row(p: Control, m: Dictionary, y: int) -> void:
 
 
 func show_settings() -> void:
-	var p := _open_popup(L.t("SETTINGS"), "settings", 210)
+	var p := _open_popup(L.t("SETTINGS"), "settings", 232)
 	var rows := [
 		["SOUND", L.t("ON") if Save.sound else L.t("OFF"), func():
 			Save.sound = not Save.sound
@@ -1510,6 +1521,9 @@ func show_settings() -> void:
 			Save.vibration = not Save.vibration
 			Save.save_data()
 			Save.vibrate(40)],
+		["MOTION", L.t("MOTION_REDUCED") if Save.reduce_motion else L.t("MOTION_FULL"), func():
+			Save.reduce_motion = not Save.reduce_motion
+			Save.save_data()],
 		["LANGUAGE", L.LANG_NAMES[L.lang], func():
 			var i := (L.LANGS.find(L.lang) + 1) % L.LANGS.size()
 			Save.lang = L.LANGS[i]

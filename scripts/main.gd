@@ -128,6 +128,7 @@ func go_menu() -> void:
 	player.happy = true
 	planet.mood = Planet.Mood.SMILE
 	_layout()
+	bg.reset_climb()
 	ui.show_menu()
 	if Save.daily_available():
 		ui.show_daily()
@@ -376,6 +377,8 @@ func start_run() -> void:
 	ui.set_teleport(teleports)
 	ui.set_slowmo(slowmo_charges)
 	ui.set_run_coins(0)
+	ui.set_altitude(score)
+	bg.reset_climb()
 	Sfx.play("go")
 
 
@@ -520,7 +523,8 @@ func _process(delta: float) -> void:
 	_world_y = lerpf(_world_y, _world_y_target, minf(1.0, delta * 8.0))
 	_shake = maxf(0.0, _shake - delta * 18.0)
 	var sh := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
-	world.position = Vector2(roundf(get_viewport_rect().size.x * 0.5), roundf(_world_y)) + sh.round()
+	world.position = Vector2(roundf(get_viewport_rect().size.x * 0.5), roundf(_world_y + _sway())) + sh.round()
+	_update_ascent(delta)
 	match state:
 		S.MENU, S.SKINS, S.SHOP, S.RANKING, S.ABILITIES:
 			_menu_flip -= delta
@@ -560,6 +564,25 @@ func _process(delta: float) -> void:
 	planet.player_orbit = player.orbit
 	planet.player_pos = player.position
 	_cleanup()
+
+
+## Visual only: the whole planetary system gently rises and falls in later worlds.
+func _sway() -> float:
+	if state != S.PLAYING or Save.reduce_motion or world_no < 6:
+		return 0.0
+	var amp := 2.0 if world_no < 11 else 4.0
+	return amp * sin(gt * 1.1)
+
+
+## Scenery scrolls down while playing (we climb), faster in later worlds; a short drop on
+## each world change. Off with "Reduce motion".
+func _update_ascent(delta: float) -> void:
+	var target := 0.0
+	if state == S.PLAYING and not Save.reduce_motion:
+		target = (5.0 + 1.6 * mini(world_no, 16)) * (1.0 + director.level(gt) * 0.6)
+		if _morph_t >= 0.0:
+			target = -target * 0.7
+	bg.vspeed = lerpf(bg.vspeed, target, minf(1.0, delta * 2.5))
 
 
 func _sim(dt: float) -> void:
@@ -771,6 +794,7 @@ func _award(h) -> void:
 func _add_score(n: int) -> void:
 	score += n
 	ui.set_score(score)
+	ui.set_altitude(score)
 	ui.set_world_progress(score, best_at_start)
 	Progress.event("score_now", score)
 	var target := Stages.number_for_score(score)

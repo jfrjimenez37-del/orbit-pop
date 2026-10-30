@@ -20,6 +20,9 @@ var _t := 0.0
 var _clouds := []   # [tex_index, x, y, speed]
 var _islands := []
 var speed_mul := 1.0
+## Ascent effect: px/s the scenery moves down (we climb); negative = a short drop.
+var vspeed := 0.0
+var _vy := 0.0          # total climb (px), drives parallax and the cloud sea falling away
 
 
 func _ready() -> void:
@@ -39,10 +42,24 @@ func _on_resize() -> void:
 		c[2] = 20.0 + c[4] * (size.y * 0.72)
 
 
+## Back on the ground (menu / new run).
+func reset_climb() -> void:
+	_vy = 0.0
+	vspeed = 0.0
+
+
 func _process(delta: float) -> void:
 	_t += delta * speed_mul
+	_vy += vspeed * delta
 	for c in _clouds:
 		c[1] -= c[3] * delta * speed_mul
+		# near clouds (big) scroll faster than far ones: depth
+		c[2] += vspeed * delta * (0.6 + 0.4 * (2 - c[0]) / 2.0)
+		if c[2] > size.y + 6:
+			c[2] = -30.0 - randf() * 30.0
+			c[1] = randf_range(-20, size.x)
+		elif c[2] < -70:
+			c[2] = size.y + randf() * 20.0
 		var w: float = CLOUDS[c[0]].get_width()
 		if c[1] < -w - 4:
 			c[1] = size.x + randf_range(4, 40)
@@ -71,12 +88,12 @@ func _draw() -> void:
 	if stars:
 		for i in 40:
 			var sx := fmod(i * 73.0 + _t * 0.5, size.x)
-			var sy := fmod(i * 131.0, size.y * 0.8)
+			var sy := fposmod(i * 131.0 + _vy * (0.15 + 0.1 * (i % 3)), size.y)
 			if (i + int(_t * 2.0)) % 7 != 0:
 				draw_rect(Rect2(Vector2(sx, sy).floor(), Vector2(1, 1)), Color(1, 1, 1, 0.8))
 	draw_texture(SUN, Vector2(size.x - 40, 14), Color(1, 1, 1, 0.55) if stars else Color.WHITE)
 	for isl in _islands:
-		var y: float = size.y * isl[2] + roundf(sin(_t * 0.6 + isl[1]) * 1.0)
+		var y: float = fposmod(size.y * isl[2] + _vy * 0.35 + 20.0, size.y + 40.0) - 20.0 + roundf(sin(_t * 0.6 + isl[1]) * 1.0)
 		draw_texture(ISLANDS[isl[0]], Vector2(roundf(isl[1]), roundf(y)), Color(1, 1, 1, 0.75))
 	for c in _clouds:
 		var tex: Texture2D = CLOUDS[c[0]]
@@ -88,8 +105,9 @@ func _draw() -> void:
 	var fw := FLOOR.get_width()
 	var off := fmod(_t * 6.0, fw)
 	var x2 := -off
-	while x2 < size.x:
-		draw_texture(FLOOR, Vector2(roundf(x2), size.y - 20))
+	var drop := clampf(_vy * 0.5, 0.0, 30.0)   # the cloud sea falls away as we climb
+	while x2 < size.x and drop < 30.0:
+		draw_texture(FLOOR, Vector2(roundf(x2), roundf(size.y - 20 + drop)))
 		x2 += fw
 
 

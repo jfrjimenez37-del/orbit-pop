@@ -33,6 +33,7 @@ var daily_last := ""          # local date of the last claim (YYYY-MM-DD)
 var free_ads_date := ""
 var free_ads_used := 0
 var starter_seen := false
+var reduce_motion := false   # Settings: no ascent scroll / sway
 var review_asks := 0          # times the Play review sheet was requested
 var review_day := -9999       # day_number() of the last request
 var vibration := true
@@ -77,6 +78,7 @@ func load_data() -> void:
 	region = str(cfg.get_value("settings", "region", ""))
 	starter_seen = bool(cfg.get_value("shop", "starter_seen", false))
 	review_asks = int(cfg.get_value("meta", "review_asks", 0))
+	reduce_motion = bool(cfg.get_value("settings", "reduce_motion", false))
 	review_day = int(cfg.get_value("meta", "review_day", -9999))
 	daily_day = int(cfg.get_value("daily", "day", 0))
 	daily_last = str(cfg.get_value("daily", "last", ""))
@@ -118,6 +120,7 @@ func save_data() -> void:
 	cfg.set_value("settings", "region", region)
 	cfg.set_value("shop", "starter_seen", starter_seen)
 	cfg.set_value("meta", "review_asks", review_asks)
+	cfg.set_value("settings", "reduce_motion", reduce_motion)
 	cfg.set_value("meta", "review_day", review_day)
 	cfg.set_value("daily", "day", daily_day)
 	cfg.set_value("daily", "last", daily_last)
@@ -497,6 +500,7 @@ func reset_all() -> void:
 	starter_seen = false
 	review_asks = 0
 	review_day = -9999
+	reduce_motion = false
 	stats = {}; achievements = []; top_scores = []
 	missions = {"day": -1, "list": [], "week": -1, "weekly": {}}
 	save_data()
