@@ -228,6 +228,11 @@ func _stat_add(key: String, n := 1) -> void:
 
 
 func run_finished(score: int, world_no: int, time_s := 0.0) -> void:
+	# how long the player has been around (for the rating request)
+	Save.stats["play_seconds"] = int(Save.stats.get("play_seconds", 0)) + int(time_s)
+	if int(Save.stats.get("last_play_day", -1)) != Save.day_number():
+		Save.stats["last_play_day"] = Save.day_number()
+		Save.stats["days_played"] = int(Save.stats.get("days_played", 0)) + 1
 	_mission_feed("runs", 1)
 	_mission_feed("score_total", score)
 	_mission_feed("time_run", int(time_s))

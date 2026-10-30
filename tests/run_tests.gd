@@ -508,8 +508,8 @@ func test_orbits() -> void:
 	var bottom := Orbit.radius(0, PI * 0.5)
 	ok(bottom > top + 25.0, "candy orbit is off-center (top %.0f, bottom %.0f)" % [top, bottom])
 	Orbit.set_shape(Stages.LIST[4]["orbits"], true)
-	ok(Orbit.count() == 2 and Orbit.crossings.size() == 4, "night: 2 orbits, 4 crossings (%d)" % Orbit.crossings.size())
-	var c: float = Orbit.crossings[0]["a"][0]
+	ok(Orbit.count() == 2 and Orbit.cross_list().size() == 4, "night: 2 orbits, 4 crossings (%d)" % Orbit.cross_list().size())
+	var c: float = Orbit.cross_list()[0]["a"][0]
 	ok(absf(Orbit.radius(0, c) - Orbit.radius(1, c)) < 1.5, "orbits meet at the crossing")
 	var tr := Orbit.tap_result(c, 0, 1)
 	ok(tr[0] == 1 and tr[1] == 1, "tap at a crossing switches orbit, keeps direction")
@@ -517,8 +517,8 @@ func test_orbits() -> void:
 	# two planets: figure-eight switching keeps the player on the same spot
 	for si in [5, 6]:
 		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
-		ok(Orbit.planets().size() == 2 and Orbit.crossings.size() == 2, "%s: 2 planets, 2 crossings" % Stages.LIST[si]["world"])
-		var cx: Dictionary = Orbit.crossings[0]
+		ok(Orbit.planets().size() == 2 and Orbit.cross_list().size() == 2, "%s: 2 planets, 2 crossings" % Stages.LIST[si]["world"])
+		var cx: Dictionary = Orbit.cross_list()[0]
 		var r2 := Orbit.tap_result(cx["a"][0], 0, 1)
 		ok(r2[0] == 1 and Orbit.pos(1, r2[2]).distance_to(Orbit.pos(0, cx["a"][0])) < 1.0, "%s: switch lands on the same point" % Stages.LIST[si]["world"])
 		var t0: Vector2 = Orbit._tangent(0, cx["a"][0])
@@ -529,7 +529,7 @@ func test_orbits() -> void:
 	for si in [7, 8, 9]:
 		var nm: String = Stages.LIST[si]["world"]
 		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
-		ok(Orbit.planets().size() == 3 and Orbit.crossings.size() >= 4, "%s: 3 planets, %d crossings" % [nm, Orbit.crossings.size()])
+		ok(Orbit.planets().size() == 3 and Orbit.cross_list().size() >= 4, "%s: 3 planets, %d crossings" % [nm, Orbit.cross_list().size()])
 		var reach := {0: true}
 		for it in 3:
 			for kk in reach.keys():
@@ -545,7 +545,7 @@ func test_orbits() -> void:
 				for pl in Orbit.planets():
 					clear = minf(clear, p.distance_to(pl["c"]) - pl["r"])
 		ok(maxx + 8.0 <= 90.0 and clear > Orbit.PLAYER_R + 2.0, "%s fits the screen (x %.0f) and clears planets (%.1f)" % [nm, maxx, clear])
-		for cx in Orbit.crossings:
+		for cx in Orbit.cross_list():
 			var kk2: int = cx["k"][0]
 			var r3 := Orbit.tap_result(cx["a"][0], kk2, 1)
 			ok(r3[0] == cx["k"][1] and Orbit.pos(r3[0], r3[2]).distance_to(Orbit.pos(kk2, cx["a"][0])) < 1.0, "%s: switch %d->%d keeps position" % [nm, kk2, r3[0]])
@@ -580,7 +580,7 @@ func test_orbits() -> void:
 	ok(bad == 0, "comet never misses a real hit (%d)" % bad)
 	cm.free()
 	Orbit.set_shape(Stages.LIST[4]["orbits"], true)
-	c = Orbit.crossings[0]["a"][0]
+	c = Orbit.cross_list()[0]["a"][0]
 	ok(Orbit.max_radius() + 8.0 <= 90.0, "widest orbit fits a 180px screen")
 	# a closing cage ("crusher") on orbit 0: the only escape is switching orbit at the crossing
 	var a0: float = c
@@ -645,7 +645,11 @@ func test_progress(save) -> void:
 	ok(save.achievements.has("score25") and save.achievements.has("first"), "achievements unlock from stats")
 	ok(not save.achievements.has("score50"), "locked achievements stay locked")
 	ok(prog.ACHIEVEMENTS.size() >= 30 and PlayGamesConfig.ACHIEVEMENTS.size() == prog.ACHIEVEMENTS.size(), "achievement list and Play Games ids match")
-	var all_ids: Array = PlayGamesConfig.ACHIEVEMENTS.values() + PlayGamesConfig.LEADERBOARDS.values()
+	var boards: Dictionary = PlayGamesConfig.LEADERBOARDS.duplicate()
+	if boards.get("DAILY", "") == "":
+		print("  NOTE: DAILY board id not set yet (create the board in Play Console)")
+		boards.erase("DAILY")
+	var all_ids: Array = PlayGamesConfig.ACHIEVEMENTS.values() + boards.values()
 	var uniq := {}
 	for v in all_ids:
 		uniq[v] = true
@@ -881,16 +885,51 @@ func test_abilities(save) -> void:
 	ok(get_root().get_node("Progress").region() == "EUROPE", "region picked in settings wins")
 	save.region = ""
 	ok(get_root().get_node("Progress").region() == PlayGamesConfig.region(), "AUTO region follows the phone")
-	# in-app review: only after a record, after some runs, once a month, 3 times at most
-	ok(not Reviewer.should_ask(3, true, 80, 0, -9999, 100), "no review prompt in the first runs")
-	ok(not Reviewer.should_ask(20, false, 80, 0, -9999, 100), "no review prompt without a record")
-	ok(not Reviewer.should_ask(20, true, 10, 0, -9999, 100), "no review prompt for a tiny record")
-	ok(Reviewer.should_ask(20, true, 80, 0, -9999, 100), "review prompt after a good record")
-	ok(not Reviewer.should_ask(20, true, 80, 1, 90, 100) and Reviewer.should_ask(20, true, 80, 1, 70, 100), "at most once every 30 days")
-	ok(not Reviewer.should_ask(20, true, 80, 3, -9999, 100), "3 prompts at most")
+	# in-app review: after some time (runs, days, minutes), at a happy moment, once a month, 3 at most
+	var rc := {"happy": true, "games": 20, "days": 3, "minutes": 40.0, "asks": 0, "last_day": -9999, "today": 100}
+	var ask := func(over: Dictionary) -> bool:
+		var c := rc.duplicate()
+		c.merge(over, true)
+		return Reviewer.should_ask(c)
+	ok(ask.call({}), "review prompt after a while, at a happy moment")
+	ok(not ask.call({"games": 3}) and not ask.call({"days": 1}) and not ask.call({"minutes": 10.0}), "not in the first runs, first day or first minutes")
+	ok(not ask.call({"happy": false}), "only at a happy moment")
+	ok(not ask.call({"asks": 1, "last_day": 90}) and ask.call({"asks": 1, "last_day": 70}), "at most once every 30 days")
+	ok(not ask.call({"asks": 3}), "3 prompts at most")
+	ok(Reviewer.happy(true, 80, false, false, false) and not Reviewer.happy(true, 10, false, false, false)
+		and Reviewer.happy(false, 0, true, false, false) and Reviewer.happy(false, 0, false, true, false)
+		and Reviewer.happy(false, 0, false, false, true) and not Reviewer.happy(false, 90, false, false, false), "happy moments: record, new world, duel win, daily best")
 	save.games = 20
+	save.stats = {"days_played": 3, "play_seconds": 3000}
 	var rv: Reviewer = get_root().get_node("Progress").reviewer
-	ok(rv.maybe_ask(save, true, 80) and save.review_asks == 1 and not rv.maybe_ask(save, true, 90), "asking is remembered")
+	ok(rv.maybe_ask(save, true) and save.review_asks == 1 and not rv.maybe_ask(save, true), "asking is remembered")
+	save.reset_all()
+	var pr = get_root().get_node("Progress")
+	pr.run_finished(10, 1, 30.0)
+	pr.run_finished(10, 1, 50.0)
+	ok(int(save.stats.get("play_seconds", 0)) == 80 and int(save.stats.get("days_played", 0)) == 1, "play time and days played are counted")
+	# daily challenge: same run for everyone on a day, a new one the next day, a few tries
+	ok(Daily.seed_for(20000) == Daily.seed_for(20000) and Daily.seed_for(20000) != Daily.seed_for(20001), "one run per day")
+	var jan := Time.get_unix_time_from_datetime_dict({"year": 2027, "month": 1, "day": 15, "hour": 7, "minute": 59, "second": 0})
+	ok(Daily.day_key(jan) == Daily.day_key(jan + 59) - 0 and Daily.day_key(jan + 60) == Daily.day_key(jan) + 1, "winter: new day at 08:00 UTC (midnight PST)")
+	var jul := Time.get_unix_time_from_datetime_dict({"year": 2027, "month": 7, "day": 15, "hour": 6, "minute": 59, "second": 0})
+	ok(Daily.day_key(jul + 60) == Daily.day_key(jul) + 1, "summer: new day at 07:00 UTC (midnight PDT)")
+	var mar_before := Time.get_unix_time_from_datetime_dict({"year": 2027, "month": 3, "day": 13, "hour": 12, "minute": 0, "second": 0})
+	var mar_after := Time.get_unix_time_from_datetime_dict({"year": 2027, "month": 3, "day": 15, "hour": 12, "minute": 0, "second": 0})
+	ok(Daily._is_pdt(Time.get_datetime_dict_from_unix_time(mar_after)) and not Daily._is_pdt(Time.get_datetime_dict_from_unix_time(mar_before)), "daylight time from the 2nd Sunday of March (2027-03-14)")
+	save.reset_all()
+	ok(save.daily_tries_left() == Daily.FREE_TRIES and save.daily_video_left() == Daily.VIDEO_TRIES, "free tries each day")
+	save.daily_started()
+	var f1: Dictionary = save.daily_finished(40)
+	save.daily_started()
+	var f2: Dictionary = save.daily_finished(30)
+	ok(f1["best"] and f1["pay"] == Daily.REWARD_FIRST and not f2["best"] and f2["pay"] == 0 and int(save.daily_state()["best"]) == 40, "best try counts, first try of the day pays")
+	save.daily_started()
+	save.daily_extra_try()
+	ok(save.daily_tries_left() == 1 and save.daily_video_left() == Daily.VIDEO_TRIES - 1, "a video gives one more try")
+	save.clock_override = Time.get_unix_time_from_system() + 86400.0 * 2
+	ok(save.daily_tries_left() == Daily.FREE_TRIES and int(save.daily_state()["best"]) == 0, "a new day, a new challenge")
+	save.clock_override = -1.0
 	save.reset_all()
 	# in-run coins and MAGNET
 	var mc = load("res://scenes/main.tscn").instantiate()

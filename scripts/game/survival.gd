@@ -12,6 +12,8 @@ const BW := TAU / N
 const TAP_GAP := 0.12          # fastest tapping assumed (s)
 const MARGIN := BW * 0.5 + 0.03
 const MAXP := 0x7FFFFFFFFFFFFFFF
+const WOLD_KEY := -5000         # cache slot of robust()'s backward pass over the old hazards
+const ALL_KEY := -5001          # cache slot: can_survive's per-step masks of all hazards, for robust()
 ## Human tolerance used when committing new patterns: every escape must still work if the
 ## player taps up to HUMAN_LATE seconds off, and never needs taps closer than HUMAN_GAP.
 const HUMAN_LATE := 0.06
@@ -61,6 +63,9 @@ static func danger_mask(hazards: Array, t: float, k := 0, margin := MARGIN) -> A
 	var m := [0, 0]
 	var iv: Array = []
 	for h in hazards:
+		# every hazard is only dangerous inside [t_danger_start, t_danger_end] (skip the call)
+		if t < h.t_danger_start or t > h.t_danger_end:
+			continue
 		iv.clear()
 		h.danger(t, iv, k)
 		for v in iv:
@@ -88,6 +93,19 @@ static var _cm: Array = []
 static var _cm_ver := -1
 
 
+## Crossing maps at step s of a check in a moving world. Every check and attempt of one spawn
+## steps through the same times, so they share them (rebuilding them was the slowest part).
+static func _cm_at(cache, s: int) -> Array:
+	if cache == null:
+		return cross_maps()
+	var key := -100 - s
+	var c = cache.get(key)
+	if c == null:
+		c = cross_maps()
+		cache[key] = c
+	return c
+
+
 static func cross_maps() -> Array:
 	if _cm_ver == Orbit.version:
 		return _cm
@@ -103,7 +121,7 @@ static func _build_cross_maps() -> Array:
 		var m := [0, 0]
 		var maps: Array = []
 		if Orbit.count() >= 2 and not Orbit.morphing():
-			for c in Orbit.crossings:
+			for c in Orbit.cross_list():
 				var side: int = c["k"].find(k)
 				if side < 0:
 					continue
@@ -170,10 +188,20 @@ static func _survive(hazards: Array, t_now: float, angle: float, dir: int, omega
 	var base: Array = hazards.slice(0, n_cached) if cache != null else []
 	var rest: Array = hazards.slice(n_cached) if cache != null else hazards
 	var alive := false
+	# the masks of every step are kept for robust(), which needs exactly the same ones
+	var keep := cache != null
+	var d_all: Array = []
+	if keep:
+		cache.erase(ALL_KEY)
+	var s_lo := PackedInt64Array(); s_lo.resize(kc)
+	var s_hi := PackedInt64Array(); s_hi.resize(kc)
 	for k in kc:
 		var d0 := _mask(base, rest, cache, t_now, -1, k, margin)
+		s_lo[k] = d0[0]; s_hi[k] = d0[1]
 		plo[k] &= ~d0[0]; phi[k] &= ~d0[1]; mlo[k] &= ~d0[0]; mhi[k] &= ~d0[1]
 		alive = alive or (plo[k] | phi[k] | mlo[k] | mhi[k]) != 0
+	if keep:
+		d_all.append([s_lo, s_hi])
 	if not alive:
 		return false
 	var nplo := PackedInt64Array(); nplo.resize(kc)
@@ -185,8 +213,9 @@ static func _survive(hazards: Array, t_now: float, angle: float, dir: int, omega
 	while t < horizon + dt:
 		s += 1
 		if moving:
-			Orbit.set_time(t)   # transitions start from the geometry of the current step
-			CM = cross_maps()
+			# transitions start from the geometry of the current step (already set: it is where
+			# the previous step's masks were taken, or t_now)
+			CM = _cm_at(cache, s)
 		# one step = the time needed to travel one bucket at the current speed
 		t += BW / (omega + omega_rate * (t - t_now))
 		var tap := s >= tap0 and (s - tap0) % gap == 0 and (s > 0 or first_tap)
@@ -232,13 +261,20 @@ static func _survive(hazards: Array, t_now: float, angle: float, dir: int, omega
 		alive = false
 		if moving:
 			Orbit.set_time(t)
+		var a_lo := PackedInt64Array(); a_lo.resize(kc)
+		var a_hi := PackedInt64Array(); a_hi.resize(kc)
 		for k in kc:
 			var d := _mask(base, rest, cache, t, s, k, margin)
+			a_lo[k] = d[0]; a_hi[k] = d[1]
 			plo[k] = nplo[k] & ~d[0]; phi[k] = nphi[k] & ~d[1]
 			mlo[k] = nmlo[k] & ~d[0]; mhi[k] = nmhi[k] & ~d[1]
 			alive = alive or (plo[k] | phi[k] | mlo[k] | mhi[k]) != 0
+		if keep:
+			d_all.append([a_lo, a_hi])
 		if not alive:
 			return false
+	if keep:
+		cache[ALL_KEY] = [t_now, hazards.size(), n_cached, d_all]
 	return true
 
 
@@ -307,19 +343,34 @@ static func robust(hazards: Array, n_old: int, t_now: float, angle: float, dir: 
 	var t_keep := Orbit.time
 	# danger masks per step: old (cached like can_survive's base part) and new
 	var d_old: Array = []
-	var d_new: Array = []
 	var cms: Array = []
 	var no_cache := cache == null
 	if no_cache:
 		cache = {}
+	# masks of all hazards per step: from can_survive when it just ran on the same hazards
+	var shared = cache.get(ALL_KEY)
+	var d_all: Array = []
+	if shared != null and shared[0] == t_now and shared[1] == hazards.size() and shared[2] == n_old and shared[3].size() == n:
+		d_all = shared[3]
+	var have_all := not d_all.is_empty()
 	for i in n:
 		if moving:
-			Orbit.set_time(ts[i])
-		cms.append(cross_maps())
+			# move the geometry only for what is not cached yet (usually nothing after can_survive)
+			var need_geo: bool = not have_all or not cache.has(-100 - i)
+			if not need_geo and n_old > 0:
+				for k in kc:
+					if not cache.has((i - 1) * 8 + k):
+						need_geo = true
+						break
+			if need_geo:
+				Orbit.set_time(ts[i])
+			cms.append(_cm_at(cache, i))
+		else:
+			cms.append(cross_maps())
 		var o_lo := PackedInt64Array(); o_lo.resize(kc)
 		var o_hi := PackedInt64Array(); o_hi.resize(kc)
-		var n_lo := PackedInt64Array(); n_lo.resize(kc)
-		var n_hi := PackedInt64Array(); n_hi.resize(kc)
+		var a_lo := PackedInt64Array(); a_lo.resize(kc)
+		var a_hi := PackedInt64Array(); a_hi.resize(kc)
 		for k in kc:
 			var key := (i - 1) * 8 + k
 			var c = cache.get(key) if n_old > 0 else [0, 0]
@@ -327,10 +378,12 @@ static func robust(hazards: Array, n_old: int, t_now: float, angle: float, dir: 
 				c = danger_mask(old, ts[i], k, margin)
 				cache[key] = c
 			o_lo[k] = c[0]; o_hi[k] = c[1]
-			var m := danger_mask(new, ts[i], k, margin)
-			n_lo[k] = m[0]; n_hi[k] = m[1]
+			if not have_all:
+				var m := danger_mask(new, ts[i], k, margin)
+				a_lo[k] = m[0] | c[0]; a_hi[k] = m[1] | c[1]
 		d_old.append([o_lo, o_hi])
-		d_new.append([n_lo, n_hi])
+		if not have_all:
+			d_all.append([a_lo, a_hi])
 	if moving:
 		Orbit.set_time(t_keep)
 	# backward: states from which the player can still escape (old only / everything)
@@ -339,19 +392,29 @@ static func robust(hazards: Array, n_old: int, t_now: float, angle: float, dir: 
 	for k in kc:
 		for q in 2:
 			w_old[q * 2][k] &= ~d_old[n - 1][0][k]; w_old[q * 2 + 1][k] &= ~d_old[n - 1][1][k]
-			w_all[q * 2][k] &= ~(d_old[n - 1][0][k] | d_new[n - 1][0][k])
-			w_all[q * 2 + 1][k] &= ~(d_old[n - 1][1][k] | d_new[n - 1][1][k])
-	var w_old_at: Array = []   # W_old for steps 0..tap0
-	w_old_at.resize(tap0 + 1)
+			w_all[q * 2][k] &= ~d_all[n - 1][0][k]
+			w_all[q * 2 + 1][k] &= ~d_all[n - 1][1][k]
+	# W_old only depends on the hazards already on screen: every attempt of a spawn shares it
+	# (the backward pass starts after their last danger, where everything is safe)
+	var w_old_at = cache.get(WOLD_KEY)
+	var have_old := w_old_at != null
+	if not have_old:
+		w_old_at = []   # W_old for steps 0..tap0
+		w_old_at.resize(tap0 + 1)
 	var w_all_tap0: Array = []
 	for i in range(n - 2, -1, -1):
 		var tap := i < tap0 or (i - tap0) % gap == 0
-		w_old = _back(w_old, cms[i], tap, d_old[i][0], d_old[i][1], null, null)
-		w_all = _back(w_all, cms[i], tap, d_old[i][0], d_old[i][1], d_new[i][0], d_new[i][1])
-		if i <= tap0:
-			w_old_at[i] = w_old
+		if not have_old:
+			w_old = _back(w_old, cms[i], tap, d_old[i][0], d_old[i][1], null, null)
+			if i <= tap0:
+				w_old_at[i] = w_old
+		w_all = _back(w_all, cms[i], tap, d_all[i][0], d_all[i][1], null, null)
 		if i == tap0:
 			w_all_tap0 = w_all
+			if have_old:
+				break   # nothing below tap0 is needed any more
+	if not have_old:
+		cache[WOLD_KEY] = w_old_at
 	# forward through the reaction window with any taps, avoiding the old hazards only
 	var r := _states(kc)
 	var b := bucket(angle)
@@ -367,7 +430,8 @@ static func robust(hazards: Array, n_old: int, t_now: float, angle: float, dir: 
 		var wo: Array = w_old_at[i]
 		for k in kc:
 			for q in 4:
-				if r[q][k] & wo[q][k] & d_new[i][q % 2][k] != 0:
+				# r avoids the old hazards already, so hitting anything here means hitting the new ones
+				if r[q][k] & wo[q][k] & d_all[i][q % 2][k] != 0:
 					return false   # a sensible move gets hit by something not seen yet
 		r = _fwd(r, cms[i], true)
 		for k in kc:
@@ -383,86 +447,119 @@ static func robust(hazards: Array, n_old: int, t_now: float, angle: float, dir: 
 
 ## One backward step: states at step i that reach `w` at step i+1 and are safe now.
 static func _back(w: Array, cm: Array, tap: bool, dlo: PackedInt64Array, dhi: PackedInt64Array, d2lo, d2hi) -> Array:
-	var kc: int = w[0].size()
-	var out := _states(kc)
+	# (rotations written out inline: this runs for every step of every check, on phones)
+	var w0: PackedInt64Array = w[0]
+	var w1: PackedInt64Array = w[1]
+	var w2: PackedInt64Array = w[2]
+	var w3: PackedInt64Array = w[3]
+	var kc := w0.size()
+	var o0 := PackedInt64Array(); o0.resize(kc)
+	var o1 := PackedInt64Array(); o1.resize(kc)
+	var o2 := PackedInt64Array(); o2.resize(kc)
+	var o3 := PackedInt64Array(); o3.resize(kc)
 	for k in kc:
-		var p0: int = w[0][k]
-		var p1: int = w[1][k]
-		var m0: int = w[2][k]
-		var m1: int = w[3][k]
-		# moving +1 stays winning if the next bucket is; moving -1 likewise
-		var a0 := _rotr0(p0, p1)
-		var a1 := _rotr1(p0, p1)
-		var c0 := _rotl0(m0, m1)
-		var c1 := _rotl1(m0, m1)
+		var p0 := w0[k]
+		var p1 := w1[k]
+		var m0 := w2[k]
+		var m1 := w3[k]
+		# moving +1 stays winning if the next bucket is (rotate right); moving -1 likewise (left)
+		var ra0 := ((p0 >> 1) & MAXP) | ((p1 & 1) << 63)
+		var ra1 := ((p1 >> 1) & MAXP) | ((p0 & 1) << 63)
+		var lc0 := (m0 << 1) | ((m1 >> 63) & 1)
+		var lc1 := (m1 << 1) | ((m0 >> 63) & 1)
 		if tap:
-			var X: Array = cm[k][0]
 			# P reverses to M (moves -1), M reverses to P (moves +1), outside crossing windows
-			a0 |= _rotl0(m0, m1) & ~X[0]
-			a1 |= _rotl1(m0, m1) & ~X[1]
-			c0 |= _rotr0(p0, p1) & ~X[0]
-			c1 |= _rotr1(p0, p1) & ~X[1]
-		out[0][k] = a0; out[1][k] = a1; out[2][k] = c0; out[3][k] = c1
+			var X: Array = cm[k][0]
+			var x0: int = X[0]
+			var x1: int = X[1]
+			o0[k] = ra0 | (lc0 & ~x0); o1[k] = ra1 | (lc1 & ~x1)
+			o2[k] = lc0 | (ra0 & ~x0); o3[k] = lc1 | (ra1 & ~x1)
+		else:
+			o0[k] = ra0; o1[k] = ra1; o2[k] = lc0; o3[k] = lc1
 	if tap:
 		for k in kc:
 			for mp in cm[k][1]:
 				var b0: int = mp[0]
 				var o: int = mp[1]
-				for dd in [1, -1]:
-					var nd: int = dd * int(mp[3])
-					var tb := posmod(int(mp[2]) + (1 if nd > 0 else -1), N)
-					var q := 0 if nd > 0 else 2
-					var hit: bool = _bit(w[q][o] if tb < 64 else w[q + 1][o], tb)
-					if hit:
-						var qs := 0 if dd > 0 else 2
-						if b0 < 64:
-							out[qs][k] |= 1 << b0
+				var tb0: int = mp[2]
+				var sg: int = mp[3]
+				# moving +1 here continues with direction sg on the other orbit, -1 with -sg
+				for dd in 2:
+					var nd := sg if dd == 0 else -sg
+					var tb := posmod(tb0 + (1 if nd > 0 else -1), N)
+					var src: int
+					if nd > 0:
+						src = w0[o] if tb < 64 else w1[o]
+					else:
+						src = w2[o] if tb < 64 else w3[o]
+					if (src >> (tb & 63)) & 1 == 1:
+						if dd == 0:
+							if b0 < 64: o0[k] |= 1 << b0
+							else: o1[k] |= 1 << (b0 - 64)
 						else:
-							out[qs + 1][k] |= 1 << (b0 - 64)
+							if b0 < 64: o2[k] |= 1 << b0
+							else: o3[k] |= 1 << (b0 - 64)
+	var two := d2lo != null
 	for k in kc:
-		var lo: int = dlo[k] | (d2lo[k] if d2lo != null else 0)
-		var hi: int = dhi[k] | (d2hi[k] if d2hi != null else 0)
-		out[0][k] &= ~lo; out[1][k] &= ~hi; out[2][k] &= ~lo; out[3][k] &= ~hi
-	return out
+		var lo: int = dlo[k] | (d2lo[k] if two else 0)
+		var hi: int = dhi[k] | (d2hi[k] if two else 0)
+		o0[k] &= ~lo; o1[k] &= ~hi; o2[k] &= ~lo; o3[k] &= ~hi
+	return [o0, o1, o2, o3]
 
 
 ## One forward step (no danger applied), same transitions as can_survive.
 static func _fwd(r: Array, cm: Array, tap: bool) -> Array:
-	var kc: int = r[0].size()
-	var out := _states(kc)
+	var r0: PackedInt64Array = r[0]
+	var r1: PackedInt64Array = r[1]
+	var r2: PackedInt64Array = r[2]
+	var r3: PackedInt64Array = r[3]
+	var kc := r0.size()
+	var o0 := PackedInt64Array(); o0.resize(kc)
+	var o1 := PackedInt64Array(); o1.resize(kc)
+	var o2 := PackedInt64Array(); o2.resize(kc)
+	var o3 := PackedInt64Array(); o3.resize(kc)
 	for k in kc:
-		var a0: int = r[0][k]
-		var a1: int = r[1][k]
-		var c0: int = r[2][k]
-		var c1: int = r[3][k]
-		var np0 := _rotl0(a0, a1)
-		var np1 := _rotl1(a0, a1)
-		var nm0 := _rotr0(c0, c1)
-		var nm1 := _rotr1(c0, c1)
+		var a0 := r0[k]
+		var a1 := r1[k]
+		var c0 := r2[k]
+		var c1 := r3[k]
+		var np0 := (a0 << 1) | ((a1 >> 63) & 1)
+		var np1 := (a1 << 1) | ((a0 >> 63) & 1)
+		var nm0 := ((c0 >> 1) & MAXP) | ((c1 & 1) << 63)
+		var nm1 := ((c1 >> 1) & MAXP) | ((c0 & 1) << 63)
 		if tap:
 			var X: Array = cm[k][0]
-			var r0: int = a0 & ~X[0]
-			var r1: int = a1 & ~X[1]
-			nm0 |= _rotr0(r0, r1)
-			nm1 |= _rotr1(r0, r1)
-			var q0: int = c0 & ~X[0]
-			var q1: int = c1 & ~X[1]
-			np0 |= _rotl0(q0, q1)
-			np1 |= _rotl1(q0, q1)
-		out[0][k] |= np0; out[1][k] |= np1; out[2][k] |= nm0; out[3][k] |= nm1
+			var x0: int = X[0]
+			var x1: int = X[1]
+			var q0 := a0 & ~x0
+			var q1 := a1 & ~x1
+			nm0 |= ((q0 >> 1) & MAXP) | ((q1 & 1) << 63)
+			nm1 |= ((q1 >> 1) & MAXP) | ((q0 & 1) << 63)
+			var u0 := c0 & ~x0
+			var u1 := c1 & ~x1
+			np0 |= (u0 << 1) | ((u1 >> 63) & 1)
+			np1 |= (u1 << 1) | ((u0 >> 63) & 1)
+		o0[k] |= np0; o1[k] |= np1; o2[k] |= nm0; o3[k] |= nm1
 	if tap:
 		for k in kc:
 			for mp in cm[k][1]:
 				var b0: int = mp[0]
 				var o: int = mp[1]
-				for dd in [1, -1]:
-					var src: int = (r[0][k] if b0 < 64 else r[1][k]) if dd > 0 else (r[2][k] if b0 < 64 else r[3][k])
-					if _bit(src, b0):
-						var nd: int = dd * int(mp[3])
-						var tb := posmod(int(mp[2]) + (1 if nd > 0 else -1), N)
-						var q := 0 if nd > 0 else 2
-						if tb < 64:
-							out[q][o] |= 1 << tb
+				var tb0: int = mp[2]
+				var sg: int = mp[3]
+				for dd in 2:
+					var src: int
+					if dd == 0:
+						src = r0[k] if b0 < 64 else r1[k]
+					else:
+						src = r2[k] if b0 < 64 else r3[k]
+					if (src >> (b0 & 63)) & 1 == 1:
+						var nd := sg if dd == 0 else -sg
+						var tb := posmod(tb0 + (1 if nd > 0 else -1), N)
+						if nd > 0:
+							if tb < 64: o0[o] |= 1 << tb
+							else: o1[o] |= 1 << (tb - 64)
 						else:
-							out[q + 1][o] |= 1 << (tb - 64)
-	return out
+							if tb < 64: o2[o] |= 1 << tb
+							else: o3[o] |= 1 << (tb - 64)
+	return [o0, o1, o2, o3]

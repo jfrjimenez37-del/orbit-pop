@@ -96,7 +96,7 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 315 comprobaciones automáticas pasando | Ajuste fino de dificultad con jugadores reales |
+| 324 comprobaciones automáticas pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
 | Guardado local, récords, estadísticas, 29 skins por rareza | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
@@ -145,9 +145,13 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
   18:45 hora local: mañana (regalo diario/racha), a los 3 días y a los 7 días (monedas para
   gastar). Se reprograman al salir del juego, así que quien juega a diario no las recibe. Se
   desactivan en AJUSTES ▸ AVISOS. Sin el plugin no hace nada.
-- **Valoración dentro del juego:** tras un récord (≥25 puntos, desde la 8.ª partida, máximo una vez
-  cada 30 días y 3 veces en total) se pide la hoja oficial de reseñas de Google Play. Necesita el
-  plugin "In-App Review" de Cengiz (AssetLib); sin él no hace nada.
+- **Valoración dentro del juego:** cuando el jugador ya lleva un tiempo (8 partidas, 2 días distintos
+  y 20 minutos de juego) y en un buen momento (récord de 25+, mundo nuevo, duelo ganado o mejor marca
+  del reto diario) se abre la hoja oficial de reseñas de Google Play (estrellas + comentario).
+  Máximo una vez cada 30 días y 3 en total; Google decide si la muestra. Sin pregunta previa ni
+  premio por valorar (lo prohíbe Play). AJUSTES ▸ VALORAR abre siempre la ficha de Play Store.
+  Necesita el plugin "In-App Review" de Cengiz (AssetLib); sin él solo queda el botón de AJUSTES.
+  En prueba cerrada las reseñas no son públicas: se verá de verdad en producción.
 - **Tienda:** ficha en inglés (idioma principal, pensando en EE. UU.) y español en `store/listing.md`;
   8 capturas con texto por idioma en `store/screenshots/en|es` (`tests/shots_store.gd` +
   `tools/gen_store_shots.py`); política de privacidad bilingüe con derechos de estados de EE. UU.
@@ -289,7 +293,15 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
 órbita: un test hace sobrevivir al bot justo 45 s en cada forma de órbita.
 
 ## Misiones, logros, ranking, nube, compartir, idiomas
-- **Duelos (por turnos, sin servidores, `scripts/game/duel.gd`):** botón de espadas en el menú.
+- **Reto diario (`scripts/game/daily.gd`):** botón de espadas del menú ▸ RETOS (con "!" si no se
+  ha jugado hoy). La misma partida para todo el mundo cada día (semilla de la fecha, hora del
+  Pacífico de EE. UU., donde Google reinicia los rankings diarios), sin habilidades. 3 intentos
+  gratis y hasta 2 más viendo un vídeo; cuenta el mejor. El primer intento del día da +30 monedas.
+  La mejor marca va al ranking "DAILY" de Play Games (vista HOY, también en RANKING ▸ HOY).
+  **Falta crear ese ranking en Play Console y pegar su id en `play_games_config.gd`.**
+- **Ranking de amigos:** RANKING ▸ AMIGOS (el ranking mundial filtrado a amigos de Play Games;
+  Google pide una vez permiso para ver la lista de amigos).
+- **Duelos (por turnos, sin servidores, `scripts/game/duel.gd`):** en la misma ventana RETOS.
   NUEVO DUELO juega una partida y crea un código `ORBIT-XXXXXXXXXXXX-NOMBRE` con la semilla, la
   puntuación y el nombre (de Play Games). RETAR lo comparte por WhatsApp con el enlace de Play Store.
   El amigo copia el mensaje y pulsa DUELO ▸ PEGAR CÓDIGO: juega **la misma partida** (misma semilla

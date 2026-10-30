@@ -19,7 +19,8 @@ static var defs: Array = BASE.duplicate(true)
 static var prev_defs: Array = BASE.duplicate(true)
 static var blend := 1.0
 ## Each crossing: {"k": [orbit i, orbit j], "a": [angle on i, angle on j], "sign": dir multiplier}
-static var crossings: Array = []
+static var crossings: Array = []   # read through cross_list() (lazy in moving worlds)
+static var _cross_dirty := false
 ## Per orbit: true when it is a plain circle around its center (exact closed-form collisions).
 static var round_k: Array = [true]
 ## Per orbit: largest |d radius / d angle| (px/rad), bounds how close a non-round orbit can get.
@@ -29,6 +30,7 @@ static var rmin_k: Array = [60.0]
 static var rmax_k: Array = [60.0]
 ## Bumped whenever the geometry changes, so hazards can cache per-orbit samples.
 static var version := 0
+static var shape_gen := 0   # +1 on every set_shape (the director drops checks made on an older shape)
 ## Moving worlds: geometry is a function of game time (see set_time). Empty = static world.
 ## {"kind": "spin" | "swing" | "breathe", "period": s, "amp": px} — circles only.
 ##   spin: planet centers turn around the middle · swing: centers go up / down in antiphase
@@ -100,6 +102,20 @@ static func _refresh_moving() -> void:
 		var r := radius(k, 0.0)
 		round_k.append(true); slope_k.append(0.0)
 		rmin_k.append(r - 0.5); rmax_k.append(r + 0.5)
+	# crossings are only worked out when someone asks (cross_list): the fairness checks move
+	# the geometry hundreds of times per spawn and mostly reuse cached crossing maps
+	_cross_dirty = true
+
+
+## Crossings of the orbits (moving worlds: computed on demand for the current time).
+static func cross_list() -> Array:
+	if _cross_dirty:
+		_cross_dirty = false
+		_moving_crossings()
+	return crossings
+
+
+static func _moving_crossings() -> void:
 	crossings.clear()
 	for i in count():
 		for j in range(i + 1, count()):
@@ -133,6 +149,7 @@ static func reset() -> void:
 
 ## Starts (or instantly applies) a new shape. `new_motion` makes it a moving world.
 static func set_shape(new_defs: Array, instant := false, new_motion := {}) -> void:
+	shape_gen += 1
 	var from: Array = _baked_defs() if not motion.is_empty() and blend >= 1.0 else defs.duplicate(true)
 	prev_defs = from if not instant else new_defs.duplicate(true)
 	defs = new_defs.duplicate(true)
@@ -231,7 +248,7 @@ static func planets() -> Array:
 ## Orbits reachable from k through a crossing.
 static func neighbors(k: int) -> Array:
 	var out: Array = []
-	for c in crossings:
+	for c in cross_list():
 		var i: int = c["k"].find(k)
 		if i >= 0 and not out.has(c["k"][1 - i]):
 			out.append(c["k"][1 - i])
@@ -276,9 +293,10 @@ static func chord_half(rr: float, r := -1.0) -> float:
 static func crossing_at(a: float, k: int) -> int:
 	if count() < 2 or morphing():
 		return -1
-	for i in crossings.size():
-		var side: int = crossings[i]["k"].find(k)
-		if side >= 0 and absf(ang_diff(a, crossings[i]["a"][side])) <= CROSS_WINDOW:
+	var cl := cross_list()
+	for i in cl.size():
+		var side: int = cl[i]["k"].find(k)
+		if side >= 0 and absf(ang_diff(a, cl[i]["a"][side])) <= CROSS_WINDOW:
 			return i
 	return -1
 
@@ -293,7 +311,7 @@ static func tap_result(a: float, k: int, dir: int) -> Array:
 	var i := crossing_at(a, k)
 	if i < 0:
 		return [k, -dir, a]
-	var c: Dictionary = crossings[i]
+	var c: Dictionary = cross_list()[i]
 	var o: int = c["k"][1 - c["k"].find(k)]
 	return [o, dir * int(c["sign"]), wrapf(angle_of(o, pos(k, a)), -PI, PI)]
 
@@ -358,6 +376,7 @@ static func _refresh() -> void:
 		round_k.append(rnd)
 		slope_k.append(sl * 1.1 + 0.5)
 	crossings.clear()
+	_cross_dirty = false
 	if count() < 2:
 		return
 	for i in count():

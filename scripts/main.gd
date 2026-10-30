@@ -20,9 +20,12 @@ var director := Director.new()
 var gt := 0.0                 # gameplay clock (drives every hazard)
 var score := 0
 var best_at_start := 0
-## Duel run (see Duel): {seed, target (score to beat, -1 = my own new challenge), name, code}.
-## Same seed for everyone, no abilities, no continue.
+## Duel or daily challenge run (see Duel, Daily): {kind ("duel" / "daily"), seed, target
+## (score to beat, -1 = none yet), name, code}. Same seed for everyone, no abilities, no continue.
 var duel := {}
+var world_at_start := 1
+var _perf_worst := 0.0       # slowest game frame of this run (ms), logged to DIAG at game over
+var _perf_slow := 0          # frames over 33 ms
 var duel_lead := false
 var record_announced := false
 var hazards: Array = []
@@ -81,6 +84,14 @@ func _ready() -> void:
 			start_duel({}))
 	ui.duel_accept_pressed.connect(start_duel)
 	ui.duel_send_pressed.connect(_send_duel)
+	ui.daily_pressed.connect(func():
+		if state == S.OVER:   # another try from the game over: same ad pacing as RETRY
+			Monetization.between_runs(start_daily)
+		else:
+			start_daily())
+	ui.daily_video_pressed.connect(func():
+		if not Monetization.show_rewarded("daily_try"):
+			ui.toast(L.t("NO_AD"), Color8(255, 150, 160)))
 	ui.menu_pressed.connect(func():
 		if state == S.OVER:
 			Monetization.between_runs(go_menu)
@@ -217,15 +228,37 @@ func _quit_run() -> void:
 func start_duel(d: Dictionary) -> void:
 	ui.hide_popup()
 	if d.is_empty():
-		duel = {"seed": Duel.new_seed(randi()), "target": -1, "name": "", "code": ""}
+		duel = {"kind": "duel", "seed": Duel.new_seed(randi()), "target": -1, "name": "", "code": ""}
 	else:
-		duel = {"seed": int(d["seed"]), "target": int(d["score"]), "name": str(d["name"]), "code": str(d["code"])}
+		duel = {"kind": "duel", "seed": int(d["seed"]), "target": int(d["score"]), "name": str(d["name"]), "code": str(d["code"])}
 		Save.duel_started(str(d["code"]))
 	start_run()
 
 
+## Today's challenge (same run for everyone), if a try is left.
+func start_daily() -> void:
+	ui.hide_popup()
+	if Save.daily_tries_left() <= 0:
+		ui.toast(L.t("DAILY_NO_TRIES"), Color8(255, 150, 160))
+		go_menu()
+		return
+	Save.daily_started()
+	duel = {"kind": "daily", "seed": Daily.seed_for(Save.daily_today()), "target": int(Save.daily_state()["best"]),
+		"name": "", "code": ""}
+	start_run()
+
+
 ## After a duel run: {mode: "new" | "reply", result, pay, mine, theirs, name, code (to send)}.
+## After a daily try: {mode: "daily", best (new best today), pay, today (best), tries, video}.
 func _finish_duel() -> Dictionary:
+	if duel.get("kind", "duel") == "daily":
+		var r := Save.daily_finished(score)
+		var today := int(Save.daily_state()["best"])
+		Progress.games.submit_score("DAILY", today)
+		var dout := {"mode": "daily", "best": r["best"], "pay": r["pay"], "today": today, "mine": score,
+			"tries": Save.daily_tries_left(), "video": Save.daily_video_left() if Monetization.rewarded_ready() else 0}
+		duel["last"] = dout
+		return dout
 	var me := Duel.clean_name(Progress.games.player_name)
 	var out := {"mine": score, "theirs": int(duel["target"]), "name": str(duel["name"]), "pay": 0, "result": "",
 		"code": Duel.encode(int(duel["seed"]), score, me)}
@@ -345,6 +378,11 @@ func _on_rewarded(placement: String, granted: bool) -> void:
 					Sfx.play("unlock")
 				ui.refresh_abilities()
 			return
+		"daily_try":
+			if granted:
+				Save.daily_extra_try()
+				start_daily()
+			return
 		"free_coins":
 			if granted:
 				Save.note_free_ad()
@@ -460,8 +498,13 @@ func start_run() -> void:
 	ui.set_teleport(teleports)
 	ui.set_slowmo(slowmo_charges)
 	ui.set_run_coins(0)
-	if dm and int(duel["target"]) >= 0:
+	if dm and duel.get("kind", "duel") == "daily":
+		ui.set_daily_target(int(duel["target"]))
+	elif dm and int(duel["target"]) >= 0:
 		ui.set_duel_target(str(duel["name"]), int(duel["target"]))
+	world_at_start = int(Save.stats.get("best_world", 1))
+	_perf_worst = 0.0
+	_perf_slow = 0
 	ui.set_altitude(score)
 	bg.reset_climb()
 	Sfx.play("go")
@@ -498,6 +541,7 @@ func _die() -> void:
 
 func _game_over() -> void:
 	state = S.OVER
+	Diag.log("perf: world %d, worst frame %.0f ms, %d frames over 33 ms" % [world_no, _perf_worst, _perf_slow])
 	var res := Save.submit_run(score)
 	Monetization.on_game_over(res["record"] and score > 0)
 	Progress.run_finished(score, world_no, gt)
@@ -519,11 +563,15 @@ func _game_over() -> void:
 		Sfx.play("record")
 	elif not res["unlocked"].is_empty():
 		Sfx.play("unlock")
-	# a fresh record is the happiest moment to ask for a rating (Google shows its own sheet)
+	# a happy moment (record, new world, won duel, daily best) is when we may ask for a rating
+	var last: Dictionary = duel.get("last", {})
+	var happy := Reviewer.happy(res["record"] and score > 0, score, int(Save.stats.get("best_world", 1)) > world_at_start,
+		last.get("result", "") == "win", bool(last.get("best", false)) and score >= Reviewer.MIN_SCORE)
+	var asked := Progress.reviewer.maybe_ask(Save, happy)
 	if not duel.is_empty():
-		return   # the duel result is the moment: no rating request or offer on top of it
-	var asked := Progress.reviewer.maybe_ask(Save, res["record"], score)
-	Progress.notifier.maybe_ask_permission(Save)
+		return   # the duel / daily result is the moment: no permission request or offer on top of it
+	if not asked:
+		Progress.notifier.maybe_ask_permission(Save)
 	# otherwise maybe an offer at the right moment (near record, short of an upgrade...)
 	var offer: Dictionary = {} if asked else Monetization.offer_for(score, res["record"] and score > 0)
 	if not offer.is_empty():
@@ -638,10 +686,16 @@ func _process(delta: float) -> void:
 				if slowmo_left <= 0.0:
 					player.slowmo = false
 					bg.speed_mul = 1.0
+			var t0 := Time.get_ticks_usec()
 			while left > 0.0 and state == S.PLAYING:
 				var step := minf(SUBSTEP, left)
 				left -= step
 				_sim(step)
+			# performance report for testers (DIAG): the slowest game frame of the run
+			var ms := (Time.get_ticks_usec() - t0) / 1000.0
+			_perf_worst = maxf(_perf_worst, ms)
+			if ms > 33.0:
+				_perf_slow += 1
 		S.DYING:
 			var vis_dt := 0.0 if _state_t < HIT_STOP else delta * 0.6
 			gt += vis_dt
@@ -900,9 +954,9 @@ func _add_score(n: int) -> void:
 	if target > world_no and _stage_pending < 0:
 		_stage_pending = Stages.index_for_score(score)
 		director.hold = true
-	if not duel.is_empty() and int(duel["target"]) >= 0 and not duel_lead and score > int(duel["target"]):
+	if not duel.is_empty() and int(duel["target"]) > 0 and not duel_lead and score > int(duel["target"]):
 		duel_lead = true
-		ui.announce_duel_lead()
+		ui.announce_duel_lead(duel.get("kind", "duel") == "daily")
 		Sfx.play("record")
 	if not record_announced and best_at_start > 0 and score > best_at_start and (duel.is_empty() or int(duel["target"]) < 0):
 		record_announced = true

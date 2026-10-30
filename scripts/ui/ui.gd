@@ -30,6 +30,8 @@ signal quit_pressed
 signal duel_new_pressed
 signal duel_accept_pressed(duel: Dictionary)
 signal duel_send_pressed
+signal daily_pressed
+signal daily_video_pressed
 
 const FONT := preload("res://assets/font/pixel.fnt")
 const FONT_PLAIN := preload("res://assets/font/pixel_plain.fnt")  # no outline: dark text on light UI
@@ -67,6 +69,7 @@ var _gift_badge: Label
 var _mission_badge: Label
 var _ab_badge: Label
 var _shop_badge: Label
+var _duel_badge: Label
 var _offer_clock: Label          # countdown in the offer popup / the shop row of the live offer
 var _offer_clock_id := ""
 var _offer_clock_short := false
@@ -189,7 +192,7 @@ func _process(delta: float) -> void:
 		_hint.modulate.a = 1.0 if fmod(_t, 0.9) < 0.6 else 0.25
 	if _over_record and _over_record.visible:
 		_over_record.modulate = Color.WHITE if fmod(_t, 0.5) < 0.3 else Color(1, 0.85, 0.4)
-	for b in [_gift_badge, _mission_badge, _shop_badge]:
+	for b in [_gift_badge, _mission_badge, _shop_badge, _duel_badge]:
 		if b and b.visible:
 			b.position.y = -4 + roundf(sin(_t * 6.0))
 	if _offer_clock != null and is_instance_valid(_offer_clock) and _offer_clock.is_visible_in_tree():
@@ -451,6 +454,9 @@ func _build_menu() -> void:
 		elif row[i][0] == "cart":
 			_shop_badge = _label(b, "!", 1, GOLD)
 			_shop_badge.position = Vector2(21, -4)
+		elif row[i][0] == "duel":
+			_duel_badge = _label(b, "!", 1, GOLD)
+			_duel_badge.position = Vector2(21, -4)
 
 
 func refresh_menu() -> void:
@@ -469,6 +475,7 @@ func refresh_menu() -> void:
 	_gift_badge.visible = Save.daily_available()
 	_mission_badge.visible = Progress.missions_left() > 0
 	_shop_badge.visible = Monetization.live_offer_id() != ""
+	_duel_badge.visible = int(Save.daily_state()["tries"]) == 0   # today's challenge not played yet
 
 
 ## True if some unlocked ability can be upgraded with the coins the player has.
@@ -677,8 +684,14 @@ func set_duel_target(name: String, target: int) -> void:
 	_center_label(_hud_best, 180, 34)
 
 
-func announce_duel_lead() -> void:
-	_hud_best.text = L.t("DUEL_AHEAD")
+func set_daily_target(best: int) -> void:
+	_hud_best.text = L.t("DAILY_HUD", best) if best > 0 else L.t("DAILY_HUD_0")
+	_hud_best.modulate = Color8(150, 220, 255)
+	_center_label(_hud_best, 180, 34)
+
+
+func announce_duel_lead(daily := false) -> void:
+	_hud_best.text = L.t("DAILY_AHEAD") if daily else L.t("DUEL_AHEAD")
 	_hud_best.modulate = GOLD
 	_center_label(_hud_best, 180, 34)
 
@@ -748,11 +761,7 @@ func _build_over() -> void:
 	var share := _button(panel, "green", "", "share", Vector2(46, 22))
 	share.pressed.connect(func(): share_pressed.emit())
 	_over_duel = _button(panel, "pink", "DUEL", "share", Vector2(108, 28))
-	_over_duel.pressed.connect(func():
-		if _over_duel_mode == "rematch":
-			duel_new_pressed.emit()
-		else:
-			duel_send_pressed.emit())
+	_over_duel.pressed.connect(_on_over_duel)
 	_over_buttons = [retry, home, share, _over_continue, _over_continue_free, _over_double, _over_duel]
 
 
@@ -800,6 +809,18 @@ func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_co
 	_switch(over)
 
 
+func _on_over_duel() -> void:
+	match _over_duel_mode:
+		"rematch":
+			duel_new_pressed.emit()
+		"daily":
+			daily_pressed.emit()
+		"daily_video":
+			daily_video_pressed.emit()
+		_:
+			duel_send_pressed.emit()
+
+
 ## Duel game over: the result replaces the next goal, one button to send it (or a rematch).
 ## dr: see main._finish_duel().
 func show_duel_result(dr: Dictionary) -> void:
@@ -807,7 +828,25 @@ func show_duel_result(dr: Dictionary) -> void:
 	_over_buttons[2].visible = false
 	_over_duel.visible = true
 	var col := GREEN_INK
-	if dr["mode"] == "new":
+	if dr["mode"] == "daily":
+		if dr["best"]:
+			_over_unlock.text = L.t("DAILY_NEW_BEST", dr["pay"]) if dr["pay"] > 0 else L.t("DAILY_NEW_BEST_0")
+		else:
+			_over_unlock.text = L.t("DAILY_TODAY", dr["today"])
+			col = Color(0.55, 0.5, 0.7)
+		var icon := "icon_retry"
+		if dr["tries"] > 0:
+			_over_duel_mode = "daily"
+			_set_button_text(_over_duel, L.t("DAILY_AGAIN", dr["tries"]))
+		elif dr["video"] > 0:
+			_over_duel_mode = "daily_video"
+			icon = "icon_video"
+			_set_button_text(_over_duel, L.t("DAILY_PLUS_TRY"))
+		else:
+			_over_duel.visible = false
+			_over_unlock.text = L.t("DAILY_TOMORROW", dr["today"])
+		(_over_duel.get_node("Content/Icon") as TextureRect).texture = _tex(icon)
+	elif dr["mode"] == "new":
 		_over_unlock.text = L.t("DUEL_SEND_IT")
 		_over_duel_mode = "send"
 		(_over_duel.get_node("Content/Icon") as TextureRect).texture = _tex("icon_share")
@@ -1279,6 +1318,10 @@ func refresh_shop() -> void:
 				L.t("OWNED") if owned else Monetization.price(id), "", online and not owned, func(): buy_pressed.emit(id))
 			if live:
 				_offer_row_clock(id, y)
+			if id == MonetizationConfig.BEST_VALUE and not owned:
+				var bv := _label(_shop_list, L.t("BEST_VALUE"), 1, COIN_INK)
+				bv.position = Vector2(roundf(131 - _text_w(bv.text) * 0.5), y + 22)
+				y += 8   # room for the tag, so it reads as this row's
 			y += 30
 		var rs := _button(_shop_list, "white", L.t("RESTORE"), "", Vector2(80, 18))
 		rs.position = Vector2(42, 208)
@@ -1348,20 +1391,20 @@ func refresh_ranking() -> void:
 			_my_runs()
 		else:
 			_board_view(pg)
-		var boards := [["GLOBAL", L.t("GLOBAL"), "globe"], [region, PlayGamesConfig.REGION_NAMES[region], ""]]
-		for k in 2:
+		var boards := [["GLOBAL", "globe"], [region, ""], ["FRIENDS", ""], ["TODAY", ""]]
+		for k in boards.size():
 			var bd: String = boards[k][0]
-			var bt := _button(_rank_list, "yellow" if _rank_board == bd else "white", boards[k][1], boards[k][2], Vector2(72, 20))
-			bt.position = Vector2(8 + k * 76, 146)
+			var bt := _button(_rank_list, "yellow" if _rank_board == bd else "white", board_name(bd), boards[k][1], Vector2(72, 18))
+			bt.position = Vector2(8 + (k % 2) * 76, 144 + (k / 2) * 20)
 			bt.pressed.connect(_select_board.bind(bd))
 		if _rank_board == "":
 			var rl := _label(_rank_list, L.t("REGION") + ": " + PlayGamesConfig.REGION_NAMES[region], 1, MUTED)
-			_center_label(rl, 164, 170)
+			_center_label(rl, 164, 190)
 		else:
-			var all := _button(_rank_list, "green", L.t("SEE_ALL"), "trophy", Vector2(100, 18))
-			all.position = Vector2(32, 168)
+			var all := _button(_rank_list, "green", L.t("SEE_ALL"), "trophy", Vector2(100, 16))
+			all.position = Vector2(32, 186)
 			all.pressed.connect(func(): _open_board(_rank_board))
-		_play_games_footer(pg, 186)
+		_play_games_footer(pg, 194)
 	else:
 		var per := 8
 		var list: Array = Progress.ACHIEVEMENTS
@@ -1417,7 +1460,7 @@ func _my_runs() -> void:
 ## Top of a Play Games leaderboard with names, plus the player's own position.
 func _board_view(pg) -> void:
 	var me: int = pg.ranks.get(_rank_board, -1)
-	var head: String = L.t("GLOBAL") if _rank_board == "GLOBAL" else PlayGamesConfig.REGION_NAMES[_rank_board]
+	var head := board_name(_rank_board)
 	if me > 0:
 		head += "  " + L.t("YOU_RANK", me)
 	var t := _label(_rank_list, head, 1, MUTED)
@@ -1434,7 +1477,11 @@ func _board_view(pg) -> void:
 	if rows.is_empty():
 		var em := _label(_rank_list, L.t("NO_SCORES"), 1, MUTED)
 		_center_label(em, 164, 60)
-		if Save.best > 0:   # played but not listed: usually a hidden Play Games profile
+		if _rank_board == "FRIENDS":
+			for j in 2:
+				var fl := _label(_rank_list, L.t("FRIENDS_EMPTY_%d" % (j + 1)), 1, Color8(190, 120, 150))
+				_center_label(fl, 164, 80 + j * 10)
+		elif Save.best > 0:   # played but not listed: usually a hidden Play Games profile
 			for j in 2:
 				var hl := _label(_rank_list, L.t("RANK_HIDDEN_%d" % (j + 1)), 1, Color8(190, 120, 150))
 				_center_label(hl, 164, 80 + j * 10)
@@ -1446,6 +1493,14 @@ func _board_view(pg) -> void:
 		_left_label(_rank_list, safe_name(r["name"]), Vector2(32, y), col)
 		var sc := str(r["score"])
 		_left_label(_rank_list, sc, Vector2(156 - _text_w(sc), y), col)
+
+
+func board_name(board: String) -> String:
+	match board:
+		"GLOBAL": return L.t("GLOBAL")
+		"FRIENDS": return L.t("FRIENDS")
+		"TODAY": return L.t("DAILY_RANK")
+	return PlayGamesConfig.REGION_NAMES.get(board, board)
 
 
 func _select_board(board: String) -> void:
@@ -1657,27 +1712,53 @@ func _tick_offer_clock() -> void:
 			_center_label(_offer_clock, _offer_clock_parent_w, float(_offer_clock.get_meta("y", 76)))
 
 
-## DUEL: start a new challenge, or paste a friend's code (copied from WhatsApp etc.).
+## CHALLENGES (swords button): today's challenge for everyone, and duels with friends.
 func show_duel() -> void:
-	var p := _open_popup(L.t("DUEL"), "duel", 158)
-	for i in 3:
-		var l := _label(p, L.t("DUEL_I%d" % (i + 1)), 1, INK if i < 2 else GREEN_INK)
-		_center_label(l, 156, 8 + i * 10)
+	var p := _open_popup(L.t("CHALLENGES"), "duel", 186)
+	var st := Save.daily_state()
+	var dt := _label(p, L.t("DAILY_TITLE"), 1, COIN_INK)
+	_center_label(dt, 156, 6)
+	var di := _label(p, L.t("DAILY_INFO"), 1, MUTED)
+	_center_label(di, 156, 16)
+	var left := Save.daily_tries_left()
+	var ds := _label(p, L.t("DAILY_STATE", [int(st["best"]), left]), 1, INK)
+	_center_label(ds, 156, 26)
+	var play: Button
+	if left > 0:
+		play = _button(p, "pink", L.t("PLAY"), "retry", Vector2(72, 22))
+		play.pressed.connect(func(): daily_pressed.emit())
+	elif Save.daily_video_left() > 0 and Monetization.rewarded_ready():
+		play = _button(p, "pink", "+1", "video", Vector2(72, 22))
+		play.pressed.connect(func(): daily_video_pressed.emit())
+	else:
+		play = _button(p, "white", L.t("DAILY_DONE"), "", Vector2(72, 22))
+		play.disabled = true
+	play.position = Vector2(4, 38)
+	var rk := _button(p, "white", L.t("DAILY_RANK"), "trophy", Vector2(72, 22))
+	rk.position = Vector2(80, 38)
+	rk.pressed.connect(func(): _open_board("TODAY"))
+	var sep := ColorRect.new()
+	sep.color = Color8(220, 214, 236)
+	sep.position = Vector2(8, 68)
+	sep.size = Vector2(140, 1)
+	p.add_child(sep)
+	var tt := _label(p, L.t("DUEL_TITLE"), 1, COIN_INK)
+	_center_label(tt, 156, 74)
+	var r1 := _label(p, L.t("DUEL_I1"), 1, MUTED)
+	_center_label(r1, 156, 84)
+	var r2 := _label(p, L.t("DUEL_RULES"), 1, MUTED)
+	_center_label(r2, 156, 94)
 	var pay := _label(p, L.t("DUEL_PAY", [Duel.REWARD_WIN, Duel.REWARD_LOSS]), 1, COIN_INK)
-	_center_label(pay, 156, 42)
-	var left := _label(p, L.t("DUEL_LEFT", Save.duel_rewards_left()), 1, MUTED)
-	_center_label(left, 156, 52)
-	var st := _label(p, L.t("DUEL_STATS", [int(Save.duels.get("wins", 0)), int(Save.duels.get("losses", 0))]), 1, MUTED)
-	_center_label(st, 156, 62)
-	var nb := _button(p, "yellow", L.t("DUEL_NEW"), "duel", Vector2(108, 24))
-	nb.position = Vector2(24, 76)
+	_center_label(pay, 156, 104)
+	var nb := _button(p, "yellow", L.t("DUEL_NEW"), "duel", Vector2(72, 22))
+	nb.position = Vector2(4, 116)
 	nb.pressed.connect(func(): duel_new_pressed.emit())
-	var pb := _button(p, "white", L.t("DUEL_PASTE"), "", Vector2(108, 20))
-	pb.position = Vector2(24, 104)
+	var pb := _button(p, "white", L.t("DUEL_PASTE_SHORT"), "", Vector2(72, 22))
+	pb.position = Vector2(80, 116)
 	pb.pressed.connect(_paste_duel)
-	var hint := _label(p, L.t("DUEL_HINT"), 1, MUTED)
-	_center_label(hint, 156, 126)
-	_close_button(p, 138)
+	var sts := _label(p, L.t("DUEL_STATS", [int(Save.duels.get("wins", 0)), int(Save.duels.get("losses", 0))]), 1, MUTED)
+	_center_label(sts, 156, 144)
+	_close_button(p, 160)
 
 
 func _paste_duel() -> void:
@@ -1797,7 +1878,12 @@ func show_settings() -> void:
 			cb.call()
 			if popup.visible and popup.get_meta("kind", "") == "settings":
 				show_settings())
-	_close_button(p, 8 + rows.size() * ROW + 2)
+	var back := _button(p, "white", L.t("BACK"), "back", Vector2(70, 20))
+	back.position = Vector2(6, 8 + rows.size() * ROW + 2)
+	back.pressed.connect(hide_popup)
+	var rate := _button(p, "green", L.t("RATE"), "star", Vector2(70, 20))
+	rate.position = Vector2(80, 8 + rows.size() * ROW + 2)
+	rate.pressed.connect(func(): Reviewer.open_store_page())
 	var ver := _label(p, "V" + str(ProjectSettings.get_setting("application/config/version", "")), 1, MUTED)
 	_center_label(ver, 156, 8 + rows.size() * ROW + 26)
 	# hidden: tap the version 5 times to see what the ads / Play Games / store plugins reported
@@ -1836,7 +1922,14 @@ func show_diag() -> void:
 	p.add_child(lab)
 	var c := _left_label(p, L.t("COPIED"), Vector2(4, 206), GREEN_INK)
 	c.scale = Vector2.ONE
-	_close_button(p, 214)
+	var back := _button(p, "white", L.t("BACK"), "back", Vector2(70, 20))
+	back.position = Vector2(6, 214)
+	back.pressed.connect(hide_popup)
+	# testers: a reminder in 10 s (close the game to see it), to check the plugin + permission
+	var nt := _button(p, "green", "NOTIF 10S", "", Vector2(70, 20))
+	nt.position = Vector2(80, 214)
+	nt.pressed.connect(func():
+		toast("NOTIF: " + Progress.notifier.test_now(), Color8(120, 255, 200)))
 
 
 ## Queues short messages; they show one after another.

@@ -12,9 +12,14 @@ signal rank_loaded(board: String, rank: int, score: int)
 ## rows: [{"rank": int, "name": String, "score": int, "me": bool}]
 signal top_loaded(board: String, rows: Array)
 
+const DAILY_SPAN := 0 # PlayGamesLeaderboardVariant.TimeSpan.TIME_SPAN_DAILY
 const ALL_TIME := 2   # PlayGamesLeaderboardVariant.TimeSpan.TIME_SPAN_ALL_TIME
 const PUBLIC := 0     # PlayGamesLeaderboardVariant.Collection.COLLECTION_PUBLIC
+const FRIENDS := 3    # PlayGamesLeaderboardVariant.Collection.COLLECTION_FRIENDS
 const TOP_ROWS := 25  # Play Games returns at most 25 scores per request
+## Views that are not a board of their own: FRIENDS = the global board among friends,
+## TODAY = the daily challenge board, today only. [board id key, time span, collection]
+const VIEWS := {"FRIENDS": ["GLOBAL", ALL_TIME, FRIENDS], "TODAY": ["DAILY", DAILY_SPAN, PUBLIC]}
 
 var available := false
 var signed_in := false
@@ -26,6 +31,8 @@ var _players: Node
 var player_name := ""
 var player_id := ""
 var ranks := {}       # board -> last known rank
+var _waiting := {}    # leaderboard id -> view key a request was made for (answers only carry the id)
+var _friends_asked := false
 
 
 static func _client(cls: String) -> Node:
@@ -103,7 +110,7 @@ func _on_submitted(ok: bool, leaderboard_id: String) -> void:
 
 
 func _on_score_loaded(leaderboard_id: String, score) -> void:
-	var board := _board_key(leaderboard_id)
+	var board: String = _waiting.get(leaderboard_id, _board_key(leaderboard_id))
 	if board == "" or score == null:
 		Diag.log("playgames: no public score on %s (Play Games profile hidden?)" % board)
 		return
@@ -113,22 +120,34 @@ func _on_score_loaded(leaderboard_id: String, score) -> void:
 	rank_loaded.emit(board, rank, int(score.get("raw_score")))
 
 
+## [leaderboard id, time span, collection] for a board or view key.
+static func view(board: String) -> Array:
+	var v: Array = VIEWS.get(board, [board, ALL_TIME, PUBLIC])
+	return [PlayGamesConfig.LEADERBOARDS.get(v[0], ""), v[1], v[2]]
+
+
 func load_rank(board: String) -> void:
-	var id: String = PlayGamesConfig.LEADERBOARDS.get(board, "")
-	if signed_in and id != "":
-		_lb.call("load_player_score", id, ALL_TIME, PUBLIC)
+	var v := view(board)
+	if signed_in and v[0] != "" and _lb != null:
+		_waiting[v[0]] = board
+		_lb.call("load_player_score", v[0], v[1], v[2])
 
 
 func load_top(board: String) -> bool:
-	var id: String = PlayGamesConfig.LEADERBOARDS.get(board, "")
-	if not signed_in or id == "":
+	var v := view(board)
+	if not signed_in or v[0] == "" or _lb == null:
 		return false
-	_lb.call("load_top_scores", id, ALL_TIME, PUBLIC, TOP_ROWS, true)
+	if board == "FRIENDS" and not _friends_asked:
+		_friends_asked = true   # Play Games asks the player once to share the friends list
+		_players.call("load_friends", 25, false, true)
+	_waiting[v[0]] = board
+	_lb.call("load_top_scores", v[0], v[1], v[2], TOP_ROWS, true)
 	return true
 
 
 func _on_top_loaded(leaderboard_id: String, scores) -> void:
-	var board := _board_key(leaderboard_id)
+	var board: String = _waiting.get(leaderboard_id, _board_key(leaderboard_id))
+	_waiting.erase(leaderboard_id)
 	if board == "" or scores == null:
 		return
 	var rows: Array = []
@@ -159,16 +178,19 @@ func save_cloud(data: Dictionary) -> void:
 
 func submit_score(board: String, score: int) -> void:
 	var id: String = PlayGamesConfig.LEADERBOARDS.get(board, "")
-	if signed_in and id != "":
+	if signed_in and id != "" and _lb != null:
 		Diag.log("playgames: submit %d to %s" % [score, board])
 		_lb.call("submit_score", id, score)
 
 
 func show_board(board: String) -> bool:
-	var id: String = PlayGamesConfig.LEADERBOARDS.get(board, "")
-	if not signed_in or id == "":
+	var v := view(board)
+	if not signed_in or v[0] == "":
 		return false
-	_lb.call("show_leaderboard", id)
+	if VIEWS.has(board):
+		_lb.call("show_leaderboard_for_time_span_and_collection", v[0], v[1], v[2])
+	else:
+		_lb.call("show_leaderboard", v[0])
 	return true
 
 

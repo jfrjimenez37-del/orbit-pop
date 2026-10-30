@@ -4,6 +4,7 @@ class_name MonetizationConfig
 const PRODUCTS := ["starter", "no_ads", "star_pack", "trail_pack", "supporter", "coins_x2",
 	"coins_1500", "coins_5000", "coins_12000", "coins_30000"]
 ## Consumables: product id -> coins granted every purchase (bigger bags give more per dollar).
+const BEST_VALUE := "supporter"   # tagged in the shop (the coin bags say it in the 30000 bag)
 const CONSUMABLES := {"coins_1500": 1500, "coins_5000": 5000, "coins_12000": 12000, "coins_30000": 30000}
 ## What the SUPPORTER bundle includes (coins x2 is sold apart).
 const SUPPORTER_INCLUDES := ["no_ads", "star_pack", "trail_pack"]

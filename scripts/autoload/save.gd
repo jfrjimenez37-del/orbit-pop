@@ -39,6 +39,7 @@ var free_continue_day := -1   # NO ADS: one free continue a day
 var video_up := {}            # {"id": ability, "n": videos watched, "day": day of the last video level}
 var offers := {}              # offer id -> day it was last shown
 var offer_live := {}          # the offer whose bonus is running: {id, until (unix s), bonus}
+var daily_run := {}           # daily challenge: {day (Pacific), tries, video (extra tries), best, paid}
 var duels := {}               # {day, paid (rewards today), played: [codes], created: [codes I sent], wins, losses, ties}
 var notifications := true     # Settings: daily reminders
 var notif_asked := false      # Android permission already requested
@@ -95,6 +96,7 @@ func load_data() -> void:
 	offers = cfg.get_value("shop", "offers", {})
 	offer_live = cfg.get_value("shop", "offer_live", {})
 	duels = cfg.get_value("player", "duels", {})
+	daily_run = cfg.get_value("player", "daily_run", {})
 	notifications = bool(cfg.get_value("settings", "notifications", true))
 	notif_asked = bool(cfg.get_value("meta", "notif_asked", false))
 	review_day = int(cfg.get_value("meta", "review_day", -9999))
@@ -145,6 +147,7 @@ func save_data() -> void:
 	cfg.set_value("shop", "offers", offers)
 	cfg.set_value("shop", "offer_live", offer_live)
 	cfg.set_value("player", "duels", duels)
+	cfg.set_value("player", "daily_run", daily_run)
 	cfg.set_value("settings", "notifications", notifications)
 	cfg.set_value("meta", "notif_asked", notif_asked)
 	cfg.set_value("meta", "review_day", review_day)
@@ -578,6 +581,7 @@ func reset_all() -> void:
 	offers = {}
 	offer_live = {}
 	duels = {}
+	daily_run = {}
 	notifications = true
 	notif_asked = false
 	stats = {}; achievements = []; top_scores = []
@@ -641,3 +645,49 @@ func duel_finished(result: String) -> int:
 		coins += pay
 	save_data()
 	return pay
+
+
+# ------------------------------------------------------------------ daily challenge (see Daily)
+
+func daily_today() -> int:
+	return Daily.day_key(_now())
+
+
+## Today's state (a new day starts fresh).
+func daily_state() -> Dictionary:
+	if int(daily_run.get("day", -1)) != daily_today():
+		daily_run = {"day": daily_today(), "tries": 0, "video": 0, "best": 0, "paid": false}
+	return daily_run
+
+
+func daily_tries_left() -> int:
+	var st := daily_state()
+	return Daily.FREE_TRIES + int(st["video"]) - int(st["tries"])
+
+
+func daily_video_left() -> int:
+	return Daily.VIDEO_TRIES - int(daily_state()["video"])
+
+
+## A try starts (counted at once, so closing the app does not give it back).
+func daily_started() -> void:
+	daily_state()["tries"] = int(daily_run["tries"]) + 1
+	save_data()
+
+
+func daily_extra_try() -> void:
+	daily_state()["video"] = int(daily_run["video"]) + 1
+	save_data()
+
+
+## A try ends: {best (new best today), pay (coins for the first try of the day)}.
+func daily_finished(score: int) -> Dictionary:
+	var st := daily_state()
+	var out := {"best": score > int(st["best"]), "pay": 0}
+	st["best"] = maxi(int(st["best"]), score)
+	if not bool(st["paid"]):
+		st["paid"] = true
+		out["pay"] = Daily.REWARD_FIRST
+		coins += Daily.REWARD_FIRST
+	save_data()
+	return out

@@ -11,6 +11,7 @@ const CHANNEL := "orbit_pop_reminders"
 const IDS := [101, 102, 103]
 const REMIND_AT := [18, 45]   # local hour, minute
 const ASK_AFTER_GAMES := 3
+const TEST_ID := 199
 
 var _node: Node
 var _ready_plugin := false
@@ -87,6 +88,23 @@ static func plan(save: Node, now: float, bias: int) -> Array:
 			name = l.t("AB_" + str(a["id"]).to_upper())
 	out.append([IDS[2], delay_to(7, now, bias), l.t("NOTIF_COINS", name) if name != "" else l.t("NOTIF_WORLDS")])
 	return out
+
+
+## Diagnostics: one reminder in 10 seconds. Returns what happened (shown to the tester).
+func test_now() -> String:
+	if not _ready_plugin:
+		return "NO PLUGIN"
+	if not bool(_node.call("has_post_notifications_permission")):
+		_node.call("request_post_notifications_permission")
+		return "ASKING PERMISSION"
+	var data_scr := _class("NotificationData")
+	if data_scr == null:
+		return "NO DATA CLASS"
+	var d = data_scr.new()
+	d.set_id(TEST_ID).set_channel_id(CHANNEL).set_title("ORBIT POP").set_content("Test reminder: it works!").set_delay(10)
+	var err = _node.call("schedule", d)
+	Diag.log("notify: test scheduled (err %s)" % str(err))
+	return "IN 10 S" if int(err) == OK else "ERROR %s" % str(err)
 
 
 ## Call when the player leaves the game: cancel the old reminders, schedule new ones.

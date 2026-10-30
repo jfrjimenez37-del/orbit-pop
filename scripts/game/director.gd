@@ -17,6 +17,10 @@ var hold := false          # world change in progress: no new spawns
 var stage := 0             # current Stages index (unlocks obstacles)
 var human_check := true    # require human timing slack when committing (off only for A/B audits)
 var react_check := true    # require a reaction-time window before the first needed tap (A/B audits)
+var _attempt := 0          # attempts already tried for the pattern being placed (spread over frames)
+## A candidate that passed can_survive, waiting for the reaction-proof check on the next frame
+## (each heavy check gets its own frame on phones). Checked from the state it was built in.
+var _pending := {}
 
 # name, unlock time (effective seconds), base weight
 const PATTERNS := [
@@ -43,6 +47,8 @@ const COIN_ARC := 3
 const COIN_ARC_EVERY := Vector2(6.5, 9.5)
 const COIN_BIG_EVERY := Vector2(38.0, 52.0)
 const COIN_LIFE := 6.0
+const ATTEMPTS := 5             # candidate patterns tried before waiting a bit
+const ATTEMPTS_PER_FRAME := 1   # a failed candidate only delays the spawn by one frame
 
 
 func reset(seed_value: int, recent_avg: float) -> void:
@@ -55,6 +61,8 @@ func reset(seed_value: int, recent_avg: float) -> void:
 	rejected = 0
 	committed = 0
 	spawned_first = false
+	_attempt = 0
+	_drop_pending()
 	hold = false
 	stage = 0
 
@@ -102,9 +110,13 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		out["bubbles"].append(Bubble.new().setup(angle + PI + rng.randf_range(-1.0, 1.0), t, COIN_LIFE, bo2, "big"))
 	if t < next_t:
 		return out
+	if not _pending.is_empty():
+		return _finish_pending(t, out)
 	var w := omega(t)
 	var cache := {}   # danger masks of the hazards already on screen, shared by all attempts
-	for attempt in 5:
+	# at most ATTEMPTS_PER_FRAME candidates per frame (phones): the search goes on next frame
+	var last := mini(_attempt + ATTEMPTS_PER_FRAME, ATTEMPTS)
+	for attempt in range(_attempt, last):
 		var name: String = "lead" if not spawned_first else _pick(t)
 		var res := _build(name, t, angle, dir, w, level(t), attempt, k)
 		var hs: Array = res["hazards"]
@@ -114,10 +126,13 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 			Survival.HUMAN_REACT if react_check else 0.0, omega_rate(t), cache, active.size()) \
 			if human_check else Survival.can_survive(all, t, angle, dir, w, true, k)
 		if fair and human_check and react_check:
-			# whatever the player does before they can see the new pattern must stay escapable
-			fair = Survival.robust(all, active.size(), t, angle, dir, w, k, Survival.human_margin(w), Survival.HUMAN_GAP,
-				Survival.HUMAN_REACT, omega_rate(t), cache)
+			# whatever the player does before they can see the new pattern must stay escapable:
+			# checked next frame (from this frame's state), see _finish_pending
+			_pending = {"t": t, "angle": angle, "dir": dir, "w": w, "k": k, "all": all, "n_old": active.size(),
+				"hs": hs, "res": res, "cache": cache, "shape": Orbit.shape_gen, "attempt": attempt}
+			return out
 		if fair:
+			_attempt = 0
 			spawned_first = true
 			committed += 1
 			next_t = t + float(res["length"]) + lerpf(0.55, 0.08, level(t))
@@ -126,8 +141,53 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		rejected += 1
 		for h in hs:
 			h.free()
+	if last < ATTEMPTS:
+		_attempt = last
+		return out
+	_attempt = 0
 	next_t = t + 0.25
 	return out
+
+
+## The reaction-proof check of last frame's candidate. It is anchored at the candidate's time
+## t0 and the pattern only shows now, so the player's blind window is longer by (t - t0): the
+## check covers any taps from t0 until they could react to it.
+func _finish_pending(t: float, out: Dictionary) -> Dictionary:
+	var p := _pending
+	_pending = {}
+	var all: Array = p["all"]
+	var ok: bool = p["shape"] == Orbit.shape_gen and not hold
+	for h in all:
+		ok = ok and is_instance_valid(h)
+	if ok:
+		var w: float = p["w"]
+		var t0: float = p["t"]
+		ok = Survival.robust(all, p["n_old"], t0, p["angle"], p["dir"], w, p["k"], Survival.human_margin(w),
+			Survival.HUMAN_GAP, Survival.HUMAN_REACT + (t - t0), omega_rate(t0), p["cache"])
+	var hs: Array = p["hs"]
+	if ok:
+		_attempt = 0
+		spawned_first = true
+		committed += 1
+		next_t = float(p["t"]) + float(p["res"]["length"]) + lerpf(0.55, 0.08, level(p["t"]))
+		out["hazards"] = hs
+		return out
+	rejected += 1
+	for h in hs:
+		h.free()
+	_attempt = int(p["attempt"]) + 1
+	if _attempt >= ATTEMPTS:
+		_attempt = 0
+		next_t = t + 0.25
+	return out
+
+
+func _drop_pending() -> void:
+	if not _pending.is_empty():
+		for h in _pending["hs"]:
+			if is_instance_valid(h):
+				h.free()
+	_pending = {}
 
 
 func _pick(t: float) -> String:
