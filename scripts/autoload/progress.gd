@@ -71,7 +71,7 @@ const ACHIEVEMENTS := [
 	{"id": "warp25", "name": ["A_TELEPORT", 25], "stat": "teleport_total", "goal": 25},
 	{"id": "skins10", "name": ["A_SKINS", 10], "stat": "skins", "goal": 10},
 	{"id": "skins20", "name": ["A_SKINS", 20], "stat": "skins", "goal": 20},
-	{"id": "skins_all", "name": ["A_SKINS_ALL"], "stat": "skins", "goal": 26},
+	{"id": "skins_all", "name": ["A_SKINS_ALL"], "stat": "skins", "goal": 29},
 ]
 
 var games: Node     # Play Games adapter

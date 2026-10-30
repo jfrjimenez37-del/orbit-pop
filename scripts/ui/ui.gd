@@ -739,6 +739,11 @@ func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_co
 	_over_best_cap.visible = not _over_record.visible
 	_over_best.visible = not _over_record.visible
 	_over_unlock.text = "" if unlocked.is_empty() else L.t("NEW_SKIN", Save.SKINS[unlocked[-1]]["name"])
+	_over_unlock.modulate = Color.WHITE
+	if unlocked.is_empty():
+		# always a goal in sight: the closest skin / trail earned by playing
+		_over_unlock.text = next_goal()
+		_over_unlock.modulate = Color(0.55, 0.5, 0.7)
 	_center_label(_over_unlock, 136, 116)
 	_over_ranks = {}
 	_over_was_record = record and score > 0
@@ -880,6 +885,30 @@ func _item_tex(cat: String, i: int, anim_frame := 1) -> Dictionary:
 	if cat == "skins":
 		return {"atlas": _tex("char_" + it["id"]), "region": Rect2(anim_frame * 16, 0, 16, 16)}
 	return {"atlas": _tex("trail_" + it["id"]), "region": Rect2(0, 0, 16, 16)}
+
+
+## "> NAME: WORLD 8" for the locked skin or trail (earned by playing) closest to unlocking.
+func next_goal() -> String:
+	var best_ratio := -1.0
+	var text := ""
+	for cat in ["skins", "trails"]:
+		var list := Catalog.items(cat)
+		for i in list.size():
+			if Save.unlocked(cat, i):
+				continue
+			var need: Array = list[i]["need"]
+			var cur := 0.0
+			match need[0]:
+				"best": cur = Save.best
+				"world": cur = int(Save.stats.get("best_world", 1))
+				"level": cur = Save.level
+				"total": cur = Save.total
+				_: continue
+			var ratio := cur / maxf(1.0, float(need[1]))
+			if ratio > best_ratio:
+				best_ratio = ratio
+				text = "> %s: %s" % [list[i]["name"], _need_text(cat, i)]
+	return text
 
 
 func _need_text(cat: String, i: int) -> String:

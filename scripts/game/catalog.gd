@@ -26,17 +26,20 @@ const SKINS := [
 	{"id": "ghosty", "name": "GHOSTY", "rarity": "epic", "need": ["world", 6], "color": Color8(196, 160, 255), "fx": ["wisp", Color8(190, 150, 255)]},
 	{"id": "alien", "name": "ALIEN", "rarity": "epic", "need": ["world", 7], "color": Color8(110, 220, 110), "fx": ["sparkle", Color8(170, 255, 140)]},
 	{"id": "crystal", "name": "CRYSTAL", "rarity": "epic", "need": ["world", 8], "color": Color8(150, 220, 255), "fx": ["sparkle", Color8(200, 245, 255)]},
+	{"id": "luna", "name": "LUNA", "rarity": "epic", "need": ["world", 11], "color": Color8(214, 222, 255), "fx": ["stars", Color8(255, 240, 160)]},
 	{"id": "cosmo", "name": "COSMO", "rarity": "epic", "need": ["best", 250], "color": Color8(150, 112, 236), "fx": ["stars", Color8(255, 226, 90)]},
 	{"id": "ninja", "name": "NINJA", "rarity": "epic", "need": ["coins", 4000], "color": Color8(232, 52, 64), "fx": ["sparkle", Color8(255, 90, 100)]},
 	{"id": "drake", "name": "DRAKE", "rarity": "epic", "need": ["coins", 5500], "color": Color8(112, 204, 92), "fx": ["embers", Color8(170, 255, 110)]},
 	{"id": "neon", "name": "NEON", "rarity": "epic", "need": ["shop", "star_pack"], "color": Color8(64, 232, 226), "fx": ["sparkle", Color8(255, 90, 210)]},
 	{"id": "magma", "name": "MAGMA", "rarity": "legendary", "need": ["world", 9], "color": Color8(255, 120, 40), "fx": ["embers", Color8(255, 170, 50)]},
 	{"id": "royal", "name": "ROYAL", "rarity": "legendary", "need": ["world", 10], "color": Color8(176, 100, 232), "fx": ["aura", Color8(255, 214, 70)]},
+	{"id": "titan", "name": "TITAN", "rarity": "legendary", "need": ["world", 13], "color": Color8(132, 128, 160), "fx": ["aura", Color8(255, 180, 60)]},
 	{"id": "skully", "name": "SKULLY", "rarity": "legendary", "need": ["coins", 9000], "color": Color8(238, 232, 216), "fx": ["aura", Color8(200, 190, 255)]},
 	{"id": "prism", "name": "PRISM", "rarity": "legendary", "need": ["coins", 15000], "color": Color8(255, 255, 255), "fx": ["rainbow", Color.WHITE]},
 	{"id": "goldie", "name": "GOLDIE", "rarity": "legendary", "need": ["shop", "star_pack"], "color": Color8(255, 204, 44), "fx": ["aura", Color8(255, 230, 110)]},
 	{"id": "nova", "name": "NOVA", "rarity": "mythic", "need": ["best", 500], "color": Color8(255, 214, 60), "fx": ["nova", Color8(255, 220, 90)]},
 	{"id": "omega", "name": "OMEGA", "rarity": "mythic", "need": ["best", 1000], "color": Color8(170, 110, 255), "fx": ["omega", Color.WHITE]},
+	{"id": "quasar", "name": "QUASAR", "rarity": "mythic", "need": ["world", 16], "color": Color8(120, 240, 255), "fx": ["nova", Color8(120, 240, 255)]},
 ]
 ## Old saves stored the skin as an index into this original order.
 const LEGACY_SKINS := ["poppy", "minty", "berry", "frosty", "ember", "cosmo", "goldie", "neon", "panda", "cookie", "bubbly", "robo", "drake"]
@@ -57,10 +60,12 @@ const TRAILS := [
 	{"id": "bolt", "name": "BOLT", "rarity": "epic", "need": ["level", 15], "style": "bolt", "cols": [Color8(255, 220, 40), Color8(255, 150, 30)]},
 	{"id": "notes", "name": "NOTES", "rarity": "epic", "need": ["coins", 3000], "style": "notes", "cols": [Color8(200, 140, 255), Color8(255, 140, 220)]},
 	{"id": "stars", "name": "STARS", "rarity": "epic", "need": ["shop", "trail_pack"], "style": "stars", "cols": [Color8(255, 220, 60), Color8(255, 250, 200)]},
+	{"id": "halo", "name": "HALO", "rarity": "epic", "need": ["world", 12], "style": "rings", "cols": [Color8(255, 236, 140), Color8(255, 255, 255)]},
 	{"id": "neon", "name": "NEON", "rarity": "epic", "need": ["level", 20], "style": "neon", "cols": [Color8(60, 240, 255), Color8(255, 70, 220)]},
 	{"id": "rainbow", "name": "RAINBOW", "rarity": "legendary", "need": ["shop", "trail_pack"], "style": "rainbow", "cols": []},
 	{"id": "galaxy", "name": "GALAXY", "rarity": "legendary", "need": ["world", 8], "style": "galaxy", "cols": [Color8(150, 100, 255), Color8(80, 120, 255), Color8(255, 255, 255)]},
 	{"id": "comet", "name": "COMET", "rarity": "legendary", "need": ["level", 30], "style": "comet", "cols": [Color8(255, 255, 255), Color8(140, 210, 255), Color8(80, 120, 255)]},
+	{"id": "plasma", "name": "PLASMA", "rarity": "legendary", "need": ["world", 15], "style": "neon", "cols": [Color8(255, 90, 200), Color8(120, 90, 255)]},
 	{"id": "gold", "name": "GOLD", "rarity": "legendary", "need": ["coins", 8000], "style": "coins", "cols": [Color8(255, 206, 50), Color8(255, 250, 200)]},
 	{"id": "aurora", "name": "AURORA", "rarity": "mythic", "need": ["level", 50], "style": "aurora", "cols": []},
 ]
