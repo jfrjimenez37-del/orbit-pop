@@ -681,8 +681,8 @@ func test_progress(save) -> void:
 	for key in l10n.T:
 		if l10n.T[key].size() != 4:
 			bad_keys += 1
-		if key == "SHARE_TEXT":
-			continue
+		if key == "SHARE_TEXT" or key.begins_with("NOTIF_"):
+			continue   # shown by the system (share sheet / notifications), not the pixel font
 		for txt in l10n.T[key]:
 			for ch in txt:
 				if ch != "%" and not font.has_char(ch.unicode_at(0)):
@@ -733,6 +733,17 @@ func test_progress(save) -> void:
 
 
 func test_abilities(save) -> void:
+	# reminders: one a day at 18:45 local, never at night, rescheduled on every exit
+	var day0 := 1_900_000_000 - posmod(1_900_000_000, 86400)   # a UTC midnight
+	ok(Notifier.delay_to(1, day0 + 10 * 3600, 0) == 86400 + 8 * 3600 + 45 * 60, "reminder tomorrow at 18:45 (from 10:00)")
+	ok(Notifier.delay_to(1, day0 + 23 * 3600, 0) == 19 * 3600 + 45 * 60, "from 23:00: tomorrow 18:45, not at night")
+	ok(Notifier.delay_to(1, day0 + 10 * 3600, -5 * 3600) == 86400 + 13 * 3600 + 45 * 60, "local time zone respected (UTC-5)")
+	save.reset_all()
+	var pl := Notifier.plan(save, day0 + 10 * 3600, 0)
+	ok(pl.size() == 3 and pl[1][1] - pl[0][1] == 2 * 86400 and pl[2][1] - pl[0][1] == 6 * 86400, "reminders at day 1, 3 and 7")
+	save.notifications = false
+	ok(Notifier.plan(save, day0, 0).is_empty(), "no reminders when turned off in Settings")
+	save.reset_all()
 	# offers at the right moment
 	var base := {"games": 30, "score": 10, "best": 50, "record": false, "coins": 0, "upgrade_cost": -1, "ad_shown": false,
 		"session_shown": false, "today": 100, "owned": func(_id): return false, "last_shown": {}}

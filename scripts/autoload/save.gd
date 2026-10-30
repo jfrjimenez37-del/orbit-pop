@@ -38,6 +38,8 @@ var sessions := 0             # app launches (no interstitial in the very first 
 var free_continue_day := -1   # NO ADS: one free continue a day
 var video_up := {}            # {"id": ability, "n": videos watched, "day": day of the last video level}
 var offers := {}              # offer id -> day it was last shown
+var notifications := true     # Settings: daily reminders
+var notif_asked := false      # Android permission already requested
 var review_asks := 0          # times the Play review sheet was requested
 var review_day := -9999       # day_number() of the last request
 var vibration := true
@@ -89,6 +91,8 @@ func load_data() -> void:
 	free_continue_day = int(cfg.get_value("shop", "free_continue_day", -1))
 	video_up = cfg.get_value("player", "video_up", {})
 	offers = cfg.get_value("shop", "offers", {})
+	notifications = bool(cfg.get_value("settings", "notifications", true))
+	notif_asked = bool(cfg.get_value("meta", "notif_asked", false))
 	review_day = int(cfg.get_value("meta", "review_day", -9999))
 	daily_day = int(cfg.get_value("daily", "day", 0))
 	daily_last = str(cfg.get_value("daily", "last", ""))
@@ -135,6 +139,8 @@ func save_data() -> void:
 	cfg.set_value("shop", "free_continue_day", free_continue_day)
 	cfg.set_value("player", "video_up", video_up)
 	cfg.set_value("shop", "offers", offers)
+	cfg.set_value("settings", "notifications", notifications)
+	cfg.set_value("meta", "notif_asked", notif_asked)
 	cfg.set_value("meta", "review_day", review_day)
 	cfg.set_value("daily", "day", daily_day)
 	cfg.set_value("daily", "last", daily_last)
@@ -564,6 +570,8 @@ func reset_all() -> void:
 	free_continue_day = -1
 	video_up = {}
 	offers = {}
+	notifications = true
+	notif_asked = false
 	stats = {}; achievements = []; top_scores = []
 	missions = {"day": -1, "list": [], "week": -1, "weekly": {}}
 	save_data()

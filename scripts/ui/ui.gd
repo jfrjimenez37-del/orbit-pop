@@ -1567,8 +1567,11 @@ func _mission_row(p: Control, m: Dictionary, y: int) -> void:
 	_left_label(p, "+%d" % m["reward"], Vector2(129, y + 10), COIN_INK)
 
 
+const ROW := 20   # settings row spacing
+
+
 func show_settings() -> void:
-	var p := _open_popup(L.t("SETTINGS"), "settings", 232)
+	var p := _open_popup(L.t("SETTINGS"), "settings", 228)
 	var rows := [
 		["SOUND", L.t("ON") if Save.sound else L.t("OFF"), func():
 			Save.sound = not Save.sound
@@ -1600,12 +1603,16 @@ func show_settings() -> void:
 			var keys: Array = PlayGamesConfig.REGION_NAMES.keys()
 			Save.region = keys[(keys.find(Progress.region()) + 1) % keys.size()]
 			Save.save_data()],
+		["NOTIFY", L.t("ON") if Save.notifications else L.t("OFF"), func():
+			Save.notifications = not Save.notifications
+			Save.save_data()
+			Progress.notifier.reschedule(Save)],
 		["PRIVACY", ">", func():
 			if not Monetization.show_privacy_options():
 				toast(L.t("PRIVACY") + " (TEST)", Color8(255, 236, 140))],
 	]
 	for i in rows.size():
-		var y := 8 + i * 22
+		var y := 8 + i * ROW
 		_left_label(p, L.t(rows[i][0]), Vector2(10, y + 5))
 		var b := _button(p, "white", rows[i][1], "", Vector2(70, 18))
 		b.position = Vector2(78, y)
@@ -1614,14 +1621,14 @@ func show_settings() -> void:
 			cb.call()
 			if popup.visible and popup.get_meta("kind", "") == "settings":
 				show_settings())
-	_close_button(p, 8 + rows.size() * 22 + 2)
+	_close_button(p, 8 + rows.size() * ROW + 2)
 	var ver := _label(p, "V" + str(ProjectSettings.get_setting("application/config/version", "")), 1, MUTED)
-	_center_label(ver, 156, 8 + rows.size() * 22 + 26)
+	_center_label(ver, 156, 8 + rows.size() * ROW + 26)
 	# hidden: tap the version 5 times to see what the ads / Play Games / store plugins reported
 	var vb := Button.new()
 	vb.flat = true
 	vb.focus_mode = Control.FOCUS_NONE
-	vb.position = Vector2(48, 8 + rows.size() * 22 + 22)
+	vb.position = Vector2(48, 8 + rows.size() * ROW + 22)
 	vb.size = Vector2(60, 14)
 	p.add_child(vb)
 	vb.pressed.connect(func():

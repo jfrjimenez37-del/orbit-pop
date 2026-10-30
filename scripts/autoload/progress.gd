@@ -77,6 +77,7 @@ const ACHIEVEMENTS := [
 var games: Node     # Play Games adapter
 var sharer: Node
 var reviewer: Reviewer
+var notifier: Notifier
 var pending: Array = []   # messages to show once the run is over
 var _run := {}
 
@@ -89,6 +90,9 @@ func _ready() -> void:
 	reviewer = Reviewer.new()
 	add_child(reviewer)
 	reviewer.start()
+	notifier = Notifier.new()
+	add_child(notifier)
+	notifier.start()
 	games.cloud_loaded.connect(_on_cloud)
 	games.signed_in_changed.connect(func(ok): if ok: _sync_all())
 	games.start()

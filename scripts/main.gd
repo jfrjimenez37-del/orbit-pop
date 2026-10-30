@@ -446,6 +446,7 @@ func _game_over() -> void:
 		Sfx.play("unlock")
 	# a fresh record is the happiest moment to ask for a rating (Google shows its own sheet)
 	var asked := Progress.reviewer.maybe_ask(Save, res["record"], score)
+	Progress.notifier.maybe_ask_permission(Save)
 	# otherwise maybe an offer at the right moment (near record, short of an upgrade...)
 	var offer: Dictionary = {} if asked else Monetization.offer_for(score, res["record"] and score > 0)
 	if not offer.is_empty():
@@ -517,6 +518,7 @@ func _flip() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT or what == NOTIFICATION_APPLICATION_PAUSED:
 		_pause()
+		Progress.notifier.reschedule(Save)
 	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		match state:
 			S.PLAYING, S.RESUMING:
