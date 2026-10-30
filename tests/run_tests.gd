@@ -761,6 +761,67 @@ func test_abilities(save) -> void:
 	ok(o.call({"games": 70, "coins": 150, "upgrade_cost": 300}) == "coins_1500", "150 coins short of an upgrade: 1500 coins")
 	ok(o.call({"games": 65, "coins": 50, "upgrade_cost": 300}) == "trail_pack", "too far from the upgrade: no coin offer (milestone pack instead)")
 	ok(o.call({"games": 40}) == "", "nothing special: no offer")
+	# offers carry real bonus coins for a limited time (24 h, milestones 48 h); the countdown is honest
+	var lv: Dictionary = Offers.make_live({"id": "no_ads", "why": "OFFER_ADS"}, 1000.0)
+	ok(lv["until"] == 1000 + 24 * 3600 and lv["bonus"] == Offers.BONUS["no_ads"], "offer bonus lasts 24 h")
+	ok(Offers.make_live({"id": "trail_pack", "why": "OFFER_MILESTONE"}, 0.0)["until"] == 48 * 3600, "milestone offers last 48 h")
+	ok(Offers.seconds_left(lv, "no_ads", 1000.0 + 3600) == 23 * 3600 and Offers.seconds_left(lv, "star_pack", 1000.0) == 0, "countdown only for the offered product")
+	ok(Offers.seconds_left(lv, "no_ads", 1000.0 + 25 * 3600) == 0, "bonus gone after 24 h")
+	ok(Offers.clock(23 * 3600 + 59 * 60 + 12) == "23:59:12" and Offers.clock(5 * 3600 + 1, true) == "6H" and Offers.clock(42 * 60, true) == "42M", "countdown text")
+	for id in MonetizationConfig.PRODUCTS:
+		ok(not Offers.BONUS.has(id) or Offers.BONUS[id] > 0, "bonus defined for %s" % id)
+	var mon = get_root().get_node("Monetization")
+	mon.use_test_providers()
+	save.reset_all()
+	var tnow := [100000.0]
+	mon.unix = func() -> float: return tnow[0]
+	save.games = 30
+	mon.offer_this_session = false
+	mon.ad_since_offer = true
+	var off: Dictionary = mon.offer_for(10, false)
+	ok(off.get("id", "") == "no_ads" and mon.offer_secs("no_ads") == 24 * 3600 and mon.live_offer_id() == "no_ads", "shown offer starts its countdown")
+	var c1: int = save.coins
+	mon.buy("no_ads")
+	await process_frame
+	await process_frame
+	ok(save.owns("no_ads") and save.coins == c1 + Offers.BONUS["no_ads"] and save.offer_live.is_empty(), "bought during the countdown: bonus coins (+%d)" % (save.coins - c1))
+	ok(mon.offer_secs("no_ads") == 0 and mon.live_offer_id() == "", "owned: no countdown left")
+	save.reset_all()
+	save.games = 30
+	mon.offer_this_session = false
+	mon.ad_since_offer = true
+	mon.offer_for(10, false)
+	tnow[0] += 24 * 3600 + 1
+	c1 = save.coins
+	mon.buy("no_ads")
+	await process_frame
+	await process_frame
+	ok(save.owns("no_ads") and save.coins == c1 and mon.last_bonus == 0, "after the countdown: same price, no bonus")
+	mon.unix = func() -> float: return Time.get_unix_time_from_system()
+	save.reset_all()
+	# altitude: from the sky to deep space, always climbing; layers start with a world
+	var prev := -1.0
+	var climbing := true
+	for sc in range(0, 1200, 5):
+		var km: float = Stages.altitude_km(sc)
+		climbing = climbing and km > prev
+		prev = km
+	ok(climbing, "altitude always grows with the score")
+	ok(absf(Stages.altitude_km(315) - 100.0) < 0.01 and absf(Stages.altitude_km(585) - 384000.0) < 1.0, "edge of space at 100 km, the Moon at 384,000 km")
+	var starts := []
+	for e in Stages.LIST:
+		starts.append(int(e["score"]))
+	var layers_ok := true
+	for ly in Stages.LAYERS:
+		layers_ok = layers_ok and (int(ly[0]) in starts or int(ly[0]) == Stages.LOOP_FROM)
+	ok(layers_ok and Stages.layer(0) == 0 and Stages.layer(320) == 4 and Stages.layer(5000) == Stages.LAYERS.size() - 1, "altitude layers begin with a world")
+	ok(Stages.altitude_text(7.44, false, "KM") == "7.4 KM" and Stages.altitude_text(230.0, false, "KM") == "230 KM" and Stages.altitude_text(22400.0, false, "KM") == "22,400 KM"
+		and Stages.altitude_text(384000.0, false, "KM") == "384K KM" and Stages.altitude_text(1500000.0, false, "KM") == "1.5M KM", "altitude text (%s)" % Stages.altitude_text(22400.0, false, "KM"))
+	var widest := 0.0
+	for sc in range(0, 6000, 7):
+		for mi in [true, false]:
+			widest = maxf(widest, load("res://assets/font/pixel.fnt").get_string_size(Stages.altitude_text(Stages.altitude_km(sc), mi, "KM"), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x)
+	ok(widest <= 56.0, "altitude never runs into the score (widest %d px)" % widest)
 	# free ability levels by watching videos: 3 videos for level 2, 5 for level 3, one level a day
 	save.reset_all()
 	save.level = 5
@@ -976,6 +1037,7 @@ func test_worlds(save) -> void:
 	main.ui.hide_popup()
 	var dt := 1.0 / 60.0
 	for si in Stages.LIST.size():
+		seed(7000 + si)   # reproducible: the bot is greedy, not perfect (tests/audit*.gd measure fairness)
 		main.start_run()
 		main.director.offset = 60.0
 		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))

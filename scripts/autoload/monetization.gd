@@ -19,6 +19,9 @@ var run_active := false
 var ads_mode := "none"
 var store_mode := "none"
 var clock := func() -> float: return Time.get_ticks_msec() / 1000.0
+var unix := func() -> float: return Time.get_unix_time_from_system()   # offer countdowns (saved)
+var last_bonus := 0              # bonus coins of the purchase just completed (for the toast)
+var _bonus_for := {}             # product id -> bonus locked in when the purchase started
 
 var _runs_since_ad := 0
 var _last_ad_time := -1e9
@@ -160,8 +163,22 @@ func offer_for(score: int, record: bool) -> Dictionary:
 		offer_this_session = true
 		ad_since_offer = false
 		Save.offers[o["id"]] = Save.day_number()
+		Save.offer_live = Offers.make_live(o, unix.call())
 		Save.save_data()
 	return o
+
+
+## Seconds left on the bonus of the live offer for `id` (0 = none, or already owned).
+func offer_secs(id: String) -> int:
+	if Save.owns(id) and not MonetizationConfig.CONSUMABLES.has(id):
+		return 0
+	return Offers.seconds_left(Save.offer_live, id, unix.call())
+
+
+## The product with a running bonus ("" = none).
+func live_offer_id() -> String:
+	var id: String = Save.offer_live.get("id", "")
+	return id if id != "" and offer_secs(id) > 0 else ""
 
 
 func between_runs(then: Callable) -> void:
@@ -199,6 +216,9 @@ func buy(id: String) -> void:
 	if not store_available():
 		purchase_result.emit(id, false, "STORE OFFLINE")
 		return
+	# the bonus counts if the purchase starts before the countdown ends (Play may confirm it later)
+	if offer_secs(id) > 0:
+		_bonus_for[id] = int(Save.offer_live.get("bonus", 0))
 	store.buy(id)
 
 
@@ -208,11 +228,21 @@ func restore() -> void:
 
 
 func _on_purchase_done(id: String, ok: bool, message: String) -> void:
+	last_bonus = 0
 	if ok:
 		if MonetizationConfig.CONSUMABLES.has(id):
 			Save.add_coins(MonetizationConfig.CONSUMABLES[id])
 		else:
 			Save.grant(id)
+		last_bonus = int(_bonus_for.get(id, 0))
+		_bonus_for.erase(id)
+		if last_bonus > 0:
+			Save.add_coins(last_bonus)
+			if Save.offer_live.get("id", "") == id:
+				Save.offer_live = {}
+			Save.save_data()
+	elif message != "PENDING":
+		_bonus_for.erase(id)
 		if id == "no_ads" or id == "starter" or id == "supporter":
 			hide_banner()
 	purchase_result.emit(id, ok, message)

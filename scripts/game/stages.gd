@@ -63,6 +63,56 @@ const LIST := [
 const LOOP_FROM := 830   # after this score, stages 1.. repeat every LOOP_EVERY points
 const LOOP_EVERY := 60
 
+## Altitude layers (sky -> space): from this score, text key. They start with a world.
+const LAYERS := [[0, "ALT_SKY"], [90, "ALT_HIGH"], [125, "ALT_STRATO"], [210, "ALT_MESO"], [315, "ALT_EDGE"],
+	[375, "ALT_LOW_ORBIT"], [510, "ALT_HIGH_ORBIT"], [585, "ALT_MOON"], [750, "ALT_DEEP"], [830, "ALT_STELLAR"]]
+## Altitude in km at these scores (log-interpolated between them, a bit like the real thing:
+## clouds, ozone, the Karman line at 100 km, the space station, geostationary, the Moon).
+const ALT_KM := [[0, 0.0], [35, 2.0], [90, 12.0], [125, 25.0], [210, 60.0], [315, 100.0], [375, 400.0],
+	[510, 36000.0], [585, 384000.0], [750, 1500000.0]]
+const ALT_GROWTH := 1.25  # x per LOOP_EVERY points after the last anchor
+
+
+## Short altitude for the HUD (it sits next to the score): 7.4 KM, 230 KM, 22,400 KM, 384K KM, 1.5M KM, 2.3B KM.
+static func altitude_text(km: float, miles: bool, unit: String) -> String:
+	var v := km * 0.621 if miles else km
+	var n: String
+	if v < 10.0:
+		n = "%.1f" % v
+	elif v < 1000.0:
+		n = str(int(v))
+	elif v < 100000.0:
+		var i := int(v)
+		n = "%d,%03d" % [i / 1000, i % 1000]
+	elif v < 1000000.0:
+		n = "%dK" % int(v / 1000.0)
+	elif v < 1000000000.0:
+		n = "%.1fM" % (v / 1000000.0) if v < 100000000.0 else "%dM" % int(v / 1000000.0)
+	else:
+		n = "%.1fB" % minf(v / 1000000000.0, 99.9) if v < 100000000000.0 else "%dB" % mini(int(v / 1000000000.0), 999)
+	return "%s %s" % [n, unit]
+
+
+static func layer(score: int) -> int:
+	var idx := 0
+	for i in LAYERS.size():
+		if score >= int(LAYERS[i][0]):
+			idx = i
+	return idx
+
+
+static func altitude_km(score: float) -> float:
+	var last: Array = ALT_KM[-1]
+	if score >= float(last[0]):
+		return float(last[1]) * pow(ALT_GROWTH, (score - float(last[0])) / LOOP_EVERY)
+	for i in range(1, ALT_KM.size()):
+		var a: Array = ALT_KM[i - 1]
+		var b: Array = ALT_KM[i]
+		if score < float(b[0]):
+			var k := (score - float(a[0])) / (float(b[0]) - float(a[0]))
+			return exp(lerpf(log(1.0 + float(a[1])), log(1.0 + float(b[1])), k)) - 1.0
+	return 0.0
+
 
 static func index_for_score(score: int) -> int:
 	if score >= LOOP_FROM:

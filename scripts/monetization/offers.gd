@@ -4,11 +4,37 @@ class_name Offers
 ##   a few coins short of an upgrade -> 1500 coins · run milestones -> rotating packs
 ## Never in the first runs, never after a record (that is the time to celebrate / ask for a
 ## rating), at most one per session and the same offer not again for 3 days.
+## Each offer carries real BONUS coins for a limited time (the countdown is honest: when it ends,
+## the bonus is gone; the price never changes). It stays in the shop until then.
 
 const MIN_GAMES := 5
 const COOLDOWN_DAYS := 3
 const MILESTONES := {25: "star_pack", 60: "trail_pack", 120: "supporter"}
 const SHORT_COINS := 200   # "you're this close to an upgrade"
+const BONUS := {"no_ads": 500, "starter": 500, "star_pack": 500, "trail_pack": 500, "supporter": 1000,
+	"coins_x2": 500, "coins_1500": 750, "coins_5000": 1500}
+const HOURS := 24
+const MILESTONE_HOURS := 48
+
+
+## What to remember of a shown offer: {id, until (unix s), bonus}.
+static func make_live(o: Dictionary, now: float) -> Dictionary:
+	var h := MILESTONE_HOURS if o.get("why", "") == "OFFER_MILESTONE" else HOURS
+	return {"id": o["id"], "until": int(now) + h * 3600, "bonus": int(BONUS.get(o["id"], 0))}
+
+
+## Seconds left on `id`'s bonus (0 = no live bonus for it).
+static func seconds_left(live: Dictionary, id: String, now: float) -> int:
+	if live.get("id", "") != id or int(live.get("bonus", 0)) <= 0:
+		return 0
+	return maxi(0, int(live.get("until", 0)) - int(now))
+
+
+## 23:59:12 (popup) or 23H / 42M (shop row).
+static func clock(secs: int, short := false) -> String:
+	if short:
+		return "%dH" % ceili(secs / 3600.0) if secs >= 3600 else "%dM" % maxi(1, ceili(secs / 60.0))
+	return "%d:%02d:%02d" % [secs / 3600, (secs / 60) % 60, secs % 60]
 
 
 ## The offer to show now (product id + reason text key), or {} for none.

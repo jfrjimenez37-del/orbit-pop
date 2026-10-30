@@ -96,7 +96,7 @@ tests/                    suite headless, bot y capturas
 | Hecho y verificado | Pendiente |
 |---|---|
 | Juego completo jugable en PC (headless + capturas renderizadas) | **Prueba en teléfono real** (no había dispositivo) |
-| 271 comprobaciones automáticas pasando | Ajuste fino de dificultad con jugadores reales |
+| 295 comprobaciones automáticas pasando | Ajuste fino de dificultad con jugadores reales |
 | APK debug exportado y firmado | AAB release (requiere SDK completo + keystore propio) |
 | Arte, audio y fuente 100% originales generados por script | Política de privacidad / ficha de Play Store |
 | Guardado local, récords, estadísticas, 29 skins por rareza | Anuncios/compras reales: instalar plugins + IDs (ver abajo) |
@@ -133,6 +133,11 @@ Qué incluye (todo configurable en `scripts/monetization/config.gd`):
   obligatorio → NO ADS; a 1–3 puntos del récord → STARTER (o 5000 monedas); le faltan menos de 200
   monedas para su siguiente mejora → 1500 monedas; hitos de 25/60/120 partidas → STAR PACK /
   TRAIL PACK / SUPPORTER. Nunca ofrece algo que ya tiene.
+  Cada oferta trae **monedas extra de verdad por tiempo limitado** (`Offers.BONUS`: +500 en los
+  packs, +1000 SUPPORTER, +750 / +1500 en las bolsas) durante 24 h (48 h en los hitos), con cuenta
+  atrás en la ventana ("ENDS IN 23:59:12") y en la tienda ("+500 (24H)", fila rosa, "!" en el
+  carrito). El precio nunca cambia; al acabar el reloj solo desaparece el extra (sin urgencia
+  falsa). El extra cuenta si la compra se inicia antes del final, aunque Play la confirme después.
 - **Siguiente objetivo:** el Game Over muestra lo próximo que se desbloquea (mundo, skin,
   habilidad o mejora) y cuánto falta.
 - **Recordatorios (notificaciones locales):** plugin "Notification Scheduler" de Cengiz
@@ -180,7 +185,9 @@ al máximo en ~1,5 meses y llega a nivel 50 en ~4 meses. Con el imán al máximo
 las monedas sueltas (~23/min) frente a ~35 % sin él (~10/min). Las partidas guardadas antiguas reciben
 en monedas el valor de los boosts que tenían.
 
-**Calendario de desbloqueos (sesiones de 10 min)**: simulación con la economía real del juego
+**Calendario de desbloqueos (sesiones de 10 min)**: la tabla de cada mundo, nivel de habilidad,
+skin y estela está en `tools/unlock_timeline.md` (se regenera con `python3 tools/unlock_sim.py`,
+que lee el catálogo y los mundos del código). Resumen: simulación con la economía real del juego
 (200 jugadores por perfil, mediana; habilidad que crece con las partidas). Casual: 1 sesión al día,
 5 días/semana, sin vídeos. Medio: 2 sesiones al día, 6 días/semana. Dedicado: 4 sesiones al día.
 
@@ -259,7 +266,11 @@ Los mundos están más juntos que antes (el 10 llega a los 315 puntos en vez de 
 móviles el movimiento arranca suave (3 s) y avisa "THE PLANETS ARE MOVING!"; los pulsos y rayos
 no aparecen mientras se mueven. **Ascenso:** el fondo baja poco a poco (nubes, estrellas con
 paralaje, mar de nubes al salir del cielo) y un marcador muestra la altitud, para que se sienta que
-los planetas suben; las órbitas oscilan suavemente arriba y abajo. AJUSTES ▸ MOVIMIENTO lo reduce
+los planetas suben; las órbitas oscilan suavemente arriba y abajo. La altitud crece como un viaje
+real (2 km de nubes, 100 km en el borde del espacio, 400 km la órbita baja, 36.000 km la alta,
+384.000 km la Luna) y al entrar en cada capa el aviso de mundo la nombra: THE SKY, HIGH SKY,
+STRATOSPHERE, MESOSPHERE, EDGE OF SPACE, LOW ORBIT, HIGH ORBIT, LUNAR ORBIT, DEEP SPACE e
+INTERSTELLAR (`Stages.LAYERS`). AJUSTES ▸ MOVIMIENTO lo reduce
 (sin oscilación ni ascenso) para quien se maree.
 
 Auditoría 1.0.11 (`tests/audit_react.gd`, bot humano con 0,25 s de reacción, 5 partidas × 40 s por

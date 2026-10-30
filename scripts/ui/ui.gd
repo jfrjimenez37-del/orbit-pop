@@ -63,6 +63,11 @@ var _menu_coins: Label
 var _gift_badge: Label
 var _mission_badge: Label
 var _ab_badge: Label
+var _shop_badge: Label
+var _offer_clock: Label          # countdown in the offer popup / the shop row of the live offer
+var _offer_clock_id := ""
+var _offer_clock_short := false
+var _offer_clock_parent_w := 156.0
 var _ab_box: Control
 var _ab_list: Control
 var _run_coins_box: Control
@@ -179,9 +184,11 @@ func _process(delta: float) -> void:
 		_hint.modulate.a = 1.0 if fmod(_t, 0.9) < 0.6 else 0.25
 	if _over_record and _over_record.visible:
 		_over_record.modulate = Color.WHITE if fmod(_t, 0.5) < 0.3 else Color(1, 0.85, 0.4)
-	for b in [_gift_badge, _mission_badge]:
+	for b in [_gift_badge, _mission_badge, _shop_badge]:
 		if b and b.visible:
 			b.position.y = -4 + roundf(sin(_t * 6.0))
+	if _offer_clock != null and is_instance_valid(_offer_clock) and _offer_clock.is_visible_in_tree():
+		_tick_offer_clock()
 	if skins.visible and _style_tab == "skins":
 		var fr: int = [0, 1, 2, 1][int(_t * 10.0) % 4]
 		(_style_preview.texture as AtlasTexture).region = Rect2(fr * 16, 0, 16, 16)
@@ -434,6 +441,9 @@ func _build_menu() -> void:
 		elif row[i][0] == "gift":
 			_gift_badge = _label(b, "!", 1, GOLD)
 			_gift_badge.position = Vector2(23, -4)
+		elif row[i][0] == "cart":
+			_shop_badge = _label(b, "!", 1, GOLD)
+			_shop_badge.position = Vector2(23, -4)
 
 
 func refresh_menu() -> void:
@@ -451,6 +461,7 @@ func refresh_menu() -> void:
 	_menu_coins.size = Vector2(_text_w(_menu_coins.text), 10)
 	_gift_badge.visible = Save.daily_available()
 	_mission_badge.visible = Progress.missions_left() > 0
+	_shop_badge.visible = Monetization.live_offer_id() != ""
 
 
 ## True if some unlocked ability can be upgraded with the coins the player has.
@@ -542,9 +553,7 @@ func _build_hud() -> void:
 
 ## Altitude shown under the pause button: 25 points = 1 km.
 func set_altitude(score: int) -> void:
-	var km := score * 0.04
-	var v := km * 0.621 if L.lang == "en" else km
-	_alt_lbl.text = "%.1f %s" % [v, L.t("ALT_UNIT")]
+	_alt_lbl.text = Stages.altitude_text(Stages.altitude_km(score), L.lang == "en", L.t("ALT_UNIT"))
 
 
 func set_run_coins(n: int) -> void:
@@ -615,20 +624,26 @@ func blocks_tap(pos: Vector2) -> bool:
 	return _teleport_btn.visible and _teleport_btn.get_global_rect().grow(2).has_point(pos)
 
 
-func world_banner(n: int, name: String, tip := "") -> void:
+## layer: altitude layer just entered ("" when the world stays in the same layer).
+func world_banner(n: int, name: String, tip := "", layer := "") -> void:
 	_clear(_banner)
 	var a := _label(_banner, L.t("WORLD_N", n), 2, GOLD)
 	_center_label(a, 180, 0)
 	var b := _label(_banner, name, 1, Color.WHITE)
 	_center_label(b, 180, 20)
+	var y := 32
+	if layer != "":
+		var ly := _label(_banner, layer, 1, Color8(150, 220, 255))
+		_center_label(ly, 180, y)
+		y += 12
 	if tip != "":
 		var c := _label(_banner, tip, 1, Color8(255, 236, 140))
-		_center_label(c, 180, 32)
+		_center_label(c, 180, y)
 	_banner.visible = true
 	_banner.modulate.a = 0.0
 	var tw := create_tween()
 	tw.tween_property(_banner, "modulate:a", 1.0, 0.25)
-	tw.tween_interval(1.8 if tip == "" else 2.8)
+	tw.tween_interval(1.8 if tip == "" and layer == "" else 2.8)
 	tw.tween_property(_banner, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(func(): _banner.visible = false)
 
@@ -1199,8 +1214,12 @@ func refresh_shop() -> void:
 		for id in ids:
 			var info: Dictionary = MonetizationConfig.PRODUCT_INFO[id]
 			var owned := Save.owns(id)
-			_shop_row(_shop_list, y, info["icon"], L.t(info["name"]), L.t(info["desc"]), "green" if owned else ("pink" if id == "starter" else "yellow"),
+			var live := not owned and Monetization.offer_secs(id) > 0
+			_shop_row(_shop_list, y, info["icon"], L.t(info["name"]), "" if live else L.t(info["desc"]),
+				"green" if owned else ("pink" if id == "starter" or live else "yellow"),
 				L.t("OWNED") if owned else Monetization.price(id), "", online and not owned, func(): buy_pressed.emit(id))
+			if live:
+				_offer_row_clock(id, y)
 			y += 30
 		var rs := _button(_shop_list, "white", L.t("RESTORE"), "", Vector2(80, 18))
 		rs.position = Vector2(42, 208)
@@ -1219,7 +1238,11 @@ func refresh_shop() -> void:
 		y += 28
 		for id in MonetizationConfig.CONSUMABLES:
 			var info2: Dictionary = MonetizationConfig.PRODUCT_INFO[id]
-			_shop_row(_shop_list, y, info2["icon"], L.t(info2["name"]), L.t(info2["desc"]), "yellow", Monetization.price(id), "", online, func(): buy_pressed.emit(id))
+			var live2 := Monetization.offer_secs(id) > 0
+			_shop_row(_shop_list, y, info2["icon"], L.t(info2["name"]), "" if live2 else L.t(info2["desc"]), "pink" if live2 else "yellow",
+				Monetization.price(id), "", online, func(): buy_pressed.emit(id))
+			if live2:
+				_offer_row_clock(id, y)
 			y += 28
 		var tip := _label(_shop_list, L.t("COINS_TIP"), 1, MUTED)
 		_center_label(tip, 164, y + 4)
@@ -1516,22 +1539,59 @@ func show_starter() -> void:
 ## Offer at the right moment (see Offers): why, what, price, later.
 func show_offer(id: String, why: String) -> void:
 	var info: Dictionary = MonetizationConfig.PRODUCT_INFO[id]
+	var secs := Monetization.offer_secs(id)
+	var bonus := int(Save.offer_live.get("bonus", 0)) if secs > 0 else 0
 	var p := _open_popup(L.t("OFFER"), "offer")
 	var w := _label(p, L.t(why), 1, Color8(214, 66, 128))
-	_center_label(w, 156, 10)
-	_icon(p, "icon_" + info["icon"], Vector2(70, 26), 2)
+	_center_label(w, 156, 8)
+	_icon(p, "icon_" + info["icon"], Vector2(70, 21), 2)
 	var n := _label(p, L.t(info["name"]), 1, INK)
-	_center_label(n, 156, 50)
+	_center_label(n, 156, 44)
 	var d := _label(p, L.t(info["desc"]), 1, MUTED)
-	_center_label(d, 156, 62)
+	_center_label(d, 156, 54)
+	if bonus > 0:
+		var bl := _label(p, L.t("OFFER_BONUS", bonus), 1, COIN_INK)
+		_center_label(bl, 156, 66)
+		_offer_clock = _label(p, "", 1, Color8(214, 66, 128))
+		_offer_clock_id = id
+		_offer_clock_short = false
+		_offer_clock_parent_w = 156.0
+		_offer_clock.set_meta("y", 76)
+		_tick_offer_clock()
 	var buy := _button(p, "pink", Monetization.price(id), "", Vector2(80, 24))
-	buy.position = Vector2(38, 78)
+	buy.position = Vector2(38, 88 if bonus > 0 else 78)
 	buy.pressed.connect(func():
 		hide_popup()
 		buy_pressed.emit(id))
 	var later := _button(p, "white", L.t("LATER"), "", Vector2(60, 20))
-	later.position = Vector2(48, 108)
+	later.position = Vector2(48, 114 if bonus > 0 else 108)
 	later.pressed.connect(hide_popup)
+
+
+## Pink "+bonus (23H)" in place of the description of the shop row with the live offer.
+func _offer_row_clock(id: String, y: int) -> void:
+	_offer_clock = _left_label(_shop_list, "", Vector2(19, y + 10), Color8(214, 66, 128))
+	_offer_clock_id = id
+	_offer_clock_short = true
+	_tick_offer_clock()
+
+
+func _tick_offer_clock() -> void:
+	var secs := Monetization.offer_secs(_offer_clock_id)
+	if secs <= 0:
+		_offer_clock.visible = false
+		if shop.visible:
+			refresh_shop.call_deferred()
+		return
+	var txt: String
+	if _offer_clock_short:
+		txt = L.t("OFFER_ROW", [int(Save.offer_live.get("bonus", 0)), Offers.clock(secs, true)])
+	else:
+		txt = L.t("OFFER_ENDS", Offers.clock(secs))
+	if txt != _offer_clock.text:
+		_offer_clock.text = txt
+		if not _offer_clock_short:
+			_center_label(_offer_clock, _offer_clock_parent_w, float(_offer_clock.get_meta("y", 76)))
 
 
 ## Today's 3 missions and the weekly challenge (rewards are paid automatically).

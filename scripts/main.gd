@@ -39,6 +39,7 @@ var slowmo_charges := 0       # SLOW-MO ability charges left in this run
 var slowmo_left := 0.0        # real seconds of slow motion still running
 var second_life := false      # SECOND LIFE ability unused in this run
 var start_score := 0          # HEADSTART: points granted by the start world
+var _layer := 0               # altitude layer (Stages.LAYERS) the run is in
 var xp_awarded := 0           # XP already paid out for this run (continue-safe)
 var stage := 0                # current world (Stages index)
 var world_no := 1             # world number shown to the player
@@ -240,7 +241,9 @@ const _STORE_MSG := {"TEST PURCHASE": "TEST_PURCHASE", "THANK YOU!": "THANKS", "
 func _on_purchase_result(id: String, ok: bool, message: String) -> void:
 	var text := L.t(_STORE_MSG[message]) if _STORE_MSG.has(message) else message
 	if MonetizationConfig.CONSUMABLES.has(id) and ok:
-		text = L.t("PLUS_COINS", MonetizationConfig.CONSUMABLES[id])
+		text = L.t("PLUS_COINS", MonetizationConfig.CONSUMABLES[id] + Monetization.last_bonus)
+	elif ok and Monetization.last_bonus > 0:
+		text = L.t("OFFER_BOUGHT", Monetization.last_bonus)
 	ui.toast(text, Color8(120, 255, 200) if ok else Color8(255, 150, 160))
 	Sfx.play("unlock" if ok and id != "restore" else ("select" if ok else "deny"))
 	if state == S.SHOP:
@@ -378,6 +381,7 @@ func start_run() -> void:
 		Orbit.set_shape(Stages.LIST[stage]["orbits"], true, Stages.motion(stage))
 		_apply_world(stage, false)
 		director.stage = stage
+	_layer = Stages.layer(score)
 	player.reset(-PI * 0.5)
 	player.happy = false
 	player.omega = director.omega(0.0)
@@ -848,7 +852,12 @@ func _update_world(dt: float) -> void:
 			tip = L.t("MOVE_TIP")
 		elif orbits.size() >= 2:
 			tip = L.t("JUMP_TIP") if orbits[1].has("center") else L.t("CROSS_TIP")
-		ui.world_banner(world_no, L.t("WORLD_" + str(w["id"]).to_upper()), tip)
+		var ly := Stages.layer(score)
+		var layer_name := ""
+		if ly != _layer:
+			_layer = ly
+			layer_name = L.t(Stages.LAYERS[ly][1])
+		ui.world_banner(world_no, L.t("WORLD_" + str(w["id"]).to_upper()), tip, layer_name)
 		Sfx.play("unlock")
 		Progress.event("world", world_no)
 	if _morph_t >= 0.0:
