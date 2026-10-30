@@ -1375,6 +1375,10 @@ func _board_view(pg) -> void:
 	if rows.is_empty():
 		var em := _label(_rank_list, L.t("NO_SCORES"), 1, MUTED)
 		_center_label(em, 164, 60)
+		if Save.best > 0:   # played but not listed: usually a hidden Play Games profile
+			for j in 2:
+				var hl := _label(_rank_list, L.t("RANK_HIDDEN_%d" % (j + 1)), 1, Color8(190, 120, 150))
+				_center_label(hl, 164, 80 + j * 10)
 	for i in mini(rows.size(), 10):
 		var r: Dictionary = rows[i]
 		var y := 20 + i * 12

@@ -97,6 +97,7 @@ func _board_key(leaderboard_id: String) -> String:
 
 ## After a score is stored, ask for the player's position on that board.
 func _on_submitted(ok: bool, leaderboard_id: String) -> void:
+	Diag.log("playgames: score %s on %s" % ["accepted" if ok else "REJECTED", _board_key(leaderboard_id)])
 	if ok:
 		_lb.call("load_player_score", leaderboard_id, ALL_TIME, PUBLIC)
 
@@ -104,8 +105,10 @@ func _on_submitted(ok: bool, leaderboard_id: String) -> void:
 func _on_score_loaded(leaderboard_id: String, score) -> void:
 	var board := _board_key(leaderboard_id)
 	if board == "" or score == null:
+		Diag.log("playgames: no public score on %s (Play Games profile hidden?)" % board)
 		return
 	var rank := int(score.get("rank"))
+	Diag.log("playgames: %s rank %d (%d pts)" % [board, rank, int(score.get("raw_score"))])
 	ranks[board] = rank
 	rank_loaded.emit(board, rank, int(score.get("raw_score")))
 
@@ -134,6 +137,7 @@ func _on_top_loaded(leaderboard_id: String, scores) -> void:
 		var pid := str(holder.get("player_id")) if holder != null else ""
 		rows.append({"rank": int(sc.get("rank")), "name": str(sc.get("score_holder_display_name")),
 			"score": int(sc.get("raw_score")), "me": pid != "" and pid == player_id})
+	Diag.log("playgames: %s top loaded, %d public rows" % [board, rows.size()])
 	top_loaded.emit(board, rows)
 
 
@@ -156,6 +160,7 @@ func save_cloud(data: Dictionary) -> void:
 func submit_score(board: String, score: int) -> void:
 	var id: String = PlayGamesConfig.LEADERBOARDS.get(board, "")
 	if signed_in and id != "":
+		Diag.log("playgames: submit %d to %s" % [score, board])
 		_lb.call("submit_score", id, score)
 
 
