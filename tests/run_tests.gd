@@ -292,7 +292,13 @@ func test_monetization(save) -> void:
 		mon.on_game_over()
 	ok(not mon.should_show_interstitial(), "no interstitial before the 3rd run")
 	save.games = 10
+	save.sessions = 1
+	ok(not mon.should_show_interstitial(), "no interstitial in the very first session")
+	save.sessions = 3
 	ok(mon.should_show_interstitial(), "interstitial allowed after grace + 3 runs")
+	mon.on_game_over(true)
+	ok(not mon.should_show_interstitial(), "never right after a new record")
+	mon.on_game_over()
 	mon.run_active = true
 	ok(not mon.should_show_interstitial(), "never an interstitial during a run")
 	ok(not mon.show_rewarded("continue"), "never a rewarded ad during a run")
@@ -305,10 +311,24 @@ func test_monetization(save) -> void:
 	mon.on_game_over(); mon.on_game_over()
 	ok(not mon.should_show_interstitial(), "only 2 retries since the last ad: no ad yet")
 	mon.on_game_over()
-	ok(mon.should_show_interstitial(), "mandatory ad on the 3rd retry")
+	ok(not mon.should_show_interstitial(), "3 retries but less than 2.5 minutes: no ad yet")
+	now[0] += MonetizationConfig.INTERSTITIAL_COOLDOWN
+	ok(mon.should_show_interstitial(), "ad after 3 retries and 2.5 minutes")
 	save.grant("no_ads")
 	ok(not mon.should_show_interstitial(), "NO ADS removes interstitials")
 	ok(mon.can_continue(10, false), "rewarded continue still offered with NO ADS")
+	ok(mon.continue_is_free(), "NO ADS: first continue of the day is free")
+	save.free_continue_day = save.day_number()
+	ok(not mon.continue_is_free(), "then continues are videos again until tomorrow")
+	save.free_continue_day = -1
+	# SUPPORTER no longer includes COINS x2; bigger coin bags
+	save.purchases = ["supporter"]
+	ok(save.owns("star_pack") and save.owns("no_ads") and not save.owns("coins_x2"), "supporter covers the packs, not coins x2")
+	save.purchases = []
+	var c0: int = save.coins
+	mon.buy("coins_12000")
+	await process_frame
+	ok(save.coins == c0 + 12000, "12000 coin bag")
 	ok(not mon.can_continue(10, true), "only one continue per run")
 	ok(not mon.can_continue(2, false), "no continue for tiny scores")
 	# purchases
@@ -696,15 +716,53 @@ func test_progress(save) -> void:
 	var panel_wide: Array = []
 	for code in l10n.LANGS:
 		l10n.set_lang(code)
-		for key in ["COINS_TIP", "STORE_OFFLINE", "STORE_PLAY", "AB_TIP", "PLAY_GAMES_OFF"]:
+		for key in ["COINS_TIP", "STORE_OFFLINE", "STORE_PLAY", "AB_TIP", "PLAY_GAMES_OFF", "VIDEO_TOMORROW"]:
 			if font.get_string_size(l10n.t(key), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > 158:
 				panel_wide.append(code + ":" + l10n.t(key))
 	ok(panel_wide.is_empty(), "centered panel texts fit %s" % str(panel_wide))
+	var shop_wide: Array = []
+	for code in l10n.LANGS:
+		l10n.set_lang(code)
+		for id in MonetizationConfig.PRODUCT_INFO:
+			for key in [MonetizationConfig.PRODUCT_INFO[id]["name"], MonetizationConfig.PRODUCT_INFO[id]["desc"]]:
+				if font.get_string_size(l10n.t(key), HORIZONTAL_ALIGNMENT_LEFT, -1, 8).x > 158 - 54 - 19 - 1:
+					shop_wide.append(code + ":" + l10n.t(key))
+	ok(shop_wide.is_empty(), "shop product texts fit their row %s" % str(shop_wide))
 	l10n.set_lang("en")
 	save.reset_all()
 
 
 func test_abilities(save) -> void:
+	# free ability levels by watching videos: 3 videos for level 2, 5 for level 3, one level a day
+	save.reset_all()
+	save.level = 5
+	save.abilities = {"coins": 1, "shield": 1, "magnet": 2}
+	var tgt: String = save.video_target()
+	ok(tgt == "coins" and save.video_needed(tgt) == 3, "video upgrade goes to a level-1 ability (%s)" % tgt)
+	ok(save.video_ad_watched() == "" and save.video_ad_watched() == "", "2 videos: not yet")
+	ok(save.video_ad_watched() == "coins" and save.ability("coins") == 2, "3rd video: +1 level for free")
+	ok(not save.video_open_today() and save.video_ad_watched() == "", "only one video level a day")
+	save.clock_override = Time.get_unix_time_from_system() + 86400.0
+	ok(save.video_open_today() and save.video_target() == "shield", "next day: the next lowest ability")
+	save.abilities = {"coins": 3, "shield": 3, "magnet": 3}
+	ok(save.video_target() == "", "no video levels above level 3")
+	save.clock_override = -1.0
+	# COINS x2 FOREVER doubles what a run pays
+	save.reset_all()
+	var mx = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(mx)
+	await process_frame
+	mx.set_process(false)
+	mx.ui.hide_popup()
+	mx.start_run()
+	mx.score = 50
+	mx.picked_coins = 10
+	var plain: int = mx._run_coins()
+	save.purchases = ["coins_x2"]
+	ok(mx._run_coins() == plain * 2, "COINS x2 doubles run coins (%d -> %d)" % [plain, mx._run_coins()])
+	mx.queue_free()
+	await process_frame
+	Orbit.reset()
 	# old saves: consumable boosts become coins, once
 	save.reset_all()
 	var cfg := ConfigFile.new()

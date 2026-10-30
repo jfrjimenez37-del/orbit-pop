@@ -80,6 +80,9 @@ func _ready() -> void:
 	ui.teleport_pressed.connect(use_teleport)
 	ui.slowmo_pressed.connect(use_slowmo)
 	ui.share_pressed.connect(_share)
+	ui.ability_video_pressed.connect(func():
+		if not Monetization.show_rewarded("ability_video"):
+			ui.toast(L.t("NO_AD"), Color8(255, 150, 160)))
 	ui.ranking_pressed.connect(open_ranking)
 	ui.abilities_pressed.connect(open_abilities)
 	ui.pause_pressed.connect(_pause)
@@ -248,6 +251,8 @@ func _on_purchase_result(id: String, ok: bool, message: String) -> void:
 
 func _on_continue_pressed() -> void:
 	if Monetization.continue_is_free():
+		Save.free_continue_day = Save.day_number()
+		Save.save_data()
 		revive()
 		return
 	if not Monetization.show_rewarded("continue"):
@@ -267,6 +272,14 @@ func _on_rewarded(placement: String, granted: bool) -> void:
 		"daily_double":
 			if granted:
 				_give_daily(2)
+			return
+		"ability_video":
+			if granted:
+				var up: String = Save.video_ad_watched()
+				if up != "":
+					ui.toast(L.t("UPGRADED", L.t("AB_" + up.to_upper())), Color8(120, 255, 200))
+					Sfx.play("unlock")
+				ui.refresh_abilities()
 			return
 		"free_coins":
 			if granted:
@@ -414,7 +427,7 @@ func _die() -> void:
 func _game_over() -> void:
 	state = S.OVER
 	var res := Save.submit_run(score)
-	Monetization.on_game_over()
+	Monetization.on_game_over(res["record"] and score > 0)
 	Progress.run_finished(score, world_no, gt)
 	var earned := _run_coins()
 	Save.add_coins(earned - coins_awarded)
@@ -747,7 +760,8 @@ func _use_second_life() -> void:
 func _run_coins() -> int:
 	var base := floorf((score - start_score) * MonetizationConfig.COINS_PER_SCORE) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE \
 		+ picked_coins
-	return int(floor(base * Upgrades.coin_mult(Save.ability("coins"))))
+	var x2 := 2.0 if Save.owns("coins_x2") else 1.0   # COINS x2 FOREVER purchase
+	return int(floor(base * Upgrades.coin_mult(Save.ability("coins")) * x2))
 
 
 ## Pays the run's XP not given yet (a continue pays only the difference). Returns XP added now.

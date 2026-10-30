@@ -1,9 +1,12 @@
 class_name MonetizationConfig
 ## Every business knob in one place. Product ids must match Google Play Console.
 
-const PRODUCTS := ["starter", "no_ads", "star_pack", "trail_pack", "supporter", "coins_1500"]
-## Consumables: product id -> coins granted every purchase.
-const CONSUMABLES := {"coins_1500": 1500}
+const PRODUCTS := ["starter", "no_ads", "star_pack", "trail_pack", "supporter", "coins_x2",
+	"coins_1500", "coins_5000", "coins_12000", "coins_30000"]
+## Consumables: product id -> coins granted every purchase (bigger bags give more per dollar).
+const CONSUMABLES := {"coins_1500": 1500, "coins_5000": 5000, "coins_12000": 12000, "coins_30000": 30000}
+## What the SUPPORTER bundle includes (coins x2 is sold apart).
+const SUPPORTER_INCLUDES := ["no_ads", "star_pack", "trail_pack"]
 ## name/desc are localization keys (see l10n.gd)
 const PRODUCT_INFO := {
 	"starter": {"name": "P_STARTER", "desc": "P_STARTER_D", "icon": "gift"},
@@ -11,11 +14,16 @@ const PRODUCT_INFO := {
 	"star_pack": {"name": "P_STAR", "desc": "P_STAR_D", "icon": "star"},
 	"trail_pack": {"name": "P_TRAILS", "desc": "P_TRAILS_D", "icon": "trail"},
 	"supporter": {"name": "P_SUPPORTER", "desc": "P_SUPPORTER_D", "icon": "crown"},
+	"coins_x2": {"name": "P_X2", "desc": "P_X2_D", "icon": "coin"},
 	"coins_1500": {"name": "P_COINS", "desc": "P_COINS_D", "icon": "coin"},
+	"coins_5000": {"name": "P_COINS5", "desc": "P_COINS5_D", "icon": "coin"},
+	"coins_12000": {"name": "P_COINS12", "desc": "P_COINS12_D", "icon": "coin"},
+	"coins_30000": {"name": "P_COINS30", "desc": "P_COINS30_D", "icon": "coin"},
 }
 ## Shown until the store returns localized prices.
 const FALLBACK_PRICES := {"starter": "$1.99", "no_ads": "$2.99", "star_pack": "$1.99", "trail_pack": "$0.99",
-	"supporter": "$3.99", "coins_1500": "$0.99"}
+	"supporter": "$3.99", "coins_x2": "$2.99", "coins_1500": "$0.99", "coins_5000": "$2.99", "coins_12000": "$4.99",
+	"coins_30000": "$9.99"}
 ## Extra goodies granted once when a bundle is first bought.
 const BUNDLE_BONUS := {"starter": {"coins": 1000}, "supporter": {"coins": 1500}}
 ## Starter offer pops up once after this many runs (then stays in the shop until bought).
@@ -34,8 +42,10 @@ const DAILY_REWARDS := [
 
 ## Interstitial pacing (only ever between runs, never during one).
 const INTERSTITIAL_GRACE_GAMES := 3     # first interstitial after the 3rd run at the earliest
-const INTERSTITIAL_EVERY_RUNS := 3      # mandatory interstitial every 3 retries
-const INTERSTITIAL_COOLDOWN := 0.0      # extra minimum seconds between two ads (0 = off)
+const INTERSTITIAL_EVERY_RUNS := 3      # and at least 3 retries since the last ad
+const INTERSTITIAL_COOLDOWN := 150.0    # and at least 2.5 minutes since the last ad (any kind)
+## Abilities: watch videos for a free level (levels 1 -> 2 and 2 -> 3 only, one level a day).
+const VIDEO_UPGRADE_ADS := [0, 3, 5]    # videos needed to go from level i to i + 1
 ## Rewarded "continue": one per run, only when it is worth it.
 const CONTINUE_MIN_SCORE := 5
 const CONTINUE_SHIELD := 1.8            # seconds of invulnerability after reviving

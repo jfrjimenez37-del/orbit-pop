@@ -78,9 +78,10 @@ func ads_removed() -> bool:
 	return Save.owns("no_ads")
 
 
-## NO ADS owners get their continue for free (no video).
+## NO ADS owners get one free continue a day; after that the continue is a video like for
+## everyone (a rewarded video is a choice, never an interruption).
 func continue_is_free() -> bool:
-	return Save.owns("no_ads")
+	return Save.owns("no_ads") and Save.free_continue_day != Save.day_number()
 
 
 func can_continue(score: int, already_used: bool) -> bool:
@@ -120,14 +121,19 @@ func _on_rewarded_done(granted: bool) -> void:
 	rewarded_finished.emit(p, granted)
 
 
+var _last_record := false
+
+
 ## Called once per finished run (game over).
-func on_game_over() -> void:
+func on_game_over(record := false) -> void:
 	_runs_since_ad += 1
+	_last_record = record
 
 
 func should_show_interstitial() -> bool:
 	return not run_active and ads != null and not ads_removed() \
 		and Save.games >= MonetizationConfig.INTERSTITIAL_GRACE_GAMES \
+		and Save.sessions >= 2 and not _last_record \
 		and _runs_since_ad >= MonetizationConfig.INTERSTITIAL_EVERY_RUNS \
 		and clock.call() - _last_ad_time >= MonetizationConfig.INTERSTITIAL_COOLDOWN \
 		and ads.interstitial_ready()

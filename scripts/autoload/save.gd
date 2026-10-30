@@ -34,6 +34,10 @@ var free_ads_date := ""
 var free_ads_used := 0
 var starter_seen := false
 var reduce_motion := false   # Settings: no ascent scroll / sway
+var sessions := 0             # app launches (no interstitial in the very first one)
+var free_continue_day := -1   # NO ADS: one free continue a day
+var video_up := {}            # {"id": ability, "n": videos watched, "day": day of the last video level}
+var offers := {}              # offer id -> day it was last shown
 var review_asks := 0          # times the Play review sheet was requested
 var review_day := -9999       # day_number() of the last request
 var vibration := true
@@ -51,6 +55,8 @@ var _snapshot := {}
 
 func _ready() -> void:
 	load_data()
+	sessions += 1
+	save_data()
 
 
 func load_data() -> void:
@@ -79,6 +85,10 @@ func load_data() -> void:
 	starter_seen = bool(cfg.get_value("shop", "starter_seen", false))
 	review_asks = int(cfg.get_value("meta", "review_asks", 0))
 	reduce_motion = bool(cfg.get_value("settings", "reduce_motion", false))
+	sessions = int(cfg.get_value("meta", "sessions", 0))
+	free_continue_day = int(cfg.get_value("shop", "free_continue_day", -1))
+	video_up = cfg.get_value("player", "video_up", {})
+	offers = cfg.get_value("shop", "offers", {})
 	review_day = int(cfg.get_value("meta", "review_day", -9999))
 	daily_day = int(cfg.get_value("daily", "day", 0))
 	daily_last = str(cfg.get_value("daily", "last", ""))
@@ -121,6 +131,10 @@ func save_data() -> void:
 	cfg.set_value("shop", "starter_seen", starter_seen)
 	cfg.set_value("meta", "review_asks", review_asks)
 	cfg.set_value("settings", "reduce_motion", reduce_motion)
+	cfg.set_value("meta", "sessions", sessions)
+	cfg.set_value("shop", "free_continue_day", free_continue_day)
+	cfg.set_value("player", "video_up", video_up)
+	cfg.set_value("shop", "offers", offers)
 	cfg.set_value("meta", "review_day", review_day)
 	cfg.set_value("daily", "day", daily_day)
 	cfg.set_value("daily", "last", daily_last)
@@ -201,7 +215,9 @@ func recent_average() -> float:
 
 ## "supporter" includes every pack; "starter" includes NO ADS.
 func owns(product: String) -> bool:
-	if purchases.has(product) or purchases.has("supporter"):
+	if purchases.has(product):
+		return true
+	if purchases.has("supporter") and MonetizationConfig.SUPPORTER_INCLUDES.has(product):
 		return true
 	return product == "no_ads" and purchases.has("starter")
 
@@ -355,6 +371,49 @@ func buy_ability(id: String) -> bool:
 	return true
 
 
+# ------------------------------------------------------------------ ability levels by video
+
+## Ability the "watch videos" upgrade goes to: the lowest unlocked one at level 1 or 2.
+func video_target() -> String:
+	var best_id := ""
+	var best_lv := 99
+	for a in Upgrades.ABILITIES:
+		var id: String = a["id"]
+		var lv := ability(id)
+		if ability_unlocked(id) and lv >= 1 and lv < mini(int(a["max"]), MonetizationConfig.VIDEO_UPGRADE_ADS.size()) and lv < best_lv:
+			best_id = id
+			best_lv = lv
+	if video_up.get("id", "") != "" and video_up.get("id") != best_id and int(video_up.get("n", 0)) > 0:
+		return video_up["id"]   # keep the one in progress
+	return best_id
+
+
+func video_needed(id: String) -> int:
+	var lv := ability(id)
+	return MonetizationConfig.VIDEO_UPGRADE_ADS[lv] if lv < MonetizationConfig.VIDEO_UPGRADE_ADS.size() else 0
+
+
+## True if a video level can still be earned today.
+func video_open_today() -> bool:
+	return int(video_up.get("day", -1)) != day_number() and video_target() != ""
+
+
+## One video watched. Returns the ability upgraded when it completes the level, else "".
+func video_ad_watched() -> String:
+	var id := video_target()
+	if id == "" or not video_open_today():
+		return ""
+	var n := int(video_up.get("n", 0)) + 1 if video_up.get("id", "") == id else 1
+	if n >= video_needed(id):
+		abilities[id] = ability(id) + 1
+		video_up = {"id": "", "n": 0, "day": day_number()}
+		save_data()
+		return id
+	video_up = {"id": id, "n": n, "day": int(video_up.get("day", -1))}
+	save_data()
+	return ""
+
+
 ## Highest world the player may start in (HEADSTART), never above a world already passed.
 func headstart_max() -> int:
 	var cap: int = Upgrades.HEADSTART_WORLD[mini(ability("headstart"), Upgrades.HEADSTART_WORLD.size() - 1)]
@@ -501,6 +560,10 @@ func reset_all() -> void:
 	review_asks = 0
 	review_day = -9999
 	reduce_motion = false
+	sessions = 0
+	free_continue_day = -1
+	video_up = {}
+	offers = {}
 	stats = {}; achievements = []; top_scores = []
 	missions = {"day": -1, "list": [], "week": -1, "weekly": {}}
 	save_data()

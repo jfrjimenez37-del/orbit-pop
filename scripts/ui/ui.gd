@@ -21,6 +21,7 @@ signal daily_claim(doubled: bool)
 signal free_coins_pressed
 signal teleport_pressed
 signal share_pressed
+signal ability_video_pressed
 signal ranking_pressed
 signal language_changed
 signal pause_pressed
@@ -1109,8 +1110,17 @@ func refresh_abilities() -> void:
 				Sfx.play("select")
 				refresh_abilities())
 		y += 32
-	var tip := _label(_ab_list, L.t("AB_TIP"), 1, MUTED)
-	_center_label(tip, 164, 240)
+	# free level by watching videos (levels 1 -> 2 and 2 -> 3, one a day)
+	var vid := Save.video_target()
+	if vid != "" and Save.video_open_today():
+		var n := int(Save.video_up.get("n", 0)) if Save.video_up.get("id", "") == vid else 0
+		var vb := _button(_ab_list, "pink", "%s +1  %d/%d" % [L.t("AB_" + vid.to_upper()), n, Save.video_needed(vid)], "video", Vector2(140, 16))
+		vb.position = Vector2(12, 236)
+		vb.disabled = not Monetization.rewarded_ready()
+		vb.pressed.connect(func(): ability_video_pressed.emit())
+	else:
+		var tip := _label(_ab_list, L.t("AB_TIP") if vid == "" else L.t("VIDEO_TOMORROW"), 1, MUTED)
+		_center_label(tip, 164, 240)
 
 
 func show_abilities() -> void:
@@ -1181,8 +1191,9 @@ func refresh_shop() -> void:
 		for id in MonetizationConfig.CONSUMABLES:
 			var info2: Dictionary = MonetizationConfig.PRODUCT_INFO[id]
 			_shop_row(_shop_list, y, info2["icon"], L.t(info2["name"]), L.t(info2["desc"]), "yellow", Monetization.price(id), "", online, func(): buy_pressed.emit(id))
+			y += 28
 		var tip := _label(_shop_list, L.t("COINS_TIP"), 1, MUTED)
-		_center_label(tip, 164, 120)
+		_center_label(tip, 164, y + 4)
 	var mode := Monetization.store_mode
 	var st := _label(_shop_list, L.t("STORE_OFFLINE") if not online else (L.t("STORE_TEST") if mode == "test" else L.t("STORE_PLAY")), 1, MUTED)
 	_center_label(st, 164, 194)
