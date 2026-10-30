@@ -117,6 +117,14 @@ static func cross_maps() -> Array:
 static func _build_cross_maps() -> Array:
 	var out: Array = []
 	var W := Orbit.CROSS_WINDOW
+	# moving worlds are all circles: centers and radii once (same values pos/angle_of would get)
+	var fast := Orbit.moving()
+	var cen: Array = []
+	var rad: Array = []
+	if fast:
+		for k in Orbit.count():
+			cen.append(Orbit.center(k))
+			rad.append(Orbit.radius(k, 0.0))
 	for k in Orbit.count():
 		var m := [0, 0]
 		var maps: Array = []
@@ -130,7 +138,12 @@ static func _build_cross_maps() -> Array:
 				_set_range(m, ak, W + BW * 0.5)
 				for b in range(ceili((ak - W + BW * 0.5) / BW), floori((ak + W - BW * 0.5) / BW) + 1):
 					var bb := posmod(b, N)
-					var a2 := Orbit.angle_of(o, Orbit.pos(k, bb * BW))
+					var a2: float
+					if fast:
+						var ab := bb * BW
+						a2 = (cen[k] + Vector2(cos(ab), sin(ab)) * float(rad[k]) - cen[o]).angle()
+					else:
+						a2 = Orbit.angle_of(o, Orbit.pos(k, bb * BW))
 					maps.append([bb, o, bucket(a2), int(c["sign"])])
 		out.append([m, maps])
 	return out
