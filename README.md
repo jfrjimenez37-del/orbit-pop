@@ -278,8 +278,18 @@ INTERSTELLAR (`Stages.LAYERS`). AJUSTES ▸ MOVIMIENTO lo reduce
 (sin oscilación ni ascenso) para quien se maree.
 
 Auditoría 1.0.11 (`tests/audit_react.gd`, bot humano con 0,25 s de reacción, 5 partidas × 40 s por
-mundo): **0 muertes imposibles en los 16 mundos**; 5 muertes tardías (el bot vio el peligro pero no
-reaccionó a tiempo) en 3095 s, 0,10 muertes/min. El bot perfecto sobrevive 45 s en los 16.
+mundo): **0 muertes imposibles en los 16 mundos**; 3 muertes tardías (el bot vio el peligro pero no
+reaccionó a tiempo) en 3180 s, 0,06 muertes/min, 0,6 patrones/s. El bot perfecto sobrevive 45 s en los 16.
+
+**Rendimiento (teléfonos):** el validador es lo más caro del juego. Para que no dé tirones:
+las dos comprobaciones comparten las zonas de peligro de cada paso; los mapas de cruces y la parte
+de los obstáculos ya en pantalla se calculan una vez por aparición; en mundos móviles la geometría
+y los cruces solo se recalculan cuando hace falta; y el director prueba un candidato por fotograma
+(la comprobación de reacción va en el fotograma siguiente, anclada al estado del candidato y con la
+ventana de reacción alargada lo que tardó). Resultados idénticos a antes en 1280 casos de prueba.
+Peor fotograma medido en el servidor: de 436 ms a 67 ms (mundos móviles), de 140 a 33 ms (4 planetas),
+≤ 8 ms con un planeta. En el teléfono, AJUSTES ▸ toca 5 veces la versión ▸ DIAG muestra tras cada
+partida "perf: worst frame … ms" para medirlo de verdad.
 
 Al cambiar de mundo se espera a que el campo quede libre y la órbita se transforma en 1,3 s.
 En NOCHE, tocar dentro de la ventana de una estrella de cruce (±0,16 rad) **cambia de órbita**
