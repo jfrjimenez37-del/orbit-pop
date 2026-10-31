@@ -10,7 +10,7 @@ const LEADERBOARDS := {
 	"NORTH_AMERICA": "CgkI6KO05vMIEAIQBA",
 	"ASIA_PACIFIC": "CgkI6KO05vMIEAIQBg",
 	"AFRICA_ME": "CgkI6KO05vMIEAIQBw",
-	"DAILY": "",   # daily challenge board: create it in Play Console and paste its id here
+	"DAILY": "CgkI6KO05vMIEAIQKg",   # daily challenge (its TODAY view is used)
 }
 
 const ACHIEVEMENTS := {

@@ -308,7 +308,7 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
   Pacífico de EE. UU., donde Google reinicia los rankings diarios), sin habilidades. 3 intentos
   gratis y hasta 2 más viendo un vídeo; cuenta el mejor. El primer intento del día da +30 monedas.
   La mejor marca va al ranking "DAILY" de Play Games (vista HOY, también en RANKING ▸ HOY).
-  **Falta crear ese ranking en Play Console y pegar su id en `play_games_config.gd`.**
+  Ranking "Daily Challenge" creado en Play Console (id en `play_games_config.gd`).
 - **Ranking de amigos:** RANKING ▸ AMIGOS (el ranking mundial filtrado a amigos de Play Games;
   Google pide una vez permiso para ver la lista de amigos).
 - **Duelos (por turnos, sin servidores, `scripts/game/duel.gd`):** en la misma ventana RETOS.
