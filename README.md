@@ -286,6 +286,8 @@ INTERSTELLAR (`Stages.LAYERS`). AJUSTES ▸ MOVIMIENTO lo reduce
 Auditoría 1.0.11 (`tests/audit_react.gd`, bot humano con 0,25 s de reacción, 5 partidas × 40 s por
 mundo): **0 muertes imposibles en los 16 mundos**; 3 muertes tardías (el bot vio el peligro pero no
 reaccionó a tiempo) en 3180 s, 0,06 muertes/min, 0,6 patrones/s. El bot perfecto sobrevive 45 s en los 16.
+Tras la dificultad progresiva (cada patrón muestra todas sus dianas desde que aparece), otra
+pasada de 3 × 40 s por mundo: 0 imposibles, 1 tardía en 1886 s.
 
 **Rendimiento (teléfonos):** el validador es lo más caro del juego. Para que no dé tirones:
 las dos comprobaciones comparten las zonas de peligro de cada paso; los mapas de cruces y la parte
