@@ -75,9 +75,15 @@ tests/                    suite headless, bot y capturas
 - **Anti-campeo:** los meteoritos apuntan a la posición actual o prevista del jugador y las minas
   aparecen cerca: quedarse temblando en un sitio no es seguro.
 - **Puntos:** +1 por peligro superado, +2 por esquiva cercana ("CLOSE!"), +2 por burbuja ("POP!").
-- **Dificultad:** velocidad orbital 2,45→3,45 rad/s, meteoritos más rápidos, avisos más cortos y
-  patrones nuevos (pinza, minas, barreras, puerta, lluvia, barrera giratoria, jaula, estrella móvil)
-  que se desbloquean entre 0 y 48 s. Se desplaza ±segundos según la media de las últimas 5 partidas.
+- **Dificultad progresiva:** arranca suave y aprieta poco a poco (curva en S que llega al máximo a
+  los ~110 s efectivos). Velocidad orbital 2,30→3,45 rad/s; al principio los meteoritos avisan
+  0,55 s y van a 85 px/s, las minas y barreras avisan 1,2 s y hay 0,9 s de respiro entre patrones;
+  al final, 0,16 s, 170 px/s, 0,58 s y 0,08 s. Los tipos de obstáculo llegan de uno en uno (pinza 8 s,
+  minas 13, rayos 19, puertas 26, lluvia 34, barrera giratoria 44, jaula 54, estrella móvil 64) y los
+  de cada mundo, además, no antes de cierto tiempo de partida (ondas 14 s, sierras 24…), para que
+  los mundos cercanos no sean un muro. Se desplaza de −10 a +16 s según la media de las últimas 5
+  partidas. `tests/difficulty_sim.gd` mide partidas reales con bots de tres niveles: un jugador
+  nuevo pasó de 8,8 s a ~26 s de partida típica (moría antes de 10 s el 60 % de las veces; ahora el 23 %).
 - **Skins (29, por rareza):** el color de la barra de la carta y la etiqueta indican la rareza.
   | Rareza | Skins y cómo se consiguen |
   |---|---|

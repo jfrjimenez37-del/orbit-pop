@@ -23,21 +23,24 @@ var _attempt := 0          # attempts already tried for the pattern being placed
 var _pending := {}
 
 # name, unlock time (effective seconds), base weight
+## New kinds arrive one by one, a few seconds apart, so the first minute stays learnable.
 const PATTERNS := [
 	["lead", 0.0, 3.0],
-	["here", 2.0, 1.5],
-	["pinch", 5.0, 2.0],
-	["mine", 8.0, 2.5],
-	["spoke", 12.0, 2.5],
-	["gate", 18.0, 2.0],
-	["rain", 24.0, 2.0],
-	["sweep", 32.0, 1.6],
-	["cage", 40.0, 1.6],
-	["drift", 48.0, 1.6],
+	["here", 3.0, 1.5],
+	["pinch", 8.0, 2.0],
+	["mine", 13.0, 2.5],
+	["spoke", 19.0, 2.5],
+	["gate", 26.0, 2.0],
+	["rain", 34.0, 2.0],
+	["sweep", 44.0, 1.6],
+	["cage", 54.0, 1.6],
+	["drift", 64.0, 1.6],
 ]
-## Obstacles unlocked by reaching a world (stage index, base weight).
-const STAGE_PATTERNS := [["pulse", 1, 2.2], ["saw", 2, 2.0], ["swap", 4, 2.6], ["cross_rain", 4, 1.6],
-	["link", 5, 2.4], ["comet", 5, 2.4], ["comet_rain", 7, 1.8], ["link_cage", 7, 1.6]]
+## Obstacles unlocked by reaching a world (stage index, base weight, not before this effective
+## time: with the worlds close together, a new world must not mean a wall of new obstacles).
+const STAGE_PATTERNS := [["pulse", 1, 2.2, 14.0], ["saw", 2, 2.0, 24.0], ["swap", 4, 2.6, 30.0],
+	["cross_rain", 4, 1.6, 40.0], ["link", 5, 2.4, 34.0], ["comet", 5, 2.4, 34.0], ["comet_rain", 7, 1.8, 48.0],
+	["link_cage", 7, 1.6, 52.0]]
 const MULTI_PLANET := ["link", "comet_rain", "link_cage"]
 ## Too costly to check against moving geometry: left out of the moving worlds.
 const NOT_WHILE_MOVING := ["pulse", "link", "link_cage"]
@@ -53,8 +56,8 @@ const ATTEMPTS_PER_FRAME := 1   # a failed candidate only delays the spawn by on
 
 func reset(seed_value: int, recent_avg: float) -> void:
 	rng.seed = seed_value
-	offset = clampf((recent_avg - 12.0) * 0.5, -6.0, 12.0)
-	next_t = 1.1
+	offset = clampf((recent_avg - 12.0) * 0.5, -10.0, 16.0)
+	next_t = 1.4
 	next_bubble = rng.randf_range(4.0, 6.0)
 	next_coin = rng.randf_range(2.0, 3.0)
 	next_big = rng.randf_range(COIN_BIG_EVERY.x * 0.6, COIN_BIG_EVERY.y * 0.6)
@@ -71,14 +74,18 @@ func eff_time(t: float) -> float:
 	return maxf(0.0, t + offset)
 
 
-## 0..1 difficulty curve; reaches max at ~2 minutes effective.
+## 0..1 difficulty curve: a gentle start, the steepest part around the first minute, full
+## difficulty after LEVEL_TIME effective seconds (smoothstep).
+const LEVEL_TIME := 110.0
+
+
 func level(t: float) -> float:
-	var x := clampf(eff_time(t) / 95.0, 0.0, 1.0)
-	return 1.0 - pow(1.0 - x, 1.6)
+	var x := clampf(eff_time(t) / LEVEL_TIME, 0.0, 1.0)
+	return x * x * (3.0 - 2.0 * x)
 
 
 func omega(t: float) -> float:
-	return lerpf(2.45, 3.45, level(t))
+	return lerpf(2.3, 3.45, level(t))
 
 
 ## d omega / dt (rad/s^2), used by the fairness check for long patterns.
@@ -135,7 +142,7 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 			_attempt = 0
 			spawned_first = true
 			committed += 1
-			next_t = t + float(res["length"]) + lerpf(0.55, 0.08, level(t))
+			next_t = t + float(res["length"]) + lerpf(0.9, 0.08, level(t))
 			out["hazards"] = hs
 			return out
 		rejected += 1
@@ -169,7 +176,7 @@ func _finish_pending(t: float, out: Dictionary) -> Dictionary:
 		_attempt = 0
 		spawned_first = true
 		committed += 1
-		next_t = float(p["t"]) + float(p["res"]["length"]) + lerpf(0.55, 0.08, level(p["t"]))
+		next_t = float(p["t"]) + float(p["res"]["length"]) + lerpf(0.9, 0.08, level(p["t"]))
 		out["hazards"] = hs
 		return out
 	rejected += 1
@@ -209,6 +216,8 @@ func _pick(t: float) -> String:
 		var needs_planets: bool = sp[0] in MULTI_PLANET
 		if Orbit.moving() and sp[0] in NOT_WHILE_MOVING:
 			continue
+		if te < float(sp[3]):
+			continue
 		if stage >= sp[1] and (not needs_two or Orbit.count() >= 2) and (not needs_planets or Orbit.planets().size() >= 2):
 			pool.append([sp[0], sp[2]])
 			total += sp[2]
@@ -224,8 +233,8 @@ var _home := 0   # orbit (planet) the pattern being built belongs to
 
 
 func _meteor(theta: float, t_spawn: float, x: float) -> Meteor:
-	var pre := lerpf(0.34, 0.16, x)
-	var v := lerpf(105.0, 170.0, x)
+	var pre := lerpf(0.55, 0.16, x)
+	var v := lerpf(85.0, 170.0, x)
 	return Meteor.new().setup(theta, t_spawn, pre, v, _home)
 
 
@@ -239,13 +248,13 @@ func _other_planets(k: int) -> Array:
 
 
 func _hit_time(x: float) -> float:
-	return Meteor.time_to_orbit(lerpf(0.34, 0.16, x), lerpf(105.0, 170.0, x), Orbit.R)
+	return Meteor.time_to_orbit(lerpf(0.55, 0.16, x), lerpf(85.0, 170.0, x), Orbit.R)
 
 
 func _build(name: String, t: float, a: float, d: int, w: float, x: float, attempt: int, k := 0) -> Dictionary:
 	var hs: Array = []
 	_home = k
-	var warn := lerpf(0.9, 0.58, x)
+	var warn := lerpf(1.2, 0.58, x)
 	var th := _hit_time(x)
 	var j := rng.randf_range(-0.12, 0.12)
 	var length := 1.0
