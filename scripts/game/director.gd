@@ -379,6 +379,12 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 				var target2 := Orbit.pos(kk, rng.randf_range(-PI, PI)) if kk != k else Orbit.pos(k, a + d * w * (tt2 + i * 0.55))
 				hs.append(Comet.new().setup(target2, rng.randf_range(-PI, PI), ti, lerpf(0.5, 0.3, x), lerpf(140.0, 190.0, x)))
 			length = 1.9
+	# every part of a pattern shows from the moment it appears (the fairness check assumes the
+	# player sees the whole pattern after their reaction time): later meteors and comets wait
+	# with their warning on screen and still launch at the same moment
+	for h in hs:
+		if h.t_spawn > t and "t_launch" in h:
+			h.t_spawn = t
 	# later attempts: simplify (drop extras) to make acceptance easier
 	if attempt >= 3 and hs.size() > 1:
 		for q in range(1, hs.size()):
