@@ -24,6 +24,7 @@ var best_at_start := 0
 ## (score to beat, -1 = none yet), name, code}. Same seed for everyone, no abilities, no continue.
 var duel := {}
 var world_at_start := 1
+var _pending_link := ""      # a duel link that arrived during a run (shown back in the menu)
 var _perf_worst := 0.0       # slowest game frame of this run (ms), logged to DIAG at game over
 var _perf_slow := 0          # frames over 33 ms
 var duel_lead := false
@@ -84,6 +85,9 @@ func _ready() -> void:
 			start_duel({}))
 	ui.duel_accept_pressed.connect(start_duel)
 	ui.duel_send_pressed.connect(_send_duel)
+	Progress.linker.duel_link.connect(func(code):
+		_pending_link = code
+		_show_pending_link())
 	ui.daily_pressed.connect(func():
 		if state == S.OVER:   # another try from the game over: same ad pacing as RETRY
 			Monetization.between_runs(start_daily)
@@ -161,7 +165,9 @@ func go_menu() -> void:
 	_layout()
 	bg.reset_climb()
 	ui.show_menu()
-	if Save.daily_available():
+	if _pending_link != "":
+		_show_pending_link.call_deferred()
+	elif Save.daily_available():
 		ui.show_daily()
 	elif Monetization.should_offer_starter():
 		Save.starter_seen = true
@@ -274,13 +280,21 @@ func _finish_duel() -> Dictionary:
 	return out
 
 
+## A friend's duel link opens the challenge in the menu (never in the middle of a run).
+func _show_pending_link() -> void:
+	if _pending_link == "" or state != S.MENU:
+		return
+	ui.offer_duel_text(_pending_link)
+	_pending_link = ""
+
+
 ## Shares my score on this run: a new challenge, or my answer to a friend's duel (won or tied).
 func _send_duel() -> void:
 	var last: Dictionary = duel.get("last", {})
 	if last.is_empty():
 		return
 	var key := "DUEL_SHARE" if last["mode"] == "new" else "DUEL_SHARE_BACK"
-	var text := L.t(key, [int(last["mine"]), str(last["code"])]) + "\n" + Progress.STORE_URL
+	var text := L.t(key, [int(last["mine"]), Linker.duel_url(str(last["code"]))])
 	if not Progress.sharer.share_score(text, null):
 		ui.toast(L.t("COPIED"), Color8(120, 255, 200))
 
@@ -485,6 +499,7 @@ func start_run() -> void:
 		Orbit.set_shape(Stages.LIST[stage]["orbits"], true, Stages.motion(stage))
 		_apply_world(stage, false)
 		director.stage = stage
+		director.world = world_no
 	_layer = Stages.layer(score)
 	player.reset(-PI * 0.5)
 	player.happy = false
@@ -1002,6 +1017,7 @@ func _update_world(dt: float) -> void:
 			if player.orbit >= Orbit.count():
 				player.orbit = 0
 			director.stage = stage
+			director.world = world_no
 			director.hold = false
 			director.next_t = gt + 0.6
 			director.next_bubble = gt + 2.0

@@ -76,7 +76,9 @@ tests/                    suite headless, bot y capturas
   aparecen cerca: quedarse temblando en un sitio no es seguro.
 - **Puntos:** +1 por peligro superado, +2 por esquiva cercana ("CLOSE!"), +2 por burbuja ("POP!").
 - **Dificultad progresiva:** arranca suave y aprieta poco a poco (curva en S que llega al máximo a
-  los ~110 s efectivos). Velocidad orbital 2,30→3,45 rad/s; al principio los meteoritos avisan
+  los ~170 s efectivos) y **cada mundo tiene un tope** (`Director.world_cap`: mundo 1 0,30, mundo 5
+  0,50, mundo 10 0,75, del 15 en adelante 1), así que llegar pronto a un mundo no es ir a toda
+  velocidad en él. Velocidad orbital 2,30→3,30 rad/s; al principio los meteoritos avisan
   0,55 s y van a 85 px/s, las minas y barreras avisan 1,2 s y hay 0,9 s de respiro entre patrones;
   al final, 0,16 s, 170 px/s, 0,58 s y 0,08 s. Los tipos de obstáculo llegan de uno en uno (pinza 8 s,
   minas 13, rayos 19, puertas 26, lluvia 34, barrera giratoria 44, jaula 54, estrella móvil 64) y los
@@ -320,6 +322,14 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
 - **Ranking de amigos:** RANKING ▸ AMIGOS (el ranking mundial filtrado a amigos de Play Games;
   Google pide una vez permiso para ver la lista de amigos).
 - **Duelos (por turnos, sin servidores, `scripts/game/duel.gd`):** en la misma ventana RETOS.
+  **Enlace de duelo (1.0.12):** el mensaje lleva `https://jfrjimenez37-del.github.io/duel/?c=CÓDIGO`.
+  Con el plugin "Deeplink" de Cengiz (AssetLib, carpeta `addons/DeeplinkPlugin`, configurado por
+  `addons/DeeplinkPlugin/export.cfg`) el enlace abre el juego directamente con el reto
+  (`scripts/services/linker.gd`; si llega en mitad de una partida, se muestra al volver al menú).
+  Sin el juego se abre la página `site/duel/` (GitHub Pages), que verifica el código con la misma
+  comprobación que el juego y ofrece Play Store, el acceso de testers y el código para PEGAR.
+  Para que Android abra el juego sin preguntar, `site/.well-known/assetlinks.json` debe llevar la
+  huella SHA-256 de la clave de firma de apps de Play Console.
   NUEVO DUELO juega una partida y crea un código `ORBIT-XXXXXXXXXXXX-NOMBRE` con la semilla, la
   puntuación y el nombre (de Play Games). RETAR lo comparte por WhatsApp con el enlace de Play Store.
   El amigo copia el mensaje y pulsa DUELO ▸ PEGAR CÓDIGO: juega **la misma partida** (misma semilla

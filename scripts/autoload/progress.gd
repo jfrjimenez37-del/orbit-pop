@@ -78,6 +78,7 @@ var games: Node     # Play Games adapter
 var sharer: Node
 var reviewer: Reviewer
 var notifier: Notifier
+var linker: Linker
 var pending: Array = []   # messages to show once the run is over
 var _run := {}
 
@@ -93,6 +94,9 @@ func _ready() -> void:
 	notifier = Notifier.new()
 	add_child(notifier)
 	notifier.start()
+	linker = Linker.new()
+	add_child(linker)
+	linker.start()
 	games.cloud_loaded.connect(_on_cloud)
 	games.signed_in_changed.connect(func(ok): if ok: _sync_all())
 	games.start()

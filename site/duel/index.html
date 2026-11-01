@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ORBIT POP · Duel</title>
+<meta name="description" content="Someone challenged you in ORBIT POP. Same run, no powers, one try.">
+<link rel="icon" href="../icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Rubik:wght@400;500&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* A duel invitation card: who dares you, the score to beat, then the ways in. */
+:root {
+  --bg: #1d1747; --card: #fffaf0; --ink: #241c4f; --muted: #625a8c; --line: #dcd3f2;
+  --coin: #f2b411; --pink: #e8488f; --sky: #78afff;
+  --display: "Pixelify Sans", "Courier New", monospace;
+  --body: "Rubik", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  min-height: 100vh; background: radial-gradient(circle at 50% 20%, #3b2f8a 0, var(--bg) 60%); color: var(--ink);
+  font-family: var(--body); font-size: 16px; line-height: 1.5; display: grid; place-items: center;
+  padding: max(24px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.card { width: min(420px, 100%); background: var(--card); border: 3px solid var(--ink); border-radius: 18px; padding: 22px; display: grid; gap: 14px; box-shadow: 0 6px 0 var(--ink); }
+.top { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 1.15rem; }
+.top img { width: 40px; height: 40px; border-radius: 10px; image-rendering: pixelated; }
+h1 { font-family: var(--display); margin: 0; font-size: 2.3rem; line-height: 1; color: var(--pink); overflow-wrap: anywhere; }
+.dares { font-family: var(--display); font-size: 1.3rem; margin: 0; }
+.beat { font-family: var(--display); font-size: 2.6rem; margin: 0; line-height: 1; }
+.rules { color: var(--muted); margin: 0; font-size: .95rem; }
+.btn { display: block; text-align: center; text-decoration: none; font-family: var(--display); font-size: 1.2rem; padding: 12px 14px; border-radius: 12px; border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); color: var(--ink); background: var(--coin); }
+.btn.alt { background: #fff; font-size: 1.05rem; }
+.btn:focus-visible, button:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
+.box { border-top: 1px dashed var(--line); padding-top: 12px; display: grid; gap: 8px; font-size: .92rem; color: var(--muted); }
+.box b { color: var(--ink); }
+ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.code { font-family: var(--mono); font-size: .9rem; background: #f1ecff; border-radius: 8px; padding: 8px; word-break: break-all; user-select: all; color: var(--ink); }
+button { font-family: var(--display); font-size: 1rem; padding: 8px 12px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer; justify-self: start; }
+a { color: #2f5fd0; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="top"><img src="../icon.png" alt="">ORBIT POP</div>
+
+  <section id="duel" hidden>
+    <h1 id="name">PLAYER</h1>
+    <p class="dares" data-t="dares">challenges you!</p>
+    <p class="beat" id="beat">BEAT 0</p>
+    <p class="rules" data-t="rules">Same run for both, no powers, one try. Highest score wins coins.</p>
+  </section>
+  <section id="bad" hidden>
+    <h1 data-t="bad_t">Duel not found</h1>
+    <p class="rules" data-t="bad">This link has no valid duel. Ask your friend to send it again.</p>
+  </section>
+
+  <a class="btn" id="open" href="#" data-t="open" hidden>Open in ORBIT POP</a>
+  <a class="btn alt" id="store" href="https://play.google.com/store/apps/details?id=com.barriogames.orbitpop" data-t="store">Get it free on Google Play</a>
+
+  <div class="box">
+    <span><b data-t="test_t">In testing?</b> <span data-t="test">If Play Store doesn't show it yet:</span></span>
+    <ol>
+      <li><a href="https://groups.google.com/g/orbitpop-testers" data-t="s1">Ask to join the testers</a></li>
+      <li><a href="https://play.google.com/apps/testing/com.barriogames.orbitpop" data-t="s2">Join the test</a></li>
+    </ol>
+  </div>
+  <div class="box" id="manual" hidden>
+    <span data-t="manual">Already have the game and it didn't open? Copy this code, then open CHALLENGES ▸ PASTE.</span>
+    <span class="code" id="code"></span>
+    <button type="button" id="copy" data-t="copy">Copy code</button>
+  </div>
+</main>
+<script>
+// Same code format as scripts/game/duel.gd: ORBIT-<12 base32>-<NAME>, 2+22+14+22 bits, FNV-1a check.
+const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+const SALT = "orbitpop-duel-v1";
+function fnv(text) {
+  let h = 2166136261;
+  for (const b of new TextEncoder().encode(text)) h = Math.imul((h ^ b) >>> 0, 16777619) >>> 0;
+  return h;
+}
+function decode(text) {
+  const m = /ORBIT-([0-9A-Z]{12})-([0-9A-Z]{1,10})/.exec(String(text).toUpperCase());
+  if (!m) return null;
+  let v = 0n;
+  for (const ch of m[1]) { const d = ALPHABET.indexOf(ch); if (d < 0) return null; v = (v << 5n) | BigInt(d); }
+  const check = Number(v & ((1n << 22n) - 1n)); v >>= 22n;
+  const score = Number(v & ((1n << 14n) - 1n)); v >>= 14n;
+  const seed = Number(v & ((1n << 22n) - 1n)); v >>= 22n;
+  const name = m[2];
+  if (v !== 1n || check !== (fnv(`${SALT}|${seed}|${score}|${name}`) & ((1 << 22) - 1))) return null;
+  return { seed, score, name, code: m[0] };
+}
+const T = {
+  en: { dares: "challenges you!", beat: "BEAT %d", rules: "Same run for both, no powers, one try. Highest score wins coins.",
+    bad_t: "Duel not found", bad: "This link has no valid duel. Ask your friend to send it again.", open: "Open in ORBIT POP",
+    store: "Get it free on Google Play", test_t: "In testing?", test: "If Play Store doesn't show it yet:", s1: "Ask to join the testers",
+    s2: "Join the test", manual: "Already have the game and it didn't open? Copy this code, then open CHALLENGES ▸ PASTE.",
+    copy: "Copy code", copied: "Copied!" },
+  es: { dares: "te reta a un duelo", beat: "SUPERA %d", rules: "La misma partida para los dos, sin poderes y un solo intento. El que más puntos haga gana monedas.",
+    bad_t: "Duelo no encontrado", bad: "Este enlace no tiene un duelo válido. Pídele a tu amigo que te lo mande otra vez.", open: "Abrir en ORBIT POP",
+    store: "Descárgalo gratis en Google Play", test_t: "¿Aún en prueba?", test: "Si Play Store todavía no te lo muestra:", s1: "Pide entrar al grupo de testers",
+    s2: "Únete a la prueba", manual: "¿Ya tienes el juego y no se abrió? Copia este código y abre RETOS ▸ PEGAR.",
+    copy: "Copiar código", copied: "¡Copiado!" },
+  pt: { dares: "desafia-te para um duelo", beat: "SUPERA %d", rules: "A mesma partida para os dois, sem poderes e uma só tentativa. Quem fizer mais pontos ganha moedas.",
+    bad_t: "Duelo não encontrado", bad: "Este link não tem um duelo válido. Pede ao teu amigo para o enviar outra vez.", open: "Abrir no ORBIT POP",
+    store: "Grátis no Google Play", test_t: "Ainda em teste?", test: "Se a Play Store ainda não o mostra:", s1: "Pede para entrar no grupo de testers",
+    s2: "Entra no teste", manual: "Já tens o jogo e não abriu? Copia este código e abre DESAFIOS ▸ COLAR.",
+    copy: "Copiar código", copied: "Copiado!" },
+};
+const lang = (navigator.language || "en").slice(0, 2);
+const t = T[lang] || T.en;
+document.documentElement.lang = T[lang] ? lang : "en";
+document.querySelectorAll("[data-t]").forEach(el => { if (t[el.dataset.t]) el.textContent = t[el.dataset.t]; });
+const d = decode(new URLSearchParams(location.search).get("c") || location.href);
+if (d) {
+  document.getElementById("duel").hidden = false;
+  document.getElementById("name").textContent = d.name;
+  document.getElementById("beat").textContent = t.beat.replace("%d", d.score);
+  document.title = `${d.name} · ORBIT POP`;
+  const play = "https://play.google.com/store/apps/details?id=com.barriogames.orbitpop";
+  const open = document.getElementById("open");
+  open.href = `intent://${location.host}${location.pathname}?c=${encodeURIComponent(d.code)}#Intent;scheme=https;package=com.barriogames.orbitpop;S.browser_fallback_url=${encodeURIComponent(play)};end`;
+  open.hidden = !/Android/i.test(navigator.userAgent);
+  document.getElementById("manual").hidden = false;
+  document.getElementById("code").textContent = d.code;
+  document.getElementById("copy").addEventListener("click", function () {
+    const b = this;
+    navigator.clipboard.writeText(d.code).then(() => { b.textContent = t.copied; }, () => {
+      const r = document.createRange(); r.selectNodeContents(document.getElementById("code"));
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    });
+  });
+} else {
+  document.getElementById("bad").hidden = false;
+}
+</script>
+</body>
+</html>

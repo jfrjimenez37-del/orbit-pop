@@ -273,11 +273,19 @@ func test_difficulty() -> void:
 			mono = false
 		prev = w
 	ok(mono, "omega never decreases")
-	ok(absf(d.level(0.0)) < 0.001 and d.level(400.0) > 0.999, "level spans 0..1")
-	ok(d.omega(400.0) <= 3.46, "speed capped")
+	ok(absf(d.level(0.0)) < 0.001 and d.level(400.0) <= Director.world_cap(1) + 1e-6, "world 1 never goes past its cap")
+	d.world = 15
+	ok(d.level(400.0) > 0.999, "level spans 0..1 (from world 15)")
+	ok(d.omega(400.0) <= 3.31, "speed capped")
+	ok(Director.world_cap(5) <= 0.5 + 1e-6 and Director.world_cap(1) < Director.world_cap(5) and Director.world_cap(20) == 1.0,
+		"each world allows a bit more difficulty (world 5: %.2f)" % Director.world_cap(5))
+	var w5 := Director.new(); w5.reset(1, 60.0); w5.world = 5
+	ok(w5.level(90.0) <= 0.5 + 1e-6, "a strong player reaching world 5 early is not at full speed there")
 	var base := Director.new(); base.reset(1, 12.0)
 	var easy := Director.new(); easy.reset(1, 2.0)
 	var hard := Director.new(); hard.reset(1, 60.0)
+	for dd in [base, easy, hard]:
+		dd.world = 15
 	ok(easy.level(20.0) < base.level(20.0) and hard.level(20.0) > base.level(20.0), "adaptive offset works")
 
 
@@ -1089,6 +1097,13 @@ func test_duels(save) -> void:
 	ok(Duel.decode(code.replace("JOSEMARIA", "JOSE")).is_empty(), "edited name: code rejected")
 	ok(Duel.decode("no code here").is_empty() and Duel.clean_name("") == "PLAYER", "no code / empty name")
 	ok(Duel.outcome(10, 9) == "win" and Duel.outcome(9, 9) == "tie" and Duel.outcome(8, 9) == "lose", "duel outcome")
+	# duel links: the shared message carries a link that opens the game (or the web page)
+	var link := Linker.duel_url(code)
+	ok(link.begins_with("https://" + Linker.HOST + "/duel/?c=ORBIT-") and Linker.code_in(link) == code, "duel link carries the code (%s)" % link)
+	ok(Linker.code_in("https://example.com/duel/?c=" + code) == "" and Linker.code_in(Linker.HOST + "/duel/?c=nothing") == "", "only our duel links count")
+	ok(Linker.url_text({"scheme": "https", "host": Linker.HOST, "path": "/duel/", "query": "c=" + code}) == link, "link rebuilt from the plugin's parts")
+	var l10 = get_root().get_node("L")
+	ok(l10.t("DUEL_SHARE", [142, link]).contains(link) and l10.t("DUEL_SHARE_BACK", [150, link]).contains(link), "the duel message has the link")
 	# rewards: nobody loses coins; a few paid duels a day
 	var c0: int = save.coins
 	ok(save.duel_finished("win") == Duel.REWARD_WIN and save.duel_finished("lose") == Duel.REWARD_LOSS and save.duel_finished("tie") == Duel.REWARD_TIE, "win / lose / tie pay")

@@ -1762,7 +1762,12 @@ func show_duel() -> void:
 
 
 func _paste_duel() -> void:
-	var d := Duel.decode(DisplayServer.clipboard_get())
+	offer_duel_text(DisplayServer.clipboard_get())
+
+
+## A duel from pasted text or a duel link: checks it and shows the challenge.
+func offer_duel_text(text: String) -> void:
+	var d := Duel.decode(text)
 	if d.is_empty():
 		toast(L.t("DUEL_NONE"), Color8(255, 150, 160))
 	elif Save.duel_mine(d):

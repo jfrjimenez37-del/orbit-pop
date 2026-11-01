@@ -15,6 +15,7 @@ var spawned_first := false
 var bubble_rate := 1.0     # BUBBLE RUSH boost: 2.0 = twice as many bubbles
 var hold := false          # world change in progress: no new spawns
 var stage := 0             # current Stages index (unlocks obstacles)
+var world := 1             # world number shown to the player (keeps growing after the worlds loop)
 var human_check := true    # require human timing slack when committing (off only for A/B audits)
 var react_check := true    # require a reaction-time window before the first needed tap (A/B audits)
 var _attempt := 0          # attempts already tried for the pattern being placed (spread over frames)
@@ -68,24 +69,31 @@ func reset(seed_value: int, recent_avg: float) -> void:
 	_drop_pending()
 	hold = false
 	stage = 0
+	world = 1
 
 
 func eff_time(t: float) -> float:
 	return maxf(0.0, t + offset)
 
 
-## 0..1 difficulty curve: a gentle start, the steepest part around the first minute, full
-## difficulty after LEVEL_TIME effective seconds (smoothstep).
-const LEVEL_TIME := 110.0
+## 0..1 difficulty curve: a gentle start, the steepest part in the second minute, full
+## difficulty after LEVEL_TIME effective seconds (smoothstep), never above the world's cap.
+const LEVEL_TIME := 170.0
+
+
+## Highest difficulty a world allows: reaching a world early is not full speed there
+## (world 1: 0.30, world 5: 0.50, world 10: 0.75, world 15 and later: 1).
+static func world_cap(n: int) -> float:
+	return clampf(0.30 + 0.05 * (n - 1), 0.0, 1.0)
 
 
 func level(t: float) -> float:
 	var x := clampf(eff_time(t) / LEVEL_TIME, 0.0, 1.0)
-	return x * x * (3.0 - 2.0 * x)
+	return minf(x * x * (3.0 - 2.0 * x), world_cap(maxi(world, stage + 1)))
 
 
 func omega(t: float) -> float:
-	return lerpf(2.3, 3.45, level(t))
+	return lerpf(2.3, 3.3, level(t))
 
 
 ## d omega / dt (rad/s^2), used by the fairness check for long patterns.
