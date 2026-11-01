@@ -70,7 +70,7 @@ func _initialize() -> void:
 	sv = get_root().get_node("Save")
 	sv.path = "user://promo_epic.cfg"
 	sv.reset_all()
-	sv.best = 412; sv.games = 60; sv.coins = 2350; sv.level = 18; sv.sessions = 9
+	sv.best = 2400; sv.games = 60; sv.coins = 2350; sv.level = 18; sv.sessions = 9
 	sv.daily_last = sv._day_string()
 	sv.starter_seen = true
 	sv.music = false
@@ -144,7 +144,7 @@ func _build_timeline() -> void:
 	_cap_at(38, 44, "how_high", low)
 	# duel
 	_at(bt(44), func(): _shot_dare(); _cam(1.0, false); _flash(0.8); _punch(0.2))
-	_cap_at(44, 48, "dare", 56.0)
+	_cap_at(44, 48, "dare", low)
 	_at(bt(48), func(): _shot_duel(); _cam(1.0, false); _flash(0.6); _punch(0.2))
 	_cap_at(48, 50, "beat", low)
 	_at(bt(50), func(): _duel_win(); _flash(0.9); _punch(0.3); _shake(3.0))
@@ -415,6 +415,8 @@ func _camera(t: float) -> void:
 	# keep the focus on screen, a bit above the middle (the captions are below)
 	var screen_at := Vector2(vw * 0.5, vh * 0.46) if follow else center
 	var off := screen_at - cam_focus * z
+	# never show past the edges of the scene
+	off = Vector2(clampf(off.x, vw - vw * z, 0.0), clampf(off.y, vh - vh * z, 0.0))
 	var s := shake_amp * exp(-(t - shake_t) * 7.0)
 	off += Vector2(randf_range(-1, 1), randf_range(-1, 1)) * s
 	get_root().canvas_transform = Transform2D(0.0, Vector2(z, z), 0.0, off)
@@ -453,9 +455,9 @@ func _captions(t: float) -> void:
 	if logo.visible:
 		var a2 := t - logo_t0
 		var k2 := clampf(a2 / 0.2, 0.0, 1.0)
-		var ls := lerpf(4.5, 2.6, 1.0 - pow(1.0 - k2, 3.0)) * (1.0 + 0.04 * exp(-beat_k * 10.0))
+		var ls := lerpf(2.4, 1.3, 1.0 - pow(1.0 - k2, 3.0)) * (1.0 + 0.04 * exp(-beat_k * 10.0))
 		logo.scale = Vector2(ls, ls)
-		logo.position = Vector2(vw * 0.5, 74.0)
+		logo.position = Vector2(vw * 0.5, 84.0)
 		logo.rotation = -0.2 * (1.0 - k2)
 
 

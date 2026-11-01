@@ -29,6 +29,29 @@ temporary `override.cfg` that must be deleted right after (it is in `.git/info/e
     ffmpeg -i /tmp/v.avi -c:v libx264 -preset slow -tune animation -crf 14 -pix_fmt yuv420p \
         -c:a aac -b:a 192k -movflags +faststart store/promo_planets.mp4
 
+## Epic video (`store/promo_epic.mp4`)
+
+33 s, 1080×1920, **60 fps**, music **"Spin Bonk Repeat"** (made by the developer with Gemini) plus
+the game's sounds. Cut to the beat (120 BPM): close-up hook (ONE TAP / TO FLIP) → the drop
+(FLIP! DODGE! JUMP! REPEAT!) → slow motion with a real near miss (TOO CLOSE?) → a world per bar
+(JUMP PLANETS · DODGE EVERYTHING · UP TO 4 PLANETS · THAT MOVE!) → the climb, a world every two
+beats (16 WORLDS · FROM THE CLOUDS... · ...TO DEEP SPACE! · HOW HIGH CAN YOU GO?) → a duel
+(YOUR FRIEND DARES YOU... · BEAT THEIR SCORE! · YOU WIN!) → 29 SKINS · 22 TRAILS → CAN YOU
+SURVIVE? → logo, PLAY FREE ON GOOGLE PLAY. Best for YouTube Shorts / TikTok / Reels and as the
+Play Store video.
+
+    python3 tools/gen_video_caps.py /tmp/epic/caps
+    (override.cfg as above)
+    xvfb-run -a -s "-screen 0 1200x2000x24" godot47 --path . --write-movie /tmp/epic/f/f.png \
+        --fixed-fps 60 --script tests/promo_epic.gd -- /tmp/epic/caps
+    rm override.cfg
+    ffmpeg -framerate 60 -i /tmp/epic/f/f%08d.png -i Spin_Bonk_Repeat.mp3 -i /tmp/epic/f/f.wav \
+        -filter_complex "[1:a]atrim=0:33,asetpts=PTS-STARTPTS,volume=-1.5dB,afade=t=out:st=31.2:d=1.8[m];[2:a]atrim=0:33,asetpts=PTS-STARTPTS,volume=-7dB[s];[m][s]amix=inputs=2:normalize=0,alimiter=limit=0.95[a]" \
+        -map 0:v -map "[a]" -t 33 -c:v libx264 -preset slow -tune animation -crf 14 -pix_fmt yuv420p \
+        -c:a aac -b:a 256k -movflags +faststart store/promo_epic.mp4
+
+Title: **ORBIT POP – One tap. 16 worlds. Can you survive?** (same description and hashtags).
+
 ## YouTube texts
 
 **Titles:**
