@@ -34,7 +34,29 @@ CAPS = {
     "survive": (["CAN YOU", "SURVIVE?"], 18, WHITE, RED),
     "free": (["PLAY FREE"], 18, WHITE, GOLD),
     "gplay": (["ON GOOGLE PLAY"], 12, WHITE, CYAN),
+    # social shorts
+    "can_beat": (["CAN YOU BEAT", "MY SCORE?"], 18, WHITE, GOLD),
+    "same_run": (["SAME OBSTACLES", "AS ME"], 12, WHITE, CYAN),
+    "no_powers": (["NO POWER-UPS", "JUST SKILL"], 12, WHITE, PINK),
+    "your_turn": (["YOUR TURN!"], 18, WHITE, GOLD),
+    "code": (["DUEL CODE IN", "THE COMMENTS!"], 12, WHITE, GOLD),
+    "wait": (["WAIT FOR IT..."], 12, WHITE, CYAN),
+    "reach16": (["CAN YOU REACH", "WORLD 16?"], 18, WHITE, GOLD),
+    "how_far": (["HOW FAR", "CAN YOU GO?"], 18, WHITE, GOLD),
+    "pick": (["PICK YOUR", "FAVORITE!"], 18, WHITE, PINK),
+    "comment_fav": (["COMMENT YOUR", "FAVORITE!"], 18, WHITE, GOLD),
+    "almost": (["ALMOST A", "NEW RECORD..."], 12, WHITE, GOLD),
+    "nooo": (["NOOOO!"], 24, WHITE, RED),
+    "one_more": (["ONE MORE", "TRY?"], 18, WHITE, GOLD),
+    "one_more_1": (["ONE MORE TRY?"], 12, WHITE, GOLD),
 }
+# skin names for the skins short (bottom colour = rarity)
+RARITY = {"common": (190, 200, 220), "rare": CYAN, "epic": PINK, "legendary": GOLD, "mythic": RED}
+for _id, _r in [("poppy", "common"), ("minty", "common"), ("berry", "common"), ("frosty", "rare"),
+        ("ember", "rare"), ("volt", "rare"), ("ghosty", "epic"), ("alien", "epic"), ("crystal", "epic"),
+        ("luna", "epic"), ("ninja", "epic"), ("neon", "epic"), ("magma", "legendary"),
+        ("royal", "legendary"), ("prism", "legendary"), ("nova", "mythic")]:
+    CAPS["sk_" + _id] = ([_id.upper()], 12, WHITE, RARITY[_r])
 
 
 def line_img(text, k, top, bot):
