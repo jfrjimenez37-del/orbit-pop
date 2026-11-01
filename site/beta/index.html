@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ORBIT POP · Beta testers</title>
+<meta name="description" content="Play ORBIT POP before anyone else: join the Android beta in 4 steps.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="ORBIT POP · Join the beta 🪐">
+<meta property="og:description" content="One-tap pixel arcade for Android. Be one of the first testers: join in 4 steps.">
+<meta property="og:image" content="https://jfrjimenez37-del.github.io/beta/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://jfrjimenez37-del.github.io/beta/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="../icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Rubik:wght@400;500&display=swap">
+<style>
+/* Beta invitation: what the game is (video), then four numbered steps with one button each. */
+:root {
+  --bg: #1d1747; --card: #fffaf0; --ink: #241c4f; --muted: #625a8c; --line: #dcd3f2;
+  --coin: #f2b411; --pink: #e8488f; --sky: #78afff; --mint: #6fe0a8;
+  --display: "Pixelify Sans", "Courier New", monospace;
+  --body: "Rubik", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+html { background: var(--bg); }
+body {
+  min-height: 100vh; background: radial-gradient(circle at 50% 10%, #3b2f8a 0, var(--bg) 55%) fixed, var(--bg);
+  color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5;
+  padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.wrap { width: min(460px, 100%); margin: 0 auto; display: grid; gap: 16px; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #fff; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-size: 1.2rem; }
+.brand img { width: 40px; height: 40px; border-radius: 10px; image-rendering: pixelated; }
+.langs { display: flex; gap: 4px; }
+.langs button { font-family: var(--display); font-size: .85rem; padding: 4px 8px; border-radius: 8px; border: 2px solid #8f86c9; background: transparent; color: #fff; cursor: pointer; }
+.langs button[aria-pressed="true"] { background: var(--coin); border-color: var(--coin); color: var(--ink); }
+.hero { color: #fff; text-align: center; display: grid; gap: 6px; }
+.tag { justify-self: center; font-family: var(--display); font-size: .9rem; color: var(--ink); background: var(--mint); border-radius: 999px; padding: 2px 12px; }
+h1 { font-family: var(--display); font-size: clamp(2rem, 9vw, 2.6rem); line-height: 1.05; margin: 0; color: var(--coin); text-shadow: 0 3px 0 #120d33; }
+.sub { margin: 0; color: #d9d3ff; }
+.video { position: relative; border: 3px solid var(--ink); border-radius: 18px; overflow: hidden; box-shadow: 0 6px 0 #120d33; background: #000; aspect-ratio: 9 / 16; max-height: 70vh; justify-self: center; width: min(100%, calc(70vh * 9 / 16)); }
+.video video { width: 100%; height: 100%; display: block; object-fit: cover; }
+.sound { position: absolute; right: 10px; bottom: 10px; font-family: var(--display); font-size: .9rem; padding: 6px 10px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer; }
+.card { background: var(--card); border: 3px solid var(--ink); border-radius: 18px; padding: 20px; display: grid; gap: 16px; box-shadow: 0 6px 0 #120d33; }
+h2 { font-family: var(--display); font-size: 1.5rem; margin: 0; line-height: 1.1; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.step { display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: start; }
+.num { width: 40px; height: 40px; border-radius: 12px; border: 3px solid var(--ink); background: var(--sky); font-family: var(--display); font-size: 1.3rem; display: grid; place-items: center; }
+.step h3 { font-family: var(--display); font-size: 1.15rem; margin: 6px 0 2px; line-height: 1.15; }
+.step p { margin: 0 0 8px; color: var(--muted); font-size: .95rem; }
+.btn { display: block; text-align: center; text-decoration: none; font-family: var(--display); font-size: 1.1rem; padding: 10px 12px; border-radius: 12px; border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink); color: var(--ink); background: var(--coin); }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+.btn.alt { background: #fff; }
+.btn:focus-visible, button:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
+.note { border-top: 1px dashed var(--line); padding-top: 12px; color: var(--muted); font-size: .92rem; display: grid; gap: 6px; }
+.note b { color: var(--ink); }
+.why { background: #f1ecff; border-radius: 12px; padding: 12px; font-size: .92rem; color: var(--ink); }
+details { border-top: 1px dashed var(--line); padding-top: 10px; }
+summary { font-family: var(--display); font-size: 1.05rem; cursor: pointer; }
+details p { margin: 6px 0 0; color: var(--muted); font-size: .93rem; }
+.share { font-family: var(--display); font-size: 1.05rem; padding: 10px 12px; border-radius: 12px; border: 3px solid var(--ink); background: var(--pink); color: #fff; cursor: pointer; box-shadow: 0 4px 0 var(--ink); }
+footer { text-align: center; color: #b9b2e6; font-size: .85rem; }
+footer a { color: #fff; }
+a { color: #2f5fd0; }
+@media (prefers-reduced-motion: reduce) { .btn:active { transform: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar">
+    <div class="brand"><img src="../icon.png" alt="">ORBIT POP</div>
+    <div class="langs" role="group" aria-label="Language">
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="es">ES</button>
+      <button type="button" data-lang="pt">PT</button>
+    </div>
+  </div>
+
+  <header class="hero">
+    <span class="tag" data-t="tag">ANDROID BETA</span>
+    <h1 data-t="h1">Play it before anyone else</h1>
+    <p class="sub" data-t="sub">One tap to flip your orbit. Dodge meteors, jump between planets and climb 16 worlds.</p>
+  </header>
+
+  <div class="video">
+    <video id="vid" src="promo.mp4" poster="poster.jpg" autoplay muted loop playsinline preload="metadata"></video>
+    <button type="button" class="sound" id="sound" data-t="sound_on">🔊 Sound</button>
+  </div>
+
+  <main class="card">
+    <h2 data-t="h2">Join in 4 steps</h2>
+    <ol class="steps">
+      <li class="step">
+        <span class="num">1</span>
+        <div>
+          <h3 data-t="s1_t">Ask to join the testers group</h3>
+          <p data-t="s1">Sign in with the Google account you use on your Android phone and tap “Ask to join group”.</p>
+          <a class="btn" href="https://groups.google.com/g/orbitpop-testers" target="_blank" rel="noopener" data-t="s1_b">Request access</a>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">2</span>
+        <div>
+          <h3 data-t="s2_t">Wait for the approval email</h3>
+          <p data-t="s2">I approve every request by hand, usually within a day. Check your inbox (and spam).</p>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">3</span>
+        <div>
+          <h3 data-t="s3_t">Become a tester</h3>
+          <p data-t="s3">Once approved, open this link with the same account and tap “Become a tester”.</p>
+          <a class="btn alt" href="https://play.google.com/apps/testing/com.barriogames.orbitpop" target="_blank" rel="noopener" data-t="s3_b">Become a tester</a>
+        </div>
+      </li>
+      <li class="step">
+        <span class="num">4</span>
+        <div>
+          <h3 data-t="s4_t">Install it from Google Play</h3>
+          <p data-t="s4">It's free. If it doesn't show up yet, wait a few minutes and try again.</p>
+          <a class="btn alt" href="https://play.google.com/store/apps/details?id=com.barriogames.orbitpop" target="_blank" rel="noopener" data-t="s4_b">Open Google Play</a>
+        </div>
+      </li>
+    </ol>
+
+    <div class="why">
+      <b data-t="why_t">Why it matters:</b>
+      <span data-t="why">Google lets a new game launch only after a group of testers keeps it installed for 14 days. Please keep ORBIT POP on your phone for 14 days and play now and then. That's all!</span>
+    </div>
+
+    <details>
+      <summary data-t="q1">I have an iPhone</summary>
+      <p data-t="a1">For now ORBIT POP is Android only. Share this page with a friend who has Android!</p>
+    </details>
+    <details>
+      <summary data-t="q2">I don't see “Ask to join group”</summary>
+      <p data-t="a2">Sign in to Google first (top-right corner of the group page). On the phone, open the link in Chrome, not inside another app.</p>
+    </details>
+    <details>
+      <summary data-t="q3">How do I send feedback?</summary>
+      <p><span data-t="a3">Reply to the approval email, write to</span> <a href="mailto:jfrjimenez37@gmail.com">jfrjimenez37@gmail.com</a><span data-t="a3b">, or leave a private review in Google Play. Bugs, ideas, anything!</span></p>
+    </details>
+
+    <button type="button" class="share" id="share" data-t="share">Invite a friend</button>
+  </main>
+
+  <footer><span data-t="foot">Made by Barrio Games, a solo developer.</span> · <a href="https://jfrjimenez37-del.github.io/">ORBIT POP</a></footer>
+</div>
+<script>
+const vid = document.getElementById("vid");
+const sound = document.getElementById("sound");
+const T = {
+  en: {},
+  es: { tag: "BETA PARA ANDROID", h1: "Juégalo antes que nadie", sub: "Un toque para girar tu órbita. Esquiva meteoritos, salta entre planetas y sube 16 mundos.",
+    sound_on: "🔊 Sonido", sound_off: "🔇 Silencio", h2: "Únete en 4 pasos",
+    s1_t: "Pide entrar al grupo de testers", s1: "Entra con la cuenta de Google de tu teléfono Android y toca “Solicitar unirse al grupo”.", s1_b: "Solicitar acceso",
+    s2_t: "Espera el correo de aprobación", s2: "Apruebo cada solicitud a mano, normalmente en menos de un día. Revisa tu bandeja de entrada (y spam).",
+    s3_t: "Hazte tester", s3: "Cuando te aprueben, abre este enlace con la misma cuenta y toca “Convertirse en tester”.", s3_b: "Hacerme tester",
+    s4_t: "Instálalo desde Google Play", s4: "Es gratis. Si todavía no aparece, espera unos minutos y vuelve a intentarlo.", s4_b: "Abrir Google Play",
+    why_t: "Por qué es importante:", why: "Google solo deja publicar un juego nuevo después de que un grupo de testers lo tenga instalado 14 días. Por favor, deja ORBIT POP en tu teléfono 14 días y juega de vez en cuando. ¡Eso es todo!",
+    q1: "Tengo iPhone", a1: "Por ahora ORBIT POP es solo para Android. ¡Comparte esta página con un amigo que tenga Android!",
+    q2: "No veo “Solicitar unirse al grupo”", a2: "Primero inicia sesión en Google (arriba a la derecha en la página del grupo). En el teléfono, abre el enlace en Chrome, no dentro de otra app.",
+    q3: "¿Cómo envío comentarios?", a3: "Responde al correo de aprobación, escribe a", a3b: ", o deja una reseña privada en Google Play. Errores, ideas, ¡lo que sea!",
+    share: "Invitar a un amigo", copied: "¡Enlace copiado!", foot: "Hecho por Barrio Games, un desarrollador independiente.",
+    share_text: "Prueba ORBIT POP antes que nadie: únete a la beta para Android 🪐" },
+  pt: { tag: "BETA PARA ANDROID", h1: "Joga antes de toda a gente", sub: "Um toque para virar a tua órbita. Desvia de meteoros, salta entre planetas e sobe 16 mundos.",
+    sound_on: "🔊 Som", sound_off: "🔇 Sem som", h2: "Entra em 4 passos",
+    s1_t: "Pede para entrar no grupo de testers", s1: "Entra com a conta Google do teu telemóvel Android e toca em “Pedir para participar no grupo”.", s1_b: "Pedir acesso",
+    s2_t: "Espera pelo email de aprovação", s2: "Aprovo cada pedido à mão, normalmente em menos de um dia. Vê a caixa de entrada (e o spam).",
+    s3_t: "Torna-te tester", s3: "Depois de aprovado, abre este link com a mesma conta e toca em “Tornar-se testador”.", s3_b: "Tornar-me tester",
+    s4_t: "Instala pelo Google Play", s4: "É grátis. Se ainda não aparecer, espera alguns minutos e tenta outra vez.", s4_b: "Abrir o Google Play",
+    why_t: "Porque é importante:", why: "A Google só deixa lançar um jogo novo depois de um grupo de testers o manter instalado durante 14 dias. Por favor, mantém o ORBIT POP no telemóvel 14 dias e joga de vez em quando. É só isso!",
+    q1: "Tenho iPhone", a1: "Por agora o ORBIT POP é só para Android. Partilha esta página com um amigo que tenha Android!",
+    q2: "Não vejo “Pedir para participar”", a2: "Primeiro inicia sessão na Google (canto superior direito da página do grupo). No telemóvel, abre o link no Chrome, não dentro de outra app.",
+    q3: "Como envio sugestões?", a3: "Responde ao email de aprovação, escreve para", a3b: ", ou deixa uma avaliação privada no Google Play. Erros, ideias, tudo!",
+    share: "Convidar um amigo", copied: "Link copiado!", foot: "Feito pela Barrio Games, um programador independente.",
+    share_text: "Joga ORBIT POP antes de toda a gente: entra na beta para Android 🪐" },
+};
+const EN = {};
+document.querySelectorAll("[data-t]").forEach(el => { EN[el.dataset.t] = el.textContent; });
+Object.assign(EN, { sound_off: "🔇 Mute", copied: "Link copied!", share_text: "Play ORBIT POP before anyone else: join the Android beta 🪐" });
+T.en = EN;
+let lang = "en";
+function setLang(l) {
+  lang = T[l] ? l : "en";
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(el => { if (t[el.dataset.t]) el.textContent = t[el.dataset.t]; });
+  document.querySelectorAll(".langs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+  syncSound();
+  try { localStorage.setItem("orbitpop-lang", lang); } catch (e) {}
+}
+let saved = null;
+try { saved = localStorage.getItem("orbitpop-lang"); } catch (e) {}
+const q = new URLSearchParams(location.search).get("lang");
+setLang(q || saved || (navigator.language || "en").slice(0, 2));
+document.querySelectorAll(".langs button").forEach(b => b.addEventListener("click", () => setLang(b.dataset.lang)));
+
+function syncSound() { sound.textContent = vid.muted ? T[lang].sound_on : T[lang].sound_off; }
+sound.addEventListener("click", () => { vid.muted = !vid.muted; if (vid.paused) vid.play(); syncSound(); });
+
+document.getElementById("share").addEventListener("click", async function () {
+  const url = "https://jfrjimenez37-del.github.io/beta/" + (lang !== "en" ? "?lang=" + lang : "");
+  const data = { title: "ORBIT POP", text: T[lang].share_text, url };
+  if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e.name === "AbortError") return; } }
+  try { await navigator.clipboard.writeText(T[lang].share_text + " " + url); this.textContent = T[lang].copied; } catch (e) { prompt("", url); }
+});
+</script>
+</body>
+</html>
