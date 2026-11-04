@@ -4,6 +4,24 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 **cada toque invierte el giro**. Esquiva meteoritos, estrellas espinosas y barreras eléctricas,
 revienta burbujas y supera tu récord.
 
+
+## 1.0.14 (código 16)
+
+- **Textos**: `tests/ui_audit.gd` abre todas las pantallas y ventanas en los 4 idiomas con números
+  grandes, nombres largos y muesca, y avisa de textos fuera de pantalla, fuera de su recuadro o
+  encima de otro texto o icono (`godot47 --headless --path . --script tests/ui_audit.gd --
+  --size=1080x2400 --notch=12`; `--shots=DIR` guarda capturas bajo xvfb). Arreglado: filas de
+  misiones (progreso y premio desde la derecha), cabecera del menú con muesca (monedas y logo),
+  títulos de ventanas sobre el récord/nivel/nombre, monedas del HUD con 4 cifras, altitud con
+  puntajes enormes, cartel de mundo bajo la pausa, etiqueta MEJOR VALOR en portugués.
+- **Anuncios**: sin pantalla completa en las 10 primeras partidas ni el primer día de juego.
+- **Estadísticas** (GameAnalytics, `scripts/services/analytics.gd`): ver `store/analytics_setup.md`.
+  Ajustes ▸ DATOS para desactivarlas; política de privacidad actualizada.
+- **Tutorial** de la primera partida: el tiempo se detiene antes del primer meteorito hasta el
+  primer toque ("¡TOCA Y GIRA!", sin morir mientras tanto) y luego "¡BIEN! LOS ROCES DAN +2";
+  el primer cruce de dos planetas va en cámara lenta con "¡TOCA AHORA!" hasta saltar (3 intentos).
+  Solo para jugadores nuevos.
+
 ## Ejecutar en PC
 1. Instala Godot **4.7.2 stable** (https://godotengine.org/download/archive/4.7.2-stable/).
 2. Abre `project.godot` y pulsa F5. O por consola: `godot --path .`

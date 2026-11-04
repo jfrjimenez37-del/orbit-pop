@@ -75,6 +75,7 @@ func _big_save() -> void:
 	sv.stats = {"best_world": 16, "near_total": 9999}
 	sv.daily_last = sv._day_string()
 	sv.starter_seen = true
+	sv.tutorial_done = true; sv.jump_tip_done = true   # no tutorial in recordings and bots
 
 
 # ------------------------------------------------------------------ screens
@@ -149,6 +150,10 @@ func _audit_all(lang: String) -> void:
 	await _check(lang, "world banner")
 	ui.announce_record()
 	await _check(lang, "hud record")
+	for tip in [["TAP_HINT", "TUT_TAP_SUB"], ["TUT_NICE", "TUT_NICE_SUB"], ["TUT_JUMP", "TUT_JUMP_SUB"], ["TUT_NICE", "TUT_JUMP_DONE"]]:
+		ui.show_tip(L.t(tip[0]), L.t(tip[1]))
+		await _check(lang, "tip " + tip[1])
+	ui.hide_tip()
 	ui.set_duel_target(DUEL_NAME, 9999)
 	await _check(lang, "hud duel")
 	ui.set_daily_target(99999)

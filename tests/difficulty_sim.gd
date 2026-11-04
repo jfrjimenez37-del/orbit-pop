@@ -49,6 +49,7 @@ func _initialize() -> void:
 
 func _play(main, save, pr: Array, seed_value: int) -> Dictionary:
 	save.reset_all()
+	save.tutorial_done = true; save.jump_tip_done = true
 	for i in 5:
 		save.recent.append(int(pr[3]))   # the adaptive difficulty reads the last runs
 	seed(seed_value)

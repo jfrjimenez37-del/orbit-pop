@@ -64,6 +64,7 @@ func _initialize() -> void:
 	sv.best = 412; sv.games = 60; sv.coins = 2350; sv.level = 18; sv.sessions = 9
 	sv.daily_last = sv._day_string()
 	sv.starter_seen = true   # no starter offer popping up over the footage
+	sv.tutorial_done = true; sv.jump_tip_done = true   # no tutorial in recordings and bots
 	sv.skin = Catalog.find("skins", "cosmo")
 	sv.trail = "galaxy"
 	var prog = get_root().get_node("Progress")

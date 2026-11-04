@@ -59,6 +59,10 @@ var flash_rect: ColorRect
 var _score_lbl: Label
 var _hud_best: Label
 var _hint: Label
+var _tip: Control
+var _tip_title: Label
+var _tip_sub: Label
+var _tip_until := -1.0
 var _banner: Control
 var _teleport_btn: Button
 var _pause_btn: Button
@@ -192,6 +196,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	if _hint and _hint.visible:
 		_hint.modulate.a = 1.0 if fmod(_t, 0.9) < 0.6 else 0.25
+	if _tip and _tip.visible:
+		_tip_title.modulate.a = 1.0 if fmod(_t, 0.8) < 0.55 else 0.55
+		if _tip_until >= 0.0 and _t >= _tip_until:
+			hide_tip()
 	if _over_record and _over_record.visible:
 		_over_record.modulate = Color.WHITE if fmod(_t, 0.5) < 0.3 else Color(1, 0.85, 0.4)
 	for b in [_gift_badge, _mission_badge, _shop_badge, _duel_badge]:
@@ -532,6 +540,17 @@ func _build_hud() -> void:
 	_place(bottom, 1.0, -52, 180, 20)
 	_hint = _label(bottom, L.t("TAP_HINT"), 2, Color.WHITE)
 	_center_label(_hint, 180, 0)
+	# tutorial tips: a dark band across the middle with a big line and a small one
+	_tip = _container(hud)
+	_place(_tip, 0.78, -16, 180, 34)   # below the orbits: the player and the meteor stay in sight
+	var band := ColorRect.new()
+	band.color = Color(0.06, 0.04, 0.16, 0.72)
+	band.size = Vector2(180, 34)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tip.add_child(band)
+	_tip_title = _label(_tip, "", 2, Color8(255, 236, 140))
+	_tip_sub = _label(_tip, "", 1, Color.WHITE)
+	_tip.visible = false
 	_banner = _container(hud)
 	_place(_banner, 0.3, -12, 180, 40)
 	_banner.visible = false
@@ -677,6 +696,27 @@ func world_banner(n: int, name: String, tip := "", layer := "") -> void:
 	tw.tween_interval(1.8 if tip == "" and layer == "" else 2.8)
 	tw.tween_property(_banner, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(func(): _banner.visible = false)
+
+
+## Tutorial tip: a big title and a small line; secs > 0 hides it by itself.
+func show_tip(title: String, sub := "", secs := 0.0) -> void:
+	_tip_title.scale = Vector2(2, 2)
+	_tip_title.text = title
+	_center_label(_tip_title, 180, 3)
+	_tip_sub.text = sub
+	_center_label(_tip_sub, 180, 23)
+	_tip.visible = true
+	_tip.modulate.a = 1.0
+	_tip_until = _t + secs if secs > 0.0 else -1.0
+
+
+func hide_tip() -> void:
+	_tip.visible = false
+	_tip_until = -1.0
+
+
+func tip_showing() -> bool:
+	return _tip.visible
 
 
 func hide_hint() -> void:

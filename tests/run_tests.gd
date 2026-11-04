@@ -44,6 +44,7 @@ func _initialize() -> void:
 	print("== gameplay simulation with fair bot")
 	await test_simulation(save)
 	await test_analytics(save)
+	await test_tutorial(save)
 	print("\n%d checks, %d failed" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -752,6 +753,7 @@ func test_progress(save) -> void:
 
 
 func test_abilities(save) -> void:
+	save.tutorial_done = true; save.jump_tip_done = true   # bots: no tutorial (see test_tutorial)
 	# reminders: one a day at 18:45 local, never at night, rescheduled on every exit
 	var day0 := 1_900_000_000 - posmod(1_900_000_000, 86400)   # a UTC midnight
 	ok(Notifier.delay_to(1, day0 + 10 * 3600, 0) == 86400 + 8 * 3600 + 45 * 60, "reminder tomorrow at 18:45 (from 10:00)")
@@ -1027,6 +1029,7 @@ func test_abilities(save) -> void:
 ## A banner on every menu screen (skins, abilities, shop, ranking and the mission / settings /
 ## daily popups) but never on the main menu, during a run or on game over.
 func test_banners(save) -> void:
+	save.tutorial_done = true; save.jump_tip_done = true   # bots: no tutorial (see test_tutorial)
 	save.reset_all()
 	save.daily_last = save._day_string()
 	var mon = get_root().get_node("Monetization")
@@ -1084,6 +1087,7 @@ func test_banners(save) -> void:
 
 ## Forces every world shape with all obstacles unlocked and checks the fair bot survives.
 func test_duels(save) -> void:
+	save.tutorial_done = true; save.jump_tip_done = true   # bots: no tutorial (see test_tutorial)
 	print("== duels")
 	save.reset_all()
 	# codes: round trip, inside a pasted message, lower case, edited score rejected
@@ -1193,6 +1197,7 @@ func test_duels(save) -> void:
 
 
 func test_worlds(save) -> void:
+	save.tutorial_done = true; save.jump_tip_done = true   # bots: no tutorial (see test_tutorial)
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
 	await process_frame
@@ -1229,6 +1234,7 @@ func test_worlds(save) -> void:
 
 
 func test_simulation(save) -> void:
+	save.tutorial_done = true; save.jump_tip_done = true   # bots: no tutorial (see test_tutorial)
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
 	await process_frame
@@ -1381,4 +1387,68 @@ func test_analytics(save) -> void:
 	b.queue_free()
 	if FileAccess.file_exists(Analytics.QUEUE_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(Analytics.QUEUE_PATH))
+	save.reset_all()
+
+
+## First-run tutorial: the game stops before the first meteor until the first tap, never kills
+## meanwhile, then NICE!; players who already played never see it; the planet-jump tip slows the
+## game at the first crossing and ends with a jump.
+func test_tutorial(save) -> void:
+	save.reset_all()
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	var dt := 1.0 / 60.0
+	main.duel = {}
+	main.start_run()
+	ok(main._tut_step == 1, "tutorial: on in the very first run")
+	var frames := 0
+	while main.state == main.S.PLAYING and frames < 60 * 20 and not (main._tut_scale == 0.0):
+		main._grace = 0.0
+		main._process(dt)
+		frames += 1
+	ok(main._tut_meteor != null and main._tut_scale == 0.0 and main.ui.tip_showing(), "tutorial: time stops before the first meteor, tip shown")
+	var gt0: float = main.gt
+	for i in 120:
+		main._process(dt)
+	ok(main.state == main.S.PLAYING and absf(main.gt - gt0) < 0.001, "tutorial: frozen and alive while waiting for the tap")
+	main._flip()
+	ok(main._tut_step == 0 and save.tutorial_done, "tutorial: the first tap ends it (saved)")
+	for i in 30:
+		main._process(dt)
+	ok(main._tut_scale > 0.99 and main.gt > gt0, "tutorial: back to normal speed after the tap")
+	main._game_over()
+	main.start_run()
+	ok(main._tut_step == 0, "tutorial: not shown again")
+	save.reset_all()
+	save.games = 3
+	save.tutorial_done = false
+	main.start_run()
+	ok(main._tut_step == 0, "tutorial: never for players who already played")
+	# planet-jump tip: at a crossing of two planets
+	save.jump_tip_done = false
+	main._clear_field()
+	Orbit.set_shape(Stages.LIST[5]["orbits"], true)
+	var cl: Array = Orbit.cross_list()
+	ok(not cl.is_empty(), "tutorial: two-planet world has crossings")
+	var found := false
+	for i in 720:
+		var a := -PI + TAU * i / 720.0
+		if Orbit.crossing_at(a, 0) >= 0:
+			main.player.angle = a
+			main.player.orbit = 0
+			found = true
+			break
+	main._tutorial(dt)
+	ok(found and main._jump_tip and main.ui.tip_showing(), "tutorial: TAP NOW! at the first crossing")
+	for i in 20:
+		main._tutorial(dt)
+	ok(absf(main._tut_scale - main.JUMP_TIP_SCALE) < 0.01, "tutorial: slow motion while the jump tip is up")
+	var sw: bool = main.player.tap()
+	main._jump_tip = main._jump_tip and sw
+	if sw:
+		save.jump_tip_done = true
+	ok(sw and save.jump_tip_done, "tutorial: a jump at the crossing ends the tip")
+	main.queue_free()
 	save.reset_all()

@@ -43,6 +43,8 @@ var daily_run := {}           # daily challenge: {day (Pacific), tries, video (e
 var duels := {}               # {day, paid (rewards today), played: [codes], created: [codes I sent], wins, losses, ties}
 var notifications := true     # Settings: daily reminders
 var share_stats := true       # Settings: anonymous usage statistics (Analytics)
+var tutorial_done := false    # first run: frozen before the first meteor until the first tap
+var jump_tip_done := false    # first crossing of two planets: slow motion + "TAP NOW!"
 var analytics_id := ""        # random player id for the statistics (not the advertising id)
 var analytics_session := {}   # the open statistics session {id, start, last, num}
 var notif_asked := false      # Android permission already requested
@@ -102,6 +104,8 @@ func load_data() -> void:
 	daily_run = cfg.get_value("player", "daily_run", {})
 	notifications = bool(cfg.get_value("settings", "notifications", true))
 	share_stats = bool(cfg.get_value("settings", "share_stats", true))
+	tutorial_done = bool(cfg.get_value("meta", "tutorial_done", games > 0))
+	jump_tip_done = bool(cfg.get_value("meta", "jump_tip_done", int(stats.get("best_world", 1)) >= 6))
 	analytics_id = str(cfg.get_value("meta", "analytics_id", ""))
 	analytics_session = cfg.get_value("meta", "analytics_session", {})
 	notif_asked = bool(cfg.get_value("meta", "notif_asked", false))
@@ -156,6 +160,8 @@ func save_data() -> void:
 	cfg.set_value("player", "daily_run", daily_run)
 	cfg.set_value("settings", "notifications", notifications)
 	cfg.set_value("settings", "share_stats", share_stats)
+	cfg.set_value("meta", "tutorial_done", tutorial_done)
+	cfg.set_value("meta", "jump_tip_done", jump_tip_done)
 	cfg.set_value("meta", "analytics_id", analytics_id)
 	cfg.set_value("meta", "analytics_session", analytics_session)
 	cfg.set_value("meta", "notif_asked", notif_asked)
@@ -594,6 +600,8 @@ func reset_all() -> void:
 	notifications = true
 	notif_asked = false
 	share_stats = true
+	tutorial_done = false
+	jump_tip_done = false
 	analytics_session = {}
 	stats = {}; achievements = []; top_scores = []
 	missions = {"day": -1, "list": [], "week": -1, "weekly": {}}

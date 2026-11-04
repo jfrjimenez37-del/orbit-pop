@@ -27,6 +27,18 @@ var world_at_start := 1
 var _pending_link := ""      # a duel link that arrived during a run (shown back in the menu)
 var _perf_worst := 0.0       # slowest game frame of this run (ms), logged to DIAG at game over
 var _killer := "None"        # obstacle kind that ended the run (statistics)
+## First-run tutorial. Step 1: the first meteor comes, time slows to a stop just before it, the
+## tip says TAP TO FLIP, and the game waits for the tap (no death possible meanwhile). Then NICE!
+## Planet-jump tip: the first time the player is at a crossing of two planets, slow motion and
+## TAP NOW! while the crossing lasts (up to 3 crossings).
+const TUT_LEAD := 0.6          # s of game time before the first meteor arrives
+const JUMP_TIP_SCALE := 0.3    # game speed while the planet-jump tip is shown
+var _tut_step := 0             # 1 = waiting for the first tap, 0 = no tutorial in this run
+var _tut_meteor: Hazard
+var _tut_scale := 1.0          # game speed factor of the tutorial
+var _tut_shown_at := -1.0
+var _jump_tip := false
+var _jump_tries := 0
 var _perf_slow := 0          # frames over 33 ms
 var duel_lead := false
 var record_announced := false
@@ -541,6 +553,12 @@ func start_run() -> void:
 	ui.set_altitude(score)
 	bg.reset_climb()
 	_killer = "None"
+	_tut_step = 1 if duel.is_empty() and Save.games == 0 and not Save.tutorial_done else 0
+	_tut_meteor = null
+	_tut_scale = 1.0
+	_tut_shown_at = -1.0
+	_jump_tip = false
+	ui.hide_tip()
 	Progress.ga.progression("Start", _ga_mode(), _ga_world())
 	Sfx.play("go")
 
@@ -675,8 +693,51 @@ func _unhandled_input(event: InputEvent) -> void:
 			pass  # use the CONTINUE / MENU buttons
 
 
+## Tutorial pacing (see TUT_LEAD): slows the game to a stop before the first meteor until the
+## first tap, and to JUMP_TIP_SCALE while the planet-jump tip is up.
+func _tutorial(delta: float) -> void:
+	var target := 1.0
+	if _tut_step == 1 and _tut_meteor != null and is_instance_valid(_tut_meteor):
+		if gt >= _tut_meteor.t_danger_start - TUT_LEAD:
+			target = 0.0
+			if _tut_shown_at < 0.0:
+				_tut_shown_at = gt
+				ui.hide_hint()
+				ui.show_tip(L.t("TAP_HINT"), L.t("TUT_TAP_SUB"))
+				Progress.ga.design("Tutorial:Tap:Shown")
+	if duel.is_empty() and not Save.jump_tip_done and _tut_step == 0 and Orbit.count() >= 2:
+		var at := Orbit.crossing_at(player.angle, player.orbit) >= 0
+		if at and not _jump_tip:
+			_jump_tip = true
+			_jump_tries += 1
+			ui.show_tip(L.t("TUT_JUMP"), L.t("TUT_JUMP_SUB"))
+			Progress.ga.design("Tutorial:Jump:Shown", _jump_tries)
+		elif not at and _jump_tip:
+			_jump_tip = false
+			ui.hide_tip()
+			if _jump_tries >= 3:
+				Save.jump_tip_done = true   # three crossings without a jump: stop insisting
+				Progress.ga.design("Tutorial:Jump:Skipped")
+		if _jump_tip:
+			target = JUMP_TIP_SCALE
+	_tut_scale = move_toward(_tut_scale, target, delta * 5.0)
+
+
 func _flip() -> void:
 	var switched := player.tap()
+	if _tut_step == 1:
+		_tut_step = 0
+		_tut_scale = 1.0
+		Save.tutorial_done = true
+		Save.save_data()
+		ui.show_tip(L.t("TUT_NICE"), L.t("TUT_NICE_SUB"), 2.2)
+		Progress.ga.design("Tutorial:Tap:Done", roundf(gt))
+	if _jump_tip and switched:
+		_jump_tip = false
+		Save.jump_tip_done = true
+		Save.save_data()
+		ui.show_tip(L.t("TUT_NICE"), L.t("TUT_JUMP_DONE"), 2.0)
+		Progress.ga.design("Tutorial:Jump:Done", _jump_tries)
 	if not tapped_once:
 		tapped_once = true
 		ui.hide_hint()
@@ -731,7 +792,8 @@ func _process(delta: float) -> void:
 				player.flip()
 			player.advance(delta)
 		S.PLAYING:
-			var left := delta
+			_tutorial(delta)
+			var left := delta * _tut_scale
 			if slowmo_left > 0.0:
 				slowmo_left -= delta
 				left *= Upgrades.SLOWMO_SCALE
@@ -802,6 +864,8 @@ func _sim(dt: float) -> void:
 	_update_world(dt)
 	var spawn := director.update(gt, player.angle, player.dir, hazards, player.orbit)
 	for h in spawn["hazards"]:
+		if _tut_step == 1 and _tut_meteor == null and h is Meteor:
+			_tut_meteor = h
 		hazards.append(h)
 		hazards_root.add_child(h)
 		if h is Meteor:
@@ -830,6 +894,8 @@ func _sim(dt: float) -> void:
 				_break_shield()
 				shielded = true
 				continue
+			if _tut_step == 1:
+				continue   # the tutorial waits for the first tap: no death before it
 			_killer = h.get_script().get_global_name() if h.get_script() else "Hazard"
 			_die()
 			return
