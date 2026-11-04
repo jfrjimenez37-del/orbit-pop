@@ -136,6 +136,7 @@ func on_game_over(record := false) -> void:
 func should_show_interstitial() -> bool:
 	return not run_active and ads != null and not ads_removed() \
 		and Save.games >= MonetizationConfig.INTERSTITIAL_GRACE_GAMES \
+		and int(Save.stats.get("days_played", 0)) >= MonetizationConfig.INTERSTITIAL_GRACE_DAYS \
 		and Save.sessions >= 2 and not _last_record \
 		and _runs_since_ad >= MonetizationConfig.INTERSTITIAL_EVERY_RUNS \
 		and clock.call() - _last_ad_time >= MonetizationConfig.INTERSTITIAL_COOLDOWN \
@@ -187,6 +188,7 @@ func between_runs(then: Callable) -> void:
 		_after_interstitial = then
 		_runs_since_ad = 0
 		_last_ad_time = clock.call()
+		Progress.ga.design("Ads:Interstitial:Shown", Save.games)
 		ads.show_interstitial()
 	else:
 		then.call()

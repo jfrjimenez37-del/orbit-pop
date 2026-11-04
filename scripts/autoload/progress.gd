@@ -79,6 +79,7 @@ var sharer: Node
 var reviewer: Reviewer
 var notifier: Notifier
 var linker: Linker
+var ga: Analytics          # game statistics (GameAnalytics)
 var pending: Array = []   # messages to show once the run is over
 var _run := {}
 
@@ -97,6 +98,9 @@ func _ready() -> void:
 	linker = Linker.new()
 	add_child(linker)
 	linker.start()
+	ga = Analytics.new()
+	add_child(ga)
+	ga.start(Save)
 	games.cloud_loaded.connect(_on_cloud)
 	games.signed_in_changed.connect(func(ok): if ok: _sync_all())
 	games.start()
@@ -166,6 +170,8 @@ func _mission_feed(id: String, value: int) -> void:
 			Save.coins += int(m["reward"])
 			Save.stats["missions_done"] = int(Save.stats.get("missions_done", 0)) + 1
 			pending.append(L.t("MISSION_DONE") + " " + L.t("PLUS_COINS", int(m["reward"])))
+			ga.design("Mission:Done:" + str(m["id"]))
+			ga.resource("Source", "Coins", int(m["reward"]), "Mission", str(m["id"]))
 			mission_completed.emit(L.t(m["text"], m["goal"]), int(m["reward"]))
 			award_xp(int(m["xp"]))
 			_check_achievements()
@@ -178,6 +184,8 @@ func award_xp(n: int) -> Array:
 	var levels: Array = Save.add_xp(n)
 	for lv in levels:
 		pending.append(L.t("LEVEL_UP", lv) + " " + L.t("PLUS_COINS", Upgrades.level_coins(lv)))
+		ga.design("Level:Up", lv)
+		ga.resource("Source", "Coins", Upgrades.level_coins(lv), "Level", "L%02d" % lv)
 		for a in Upgrades.unlocked_at(lv):
 			pending.append(L.t("NEW_ABILITY", L.t("AB_" + str(a["id"]).to_upper())))
 		level_up.emit(lv)
@@ -287,6 +295,7 @@ func _check_achievements() -> void:
 			Save.achievements.append(a["id"])
 			games.unlock(a["id"])
 			pending.append(L.t("ACH_UNLOCKED", achievement_name(a)))
+			ga.design("Achievement:" + str(a["id"]))
 			achievement_unlocked.emit(achievement_name(a))
 
 

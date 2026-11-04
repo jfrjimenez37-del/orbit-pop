@@ -26,6 +26,7 @@ var duel := {}
 var world_at_start := 1
 var _pending_link := ""      # a duel link that arrived during a run (shown back in the menu)
 var _perf_worst := 0.0       # slowest game frame of this run (ms), logged to DIAG at game over
+var _killer := "None"        # obstacle kind that ended the run (statistics)
 var _perf_slow := 0          # frames over 33 ms
 var duel_lead := false
 var record_announced := false
@@ -86,6 +87,7 @@ func _ready() -> void:
 	ui.duel_accept_pressed.connect(start_duel)
 	ui.duel_send_pressed.connect(_send_duel)
 	Progress.linker.duel_link.connect(func(code):
+		Progress.ga.design("Duel:LinkOpened")
 		_pending_link = code
 		_show_pending_link())
 	ui.daily_pressed.connect(func():
@@ -176,12 +178,14 @@ func go_menu() -> void:
 
 
 func open_skins() -> void:
+	Progress.ga.design("UI:Open:Style")
 	state = S.SKINS
 	ui.show_skins()
 	_menu_banner(ui.STYLE_H)
 
 
 func open_abilities() -> void:
+	Progress.ga.design("UI:Open:Abilities")
 	state = S.ABILITIES
 	ui.show_abilities()
 	_menu_banner(ui.ABILITIES_H)
@@ -196,6 +200,7 @@ func _menu_banner(box_h: int) -> void:
 
 
 func open_ranking() -> void:
+	Progress.ga.design("UI:Open:Ranking")
 	state = S.RANKING
 	ui.show_ranking()
 	Monetization.show_banner()
@@ -232,6 +237,7 @@ func _quit_run() -> void:
 
 ## d: a decoded friend's duel (Duel.decode), or {} to create a new challenge on a fresh seed.
 func start_duel(d: Dictionary) -> void:
+	Progress.ga.design("Duel:Start:" + ("New" if int(d.get("target", -1)) < 0 else "Reply"))
 	ui.hide_popup()
 	if d.is_empty():
 		duel = {"kind": "duel", "seed": Duel.new_seed(randi()), "target": -1, "name": "", "code": ""}
@@ -243,6 +249,7 @@ func start_duel(d: Dictionary) -> void:
 
 ## Today's challenge (same run for everyone), if a try is left.
 func start_daily() -> void:
+	Progress.ga.design("Daily:Start", Save.daily_tries_left())
 	ui.hide_popup()
 	if Save.daily_tries_left() <= 0:
 		ui.toast(L.t("DAILY_NO_TRIES"), Color8(255, 150, 160))
@@ -264,6 +271,7 @@ func _finish_duel() -> Dictionary:
 		var dout := {"mode": "daily", "best": r["best"], "pay": r["pay"], "today": today, "mine": score,
 			"tries": Save.daily_tries_left(), "video": Save.daily_video_left() if Monetization.rewarded_ready() else 0}
 		duel["last"] = dout
+		Progress.ga.design("Daily:Finish", score)
 		return dout
 	var me := Duel.clean_name(Progress.games.player_name)
 	var out := {"mine": score, "theirs": int(duel["target"]), "name": str(duel["name"]), "pay": 0, "result": "",
@@ -277,6 +285,8 @@ func _finish_duel() -> Dictionary:
 		Sfx.play("record" if out["result"] == "win" else "unlock")
 	Save.duel_created(str(out["code"]))
 	duel["last"] = out
+	Progress.ga.design("Duel:Result:" + (str(out["result"]).capitalize() if out["mode"] == "reply" else "New"), score)
+	Progress.ga.resource("Source", "Coins", int(out["pay"]), "Duel", str(out["result"]))
 	return out
 
 
@@ -290,6 +300,7 @@ func _show_pending_link() -> void:
 
 ## Shares my score on this run: a new challenge, or my answer to a friend's duel (won or tied).
 func _send_duel() -> void:
+	Progress.ga.design("Duel:Share")
 	var last: Dictionary = duel.get("last", {})
 	if last.is_empty():
 		return
@@ -307,6 +318,7 @@ func _share() -> void:
 
 
 func open_shop(tab := "packs") -> void:
+	Progress.ga.design("UI:Open:Shop:" + tab)
 	state = S.SHOP
 	ui.show_shop(tab)
 	Monetization.show_banner()
@@ -325,6 +337,7 @@ func _apply_world(i: int, animated: bool) -> void:
 
 
 func _on_daily_claim(doubled: bool) -> void:
+	Progress.ga.design("Gift:Claim:" + ("Video" if doubled else "Free"), Save.daily_day)
 	if doubled:
 		if not Monetization.show_rewarded("daily_double"):
 			ui.toast(L.t("NO_AD"), Color8(255, 150, 160))
@@ -347,6 +360,10 @@ const _STORE_MSG := {"TEST PURCHASE": "TEST_PURCHASE", "THANK YOU!": "THANKS", "
 
 
 func _on_purchase_result(id: String, ok: bool, message: String) -> void:
+	if ok and id != "restore":
+		var price := str(MonetizationConfig.FALLBACK_PRICES.get(id, "$0")).trim_prefix("$")
+		Progress.ga.business("Product", id, roundi(float(price) * 100.0))
+	Progress.ga.design("Shop:Purchase:%s:%s" % [id, "OK" if ok else str(message)])
 	var text := L.t(_STORE_MSG[message]) if _STORE_MSG.has(message) else message
 	if MonetizationConfig.CONSUMABLES.has(id) and ok:
 		text = L.t("PLUS_COINS", MonetizationConfig.CONSUMABLES[id] + Monetization.last_bonus)
@@ -371,6 +388,7 @@ func _on_continue_pressed() -> void:
 
 
 func _on_rewarded(placement: String, granted: bool) -> void:
+	Progress.ga.design("Ads:Rewarded:%s:%s" % [placement, "Granted" if granted else "Closed"])
 	match placement:
 		"double_coins":
 			if granted and not coins_doubled:
@@ -522,6 +540,8 @@ func start_run() -> void:
 	_perf_slow = 0
 	ui.set_altitude(score)
 	bg.reset_climb()
+	_killer = "None"
+	Progress.ga.progression("Start", _ga_mode(), _ga_world())
 	Sfx.play("go")
 
 
@@ -533,6 +553,15 @@ func _clear_field() -> void:
 	hazards.clear()
 	bubbles.clear()
 	fx.clear()
+
+
+## Statistics: the run's mode and world as GameAnalytics progression levels.
+func _ga_mode() -> String:
+	return "Normal" if duel.is_empty() else ("Daily" if duel.get("kind", "duel") == "daily" else "Duel")
+
+
+func _ga_world() -> String:
+	return "World%02d" % world_no
 
 
 func _die() -> void:
@@ -564,6 +593,14 @@ func _game_over() -> void:
 	Save.add_coins(earned - coins_awarded)
 	run_coins = earned - coins_awarded
 	coins_awarded = earned
+	var ga = Progress.ga
+	ga.progression("Fail", _ga_mode(), _ga_world(), "", score)
+	ga.design("Death:%s:%s" % [_killer, _ga_world()], score)
+	ga.design("Run:Seconds:" + _ga_mode(), roundf(gt))
+	ga.design("Run:NearMisses", near_count)
+	if continued:
+		ga.design("Run:Continued", score)
+	ga.resource("Source", "Coins", run_coins, "Run", _ga_mode())
 	var xp_gain := _award_xp()
 	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], duel.is_empty() and Monetization.can_continue(score, continued),
 		Monetization.continue_is_free())
@@ -793,6 +830,7 @@ func _sim(dt: float) -> void:
 				_break_shield()
 				shielded = true
 				continue
+			_killer = h.get_script().get_global_name() if h.get_script() else "Hazard"
 			_die()
 			return
 		if c < INF:
@@ -1005,6 +1043,9 @@ func _update_world(dt: float) -> void:
 			layer_name = L.t(Stages.LAYERS[ly][1])
 		ui.world_banner(world_no, L.t("WORLD_" + str(w["id"]).to_upper()), tip, layer_name)
 		Sfx.play("unlock")
+		if world_no > int(Save.stats.get("best_world", 1)):
+			Progress.ga.design("World:FirstReach:%02d" % world_no)
+		Progress.ga.progression("Complete", _ga_mode(), "World%02d" % (world_no - 1), "", score)
 		Progress.event("world", world_no)
 	if _morph_t >= 0.0:
 		_morph_t += dt

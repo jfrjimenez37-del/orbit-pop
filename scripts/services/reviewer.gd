@@ -62,6 +62,9 @@ func maybe_ask(save: Node, is_happy: bool) -> bool:
 	save.review_day = save.day_number()
 	save.save_data()
 	Diag.log("review: asking (%d of %d)" % [save.review_asks, MAX_ASKS])
+	var pr := get_parent()
+	if pr != null and "ga" in pr and pr.ga != null:
+		pr.ga.design("Review:Asked", save.review_asks)
 	if _node != null:
 		_node.call("generate_review_info")
 	return true

@@ -11,13 +11,14 @@ Last updated / Última actualización: November 4, 2026 / 4 de noviembre de 2026
 ORBIT POP ("the game") is developed by Barrio Games ("we", "us"). This policy explains what data is processed when you play.
 
 ### Data we keep
-The game stores your progress (high scores, level, coins, abilities, skins, trails, missions and settings) **only on your device**. We do not run our own servers, we do not create user accounts and we do not receive your personal data.
+The game stores your progress (high scores, level, coins, abilities, skins, trails, missions and settings) **on your device**. We do not run our own servers and we do not create user accounts. The only information that reaches us is the anonymous game statistics described below (GameAnalytics), which you can turn off.
 
 ### Third-party services
 The game uses Google services that may process data under their own policies:
 - **Google AdMob** (ads): may collect your device's advertising ID, IP address (approximate location), ad interaction data, device information and diagnostics to show, measure and protect ads against fraud. In the EEA, the UK and Switzerland the game asks for your consent before showing personalized ads; you can change it any time in Settings › Privacy inside the game.
 - **Google Play Games** (optional: leaderboards, achievements and cloud save): if you sign in, your player name, scores, achievements and a copy of your progress are stored in your Google account. The game shows your player name in the menu and on the leaderboards.
 - **Google Play Billing** (optional purchases): payments are processed by Google; we never receive your card or payment account details.
+- **GameAnalytics** (game statistics): the game sends gameplay events, such as sessions and their length, worlds reached, scores, the obstacle that ended a run, coins earned and spent, ads watched and in-game purchases, together with a random player ID created by the game (not your advertising ID), your device model and Android version. GameAnalytics may work out your approximate country from your IP address. We use this only to understand how the game is played and to improve it, never for advertising. You can turn it off at any time in **Settings › STATS**. GameAnalytics privacy policy: https://gameanalytics.com/privacy
 
 Google Privacy Policy: https://policies.google.com/privacy
 How Google uses data from partner apps: https://policies.google.com/technologies/partner-sites
@@ -35,6 +36,7 @@ The game is not directed to children under 13, and we do not knowingly collect p
 ### Your choices
 - Reset or delete your advertising ID in your device's Google settings.
 - Sign out of Google Play Games or delete your game data from the Play Games app.
+- Turn off the game statistics in Settings › STATS.
 - Delete all data stored on your device by uninstalling the game or clearing its data in Android settings.
 
 ### Changes
@@ -50,13 +52,14 @@ Questions about this policy: barriogames.studio@gmail.com
 ORBIT POP ("el juego") es desarrollado por Barrio Games ("nosotros"). Esta política explica qué datos se tratan cuando juegas.
 
 ### Datos que guardamos nosotros
-El juego guarda tu progreso (récords, nivel, monedas, habilidades, skins, estelas, misiones y ajustes) **solo en tu dispositivo**. No tenemos servidores propios, no creamos cuentas de usuario y no recibimos tus datos personales.
+El juego guarda tu progreso (récords, nivel, monedas, habilidades, skins, estelas, misiones y ajustes) **en tu dispositivo**. No tenemos servidores propios y no creamos cuentas de usuario. Lo único que nos llega son las estadísticas anónimas del juego descritas más abajo (GameAnalytics), que puedes desactivar.
 
 ### Servicios de terceros
 El juego usa servicios de Google que pueden tratar datos según sus propias políticas:
 - **Google AdMob** (anuncios): puede recopilar el identificador de publicidad del dispositivo, la dirección IP (ubicación aproximada), datos de interacción con los anuncios, información del dispositivo y diagnósticos, para mostrar, medir y proteger los anuncios contra el fraude. En el Espacio Económico Europeo, Reino Unido y Suiza se pide tu consentimiento antes de mostrar anuncios personalizados; puedes cambiarlo en Ajustes › Privacidad dentro del juego.
 - **Google Play Juegos** (opcional: rankings, logros y guardado en la nube): si inicias sesión, tu nombre de jugador, tus puntuaciones, tus logros y una copia de tu progreso se guardan en tu cuenta de Google. El juego muestra tu nombre de jugador en el menú y en los rankings.
 - **Google Play Billing** (compras opcionales): los pagos los procesa Google; nosotros no recibimos los datos de tu tarjeta ni de tu cuenta de pago.
+- **GameAnalytics** (estadísticas del juego): el juego envía eventos de juego, como las sesiones y su duración, los mundos alcanzados, los puntajes, el obstáculo que terminó una partida, las monedas ganadas y gastadas, los anuncios vistos y las compras dentro del juego, junto con un identificador de jugador aleatorio creado por el juego (no tu ID de publicidad), el modelo de tu dispositivo y la versión de Android. GameAnalytics puede deducir tu país aproximado a partir de tu dirección IP. Lo usamos solo para entender cómo se juega y mejorar el juego, nunca para publicidad. Puedes desactivarlo cuando quieras en **Ajustes › DATOS**. Política de privacidad de GameAnalytics: https://gameanalytics.com/privacy
 
 Política de privacidad de Google: https://policies.google.com/privacy
 Cómo usa Google los datos de las apps asociadas: https://policies.google.com/technologies/partner-sites
@@ -74,6 +77,7 @@ El juego no está dirigido a menores de 13 años y no recopilamos a sabiendas da
 ### Tus opciones
 - Restablece o elimina el ID de publicidad en los ajustes de Google de tu dispositivo.
 - Cierra sesión en Google Play Juegos o borra tus datos de juego desde la app de Play Juegos.
+- Desactiva las estadísticas del juego en Ajustes › DATOS.
 - Borra todos los datos guardados en el dispositivo desinstalando el juego o borrando sus datos en los ajustes de Android.
 
 ### Cambios

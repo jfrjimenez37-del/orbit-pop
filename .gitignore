@@ -7,3 +7,4 @@ build/
 android/
 *.bundle
 orbit-pop-source.zip
+scripts/services/analytics_keys.gd

@@ -89,7 +89,8 @@ static func altitude_text(km: float, miles: bool, unit: String) -> String:
 	elif v < 1000000000.0:
 		n = "%.1fM" % (v / 1000000.0) if v < 100000000.0 else "%dM" % int(v / 1000000.0)
 	else:
-		n = "%.1fB" % minf(v / 1000000000.0, 99.9) if v < 100000000000.0 else "%dB" % mini(int(v / 1000000000.0), 999)
+		# clamp before int(): a very high score gives a huge (or infinite) altitude
+		n = "%.1fB" % minf(v / 1000000000.0, 99.9) if v < 100000000000.0 else "%dB" % int(minf(v / 1000000000.0, 999.0))
 	return "%s %s" % [n, unit]
 
 

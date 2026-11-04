@@ -258,6 +258,7 @@ const T := {
 	"ALT_DEEP": ["DEEP SPACE", "ESPACIO PROFUNDO", "ESPAÇO PROFUNDO", "ESPAÇO PROFUNDO"],
 	"ALT_STELLAR": ["INTERSTELLAR", "INTERESTELAR", "INTERESTELAR", "INTERESTELAR"],
 	"NOTIFY": ["REMINDERS", "AVISOS", "AVISOS", "AVISOS"],
+	"STATS": ["STATS", "DATOS", "DADOS", "DADOS"],
 	"NOTIF_GIFT": ["Your daily gift and a new daily challenge are waiting!", "¡Tu regalo diario y un nuevo reto diario te esperan!", "O teu presente diário e um novo desafio diário estão à espera!", "Seu presente diário e um novo desafio diário estão esperando!"],
 	"NOTIF_STREAK": ["Day %d of your streak: don't lose it!", "Día %d de tu racha: ¡no la pierdas!", "Dia %d da tua sequência: não a percas!", "Dia %d da sua sequência: não perca!"],
 	"NOTIF_MISS": ["The planets miss you. One more orbit?", "Los planetas te extrañan. ¿Una órbita más?", "Os planetas têm saudades. Mais uma órbita?", "Os planetas sentem sua falta. Mais uma órbita?"],

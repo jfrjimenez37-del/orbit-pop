@@ -77,6 +77,8 @@ var _offer_clock_parent_w := 156.0
 var _ab_box: Control
 var _ab_list: Control
 var _run_coins_box: Control
+var _menu_logo: TextureRect
+var _menu_best_box: Control
 var _alt_lbl: Label
 var _style_box: Control
 var _menu_coin_box: Control
@@ -399,8 +401,10 @@ func _build_menu() -> void:
 	logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	menu.add_child(logo)
 	_place(logo, 0.0, 14, logo.texture.get_width(), logo.texture.get_height())
+	_menu_logo = logo
 	var best_box := _container(menu)
 	_place(best_box, 0.0, logo.texture.get_height() + 16, 150, 10)
+	_menu_best_box = best_box
 	_menu_best = _label(best_box, "", 1, GOLD)
 	_menu_level = _label(best_box, "", 1, Color.WHITE)
 	var xp_bg := ColorRect.new()
@@ -488,13 +492,25 @@ func upgrade_affordable() -> bool:
 
 
 func show_menu() -> void:
-	_menu_coin_box.position.y = 4 + safe_top()
+	var st := safe_top()
+	_menu_coin_box.position.y = 4 + st
+	# the logo and the best/level/name lines move down with the notch, so the coins at the top
+	# left never run into the logo
+	_menu_logo.offset_top = 14 + st
+	_menu_logo.offset_bottom = _menu_logo.offset_top + _menu_logo.texture.get_height()
+	_menu_best_box.offset_top = _menu_logo.texture.get_height() + 16 + st
+	_menu_best_box.offset_bottom = _menu_best_box.offset_top + 10
 	refresh_menu()
 	_switch(menu)
 
 
 ## Height (viewport px) hidden at the top by a camera notch / status bar, 0 on PC.
+var safe_top_test := -1.0   # tests: pretend a notch of this height (viewport px)
+
+
 func safe_top() -> float:
+	if safe_top_test >= 0.0:
+		return safe_top_test
 	if not OS.has_feature("mobile"):
 		return 0.0
 	var win := DisplayServer.window_get_size()
@@ -558,7 +574,7 @@ func _build_hud() -> void:
 	_icon(_run_coins_box, "icon_coin", Vector2.ZERO)
 	_run_coins_lbl = _left_label(_run_coins_box, "0", Vector2(12, 1), GOLD)
 	# altitude: the run is a climb (score -> km, miles in English)
-	_alt_lbl = _left_label(hud, "", Vector2(4, 27), Color(1, 1, 1, 0.8))
+	_alt_lbl = _left_label(hud, "", Vector2(4, 25), Color(1, 1, 1, 0.8))
 	_pause_btn = _button(hud, "white", "", "pause", Vector2(20, 20))
 	_pause_btn.position = Vector2(4, 4)
 	_pause_btn.pressed.connect(func(): pause_pressed.emit())
@@ -572,6 +588,7 @@ func set_altitude(score: int) -> void:
 
 func set_run_coins(n: int) -> void:
 	_run_coins_lbl.text = str(n)
+	_run_coins_box.offset_left = -roundf(16.0 + _text_w(_run_coins_lbl.text))   # 4+ digits stay on screen
 	if n > 0:
 		var tw := create_tween()
 		_run_coins_box.scale = Vector2(1.25, 1.25)
@@ -582,7 +599,7 @@ func show_hud(best: int, hint: bool) -> void:
 	var st := safe_top()
 	_hud_top.offset_top = st; _hud_top.offset_bottom = st + 60
 	_pause_btn.position.y = 4 + st
-	_alt_lbl.position.y = 27 + st
+	_alt_lbl.position.y = 25 + st   # right under the pause button, above the best / target line
 	_run_coins_box.offset_top = 7 + st
 	set_score(0)
 	_hud_best.text = L.t("BEST_N", best) if best > 0 else ""
@@ -1063,6 +1080,7 @@ func _on_style_action() -> void:
 		shop_pressed.emit()
 	elif need[0] == "coins":
 		if Save.buy_item(_style_tab, i):
+			Progress.ga.resource("Sink", "Coins", int(need[1]), "Style", str(Catalog.items(_style_tab)[i]["id"]))
 			Save.select(_style_tab, i)
 			style_changed.emit()
 			Sfx.play("unlock")
@@ -1224,6 +1242,7 @@ func refresh_abilities() -> void:
 			style = "green"; text = "MAX"; icon = ""
 		var b := _shop_row(_ab_list, y, a["icon"], name, desc, style, text, icon, enabled or (open and cost >= 0), func():
 			if Save.buy_ability(id):
+				Progress.ga.resource("Sink", "Coins", cost, "Ability", "%s_L%d" % [id, Save.ability(id)])
 				Sfx.play("unlock")
 				toast(L.t("UPGRADED", L.t("AB_" + id.to_upper())), Color8(120, 255, 200))
 			else:
@@ -1320,7 +1339,7 @@ func refresh_shop() -> void:
 				_offer_row_clock(id, y)
 			if id == MonetizationConfig.BEST_VALUE and not owned:
 				var bv := _label(_shop_list, L.t("BEST_VALUE"), 1, COIN_INK)
-				bv.position = Vector2(roundf(131 - _text_w(bv.text) * 0.5), y + 22)
+				bv.position = Vector2(roundf(minf(131 - _text_w(bv.text) * 0.5, 160 - _text_w(bv.text))), y + 22)
 				y += 8   # room for the tag, so it reads as this row's
 			y += 30
 		var rs := _button(_shop_list, "white", L.t("RESTORE"), "", Vector2(80, 18))
@@ -1585,6 +1604,7 @@ func _open_popup(title: String, kind := "", h := 136) -> NinePatchRect:
 		create_tween().tween_property(popup, "modulate:a", 1.0, 0.15)
 	if kind in POPUP_BANNER_KINDS and menu.visible:
 		Monetization.show_banner()
+	_menu_best_box.visible = false
 	return p
 
 
@@ -1596,6 +1616,7 @@ func _close_button(p: Control, y: int) -> void:
 
 func hide_popup() -> void:
 	popup.visible = false
+	_menu_best_box.visible = true
 	if menu.visible:
 		Monetization.hide_banner()
 		refresh_menu()
@@ -1639,6 +1660,7 @@ func show_daily() -> void:
 
 
 func show_starter() -> void:
+	Progress.ga.design("Offer:Shown:starter:Starter")
 	var p := _open_popup(L.t("STARTER_PACK"), "starter")
 	var lines := [L.t("STARTER_L1"), L.t("PLUS_COINS", MonetizationConfig.BUNDLE_BONUS["starter"]["coins"]), "", L.t("STARTER_L4")]
 	for i in lines.size():
@@ -1656,6 +1678,7 @@ func show_starter() -> void:
 
 ## Offer at the right moment (see Offers): why, what, price, later.
 func show_offer(id: String, why: String) -> void:
+	Progress.ga.design("Offer:Shown:%s:%s" % [id, why])
 	var info: Dictionary = MonetizationConfig.PRODUCT_INFO[id]
 	var secs := Monetization.offer_secs(id)
 	var bonus := int(Save.offer_live.get("bonus", 0)) if secs > 0 else 0
@@ -1812,28 +1835,35 @@ func show_mission() -> void:
 
 
 func _mission_row(p: Control, m: Dictionary, y: int) -> void:
-	_left_label(p, m["text"], Vector2(8, y), GREEN_INK if m["done"] else INK)
+	var tl := _left_label(p, m["text"], Vector2(8, y), GREEN_INK if m["done"] else INK)
+	while tl.text.length() > 4 and _text_w(tl.text) > 140:   # a long translation: cut, never overflow
+		tl.text = tl.text.substr(0, tl.text.length() - 2) + "."
+	# from the right: +reward, its coin, the progress text, then the bar fills what is left
+	var rw := "+%d" % m["reward"]
+	var rx := 149.0 - _text_w(rw)
+	_left_label(p, rw, Vector2(roundf(rx), y + 10), COIN_INK)
+	_icon(p, "icon_coin", Vector2(roundf(rx) - 11, y + 10))
+	var pr := "%d/%d" % [m["progress"], m["goal"]] if not m["done"] else L.t("DONE")
+	var px := roundf(rx - 14 - _text_w(pr))
+	_left_label(p, pr, Vector2(px, y + 10), MUTED)
+	var bar_w := maxf(24.0, px - 12.0)
 	var bg := ColorRect.new()
 	bg.color = Color8(220, 226, 240)
 	bg.position = Vector2(8, y + 12)
-	bg.size = Vector2(70, 5)
+	bg.size = Vector2(bar_w, 5)
 	p.add_child(bg)
 	var fill := ColorRect.new()
 	fill.color = Color8(124, 226, 104) if m["done"] else GOLD
 	fill.position = bg.position
-	fill.size = Vector2(roundf(70.0 * float(m["progress"]) / float(m["goal"])), 5)
+	fill.size = Vector2(roundf(bar_w * float(m["progress"]) / float(m["goal"])), 5)
 	p.add_child(fill)
-	var pr := "%d/%d" % [m["progress"], m["goal"]] if not m["done"] else L.t("DONE")
-	_left_label(p, pr, Vector2(82, y + 10), MUTED)
-	_icon(p, "icon_coin", Vector2(118, y + 10))
-	_left_label(p, "+%d" % m["reward"], Vector2(129, y + 10), COIN_INK)
 
 
 const ROW := 20   # settings row spacing
 
 
 func show_settings() -> void:
-	var p := _open_popup(L.t("SETTINGS"), "settings", 228)
+	var p := _open_popup(L.t("SETTINGS"), "settings", 248)
 	var rows := [
 		["SOUND", L.t("ON") if Save.sound else L.t("OFF"), func():
 			Save.sound = not Save.sound
@@ -1869,6 +1899,10 @@ func show_settings() -> void:
 			Save.notifications = not Save.notifications
 			Save.save_data()
 			Progress.notifier.reschedule(Save)],
+		["STATS", L.t("ON") if Save.share_stats else L.t("OFF"), func():
+			Save.share_stats = not Save.share_stats
+			Save.save_data()
+			Progress.ga.set_opt_out(not Save.share_stats)],
 		["PRIVACY", ">", func():
 			if not Monetization.show_privacy_options():
 				toast(L.t("PRIVACY") + " (TEST)", Color8(255, 236, 140))],
@@ -1911,6 +1945,8 @@ var _diag_taps := 0
 ## Diagnostics popup (also copies the text so it can be pasted in a message).
 func show_diag() -> void:
 	var p := _open_popup("DIAG", "diag", 236)
+	var ga: Analytics = Progress.ga
+	Diag.log("analytics: %s, queued %d, sent %d, dropped %d, last http %s" % [ga.status_text(), ga.queue.size(), ga.sent, ga.dropped, ga.last_status])
 	var txt := Diag.text()
 	DisplayServer.clipboard_set(txt)
 	var lab := Label.new()
@@ -1992,6 +2028,7 @@ func _build_pause() -> void:
 
 
 func show_pause() -> void:
+	_banner.visible = false
 	pause.visible = true
 	pause.modulate.a = 1.0
 	hud.visible = true

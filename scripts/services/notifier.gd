@@ -60,6 +60,9 @@ func maybe_ask_permission(save: Node) -> void:
 	save.save_data()
 	if not bool(_node.call("has_post_notifications_permission")):
 		_node.call("request_post_notifications_permission")
+		var pr := get_parent()
+		if pr != null and "ga" in pr and pr.ga != null:
+			pr.ga.design("Notify:PermissionAsked")
 
 
 ## Seconds from `now` (unix, local time zone bias in s) to REMIND_AT, `days` days later.

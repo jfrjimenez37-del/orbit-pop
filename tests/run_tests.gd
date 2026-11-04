@@ -43,6 +43,7 @@ func _initialize() -> void:
 	await test_worlds(save)
 	print("== gameplay simulation with fair bot")
 	await test_simulation(save)
+	await test_analytics(save)
 	print("\n%d checks, %d failed" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -296,11 +297,16 @@ func test_monetization(save) -> void:
 	var now := [1000.0]
 	mon.clock = func() -> float: return now[0]
 	# interstitials: never for new players, never during a run, paced by runs and time
-	save.games = 2
+	save.games = 9
+	save.sessions = 3
+	save.stats["days_played"] = 5
 	for i in 5:
 		mon.on_game_over()
-	ok(not mon.should_show_interstitial(), "no interstitial before the 3rd run")
-	save.games = 10
+	ok(not mon.should_show_interstitial(), "new players: no interstitial in their first 10 runs")
+	save.games = 40
+	save.stats["days_played"] = 1
+	ok(not mon.should_show_interstitial(), "new players: no interstitial on their first day of play")
+	save.stats["days_played"] = 2
 	save.sessions = 1
 	ok(not mon.should_show_interstitial(), "no interstitial in the very first session")
 	save.sessions = 3
@@ -1286,4 +1292,93 @@ func test_simulation(save) -> void:
 			main._process(dt)
 	ok(main.hazards.size() < 6, "restart clears the field")
 	main.queue_free()
+	save.reset_all()
+
+
+## Statistics (GameAnalytics REST): signing, event format, batching, retries, opt-out, sessions.
+func test_analytics(save) -> void:
+	ok(Analytics.hmac_sign('[{"category":"user"}]', "test-secret") == "ojOp1Jfyh8S9et+JYxOOhFPxLXfrlr3dyaqzfIWmnGE=",
+		"analytics: HMAC-SHA256 signature matches openssl")
+	var u := Analytics.uuid()
+	ok(RegEx.create_from_string("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$").search(u) != null and Analytics.uuid() != u,
+		"analytics: random v4 player ids (%s)" % u)
+	save.reset_all()
+	save.sessions = 4
+	save.share_stats = true
+	save.analytics_session = {}
+	if FileAccess.file_exists(Analytics.QUEUE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Analytics.QUEUE_PATH))
+	var now := [5000.0]
+	var calls: Array = []
+	var a := Analytics.new()
+	a.clock = func() -> float: return now[0]
+	a.sender = func(url: String, headers: PackedStringArray, body: String) -> void: calls.append([url, headers, body])
+	get_root().add_child(a)
+	a.start(save)
+	a.game_key = "gk"
+	a.secret_key = "sk"
+	a.force_send = true
+	ok(save.analytics_id != "" and a.user_id == save.analytics_id, "analytics: a player id is made once and saved")
+	ok(a.queue.size() == 1 and a.queue[0]["category"] == "user" and a.queue[0]["session_num"] == 4, "analytics: a session starts with a user event")
+	a.design("Run:Start", 1)
+	a.progression("Fail", "Normal", "World03", "", 120)
+	a.progression("Start", "Normal", "World03", "", 99)
+	a.resource("Source", "Coins", 50, "Mission", "near-run")
+	a.resource("Sink", "Coins", 0, "Style", "x")
+	a.business("Product", "coins_1500", 99)
+	a.design("Shop:Purchase:coins-x2:Bad Text!")
+	ok(a.queue.size() == 7, "analytics: events queued (a 0-coin resource is skipped)")
+	ok(a.queue[2]["event_id"] == "Fail:Normal:World03" and a.queue[2]["score"] == 120 and not a.queue[3].has("score"),
+		"analytics: progression ids and scores (none on Start)")
+	ok(a.queue[4]["event_id"] == "Source:Coins:Mission:near_run" and a.queue[6]["event_id"] == "Shop:Purchase:coins_x2:Bad_Text_",
+		"analytics: ids keep only letters, digits and _")
+	ok(a.queue[5]["category"] == "business" and a.queue[5]["amount"] == 99 and a.queue[5]["currency"] == "USD" and a.queue[5]["transaction_num"] == 1,
+		"analytics: business event in cents")
+	var e: Dictionary = a.queue[1]
+	ok(e["v"] == 2 and e["sdk_version"] == "rest api v2" and e["platform"] == "android" and e["client_ts"] == 5000
+		and e["session_id"] == a.session_id and str(e["os_version"]).begins_with("android "), "analytics: default annotations on every event")
+	a.flush()
+	ok(calls.size() == 1 and calls[0][0] == "https://api.gameanalytics.com/v2/gk/events", "analytics: one batch to the events endpoint")
+	var body: String = calls[0][2]
+	ok(Array(calls[0][1]).has("Authorization: " + Analytics.hmac_sign(body, "sk")) and Array(calls[0][1]).has("Content-Type: application/json"),
+		"analytics: signed JSON request")
+	ok((JSON.parse_string(body) as Array).size() == 7, "analytics: the batch carries the queued events")
+	a.flush()
+	ok(calls.size() == 1, "analytics: no second request while one is in flight")
+	a._on_response(0, "")
+	ok(a.queue.size() == 7 and a.sent == 0, "analytics: no network: events kept for a retry")
+	a.flush()
+	a._on_response(200, "")
+	ok(a.queue.is_empty() and a.sent == 7, "analytics: 200: batch removed from the queue")
+	a.design("Bad")
+	a.flush()
+	a._on_response(400, "{}")
+	ok(a.queue.is_empty() and a.dropped == 1, "analytics: 400: refused batch dropped, never retried forever")
+	# sessions: a short trip to the background keeps the session, a long one starts a new one
+	var sid := a.session_id
+	a._notification(Node.NOTIFICATION_APPLICATION_PAUSED)
+	now[0] += 5.0
+	a._notification(Node.NOTIFICATION_APPLICATION_RESUMED)
+	ok(a.session_id == sid, "analytics: 5 s in the background: same session")
+	a._notification(Node.NOTIFICATION_APPLICATION_PAUSED)
+	now[0] += 60.0
+	a._notification(Node.NOTIFICATION_APPLICATION_RESUMED)
+	var ends := a.queue.filter(func(q): return q["category"] == "session_end")
+	ok(a.session_id != sid and ends.size() == 1 and ends[0]["length"] == 5 and a.queue[-1]["category"] == "user",
+		"analytics: 60 s in the background: session_end (length 5 s) and a new session")
+	# a session left open (app killed) is closed on the next start
+	var b := Analytics.new()
+	b.clock = func() -> float: return now[0] + 1000.0
+	b.sender = func(_u, _h, _b) -> void: pass
+	get_root().add_child(b)
+	b.start(save)
+	var closing := b.queue.filter(func(q): return q["category"] == "session_end")
+	ok(closing.size() >= 1 and closing[-1]["session_id"] == a.session_id, "analytics: a session left open is closed on the next launch")
+	b.set_opt_out(true)
+	b.design("Nope")
+	ok(b.queue.is_empty(), "analytics: SHARE STATS off: nothing is queued or kept")
+	a.queue_free()
+	b.queue_free()
+	if FileAccess.file_exists(Analytics.QUEUE_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(Analytics.QUEUE_PATH))
 	save.reset_all()

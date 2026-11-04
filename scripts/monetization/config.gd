@@ -42,7 +42,8 @@ const DAILY_REWARDS := [
 ]
 
 ## Interstitial pacing (only ever between runs, never during one).
-const INTERSTITIAL_GRACE_GAMES := 3     # first interstitial after the 3rd run at the earliest
+const INTERSTITIAL_GRACE_GAMES := 10    # new players: no interstitial in their first 10 runs...
+const INTERSTITIAL_GRACE_DAYS := 2      # ...nor on their first day of play (from the 2nd day played)
 const INTERSTITIAL_EVERY_RUNS := 3      # and at least 3 retries since the last ad
 const INTERSTITIAL_COOLDOWN := 150.0    # and at least 2.5 minutes since the last ad (any kind)
 ## Abilities: watch videos for a free level (levels 1 -> 2 and 2 -> 3 only, one level a day).
