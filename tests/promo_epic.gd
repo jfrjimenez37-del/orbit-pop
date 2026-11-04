@@ -235,7 +235,7 @@ func _tl_duel() -> void:
 	_cap_at(8, 12, "no_powers", low)
 	_beats(9, 12, 0.07)
 	_at(bt(12), func(): _shot_over(SHORT_TARGET); _flash(0.8); _punch(0.2))
-	_cap_at(12.5, 16, "your_turn", 50.0)
+	_cap_at(12.5, 16, "your_turn", 28.0)
 	_at(bt(16), func(): _shot_dare(Duel.encode(SHORT_SEED, SHORT_TARGET, SHORT_NAME)); _flash(0.6); _punch(0.15))
 	_cap_at(16, 20, "code", low)
 	_end_card(20)

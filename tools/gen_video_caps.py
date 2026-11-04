@@ -110,7 +110,7 @@ CAPS_ES = {
     "can_beat": (["¿PUEDES", "SUPERAR MI", "PUNTAJE?"], 12, WHITE, GOLD),
     "same_run": (["LOS MISMOS", "OBSTÁCULOS"], 12, WHITE, CYAN),
     "no_powers": (["SIN PODERES,", "SOLO TALENTO"], 12, WHITE, PINK),
-    "your_turn": (["¡TE TOCA!"], 18, WHITE, GOLD),
+    "your_turn": (["¡TE TOCA!"], 12, WHITE, GOLD),
     "code": (["CÓDIGO DEL", "DUELO EN LOS", "COMENTARIOS"], 12, WHITE, GOLD),
     "wait": (["ESPERA..."], 18, WHITE, CYAN),
     "reach16": (["¿LLEGARÁS AL", "MUNDO 16?"], 12, WHITE, GOLD),
