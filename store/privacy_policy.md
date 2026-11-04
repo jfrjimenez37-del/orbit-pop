@@ -2,7 +2,7 @@
 
 *English below · Español más abajo*
 
-Last updated / Última actualización: October 24, 2026 / 24 de octubre de 2026
+Last updated / Última actualización: November 4, 2026 / 4 de noviembre de 2026
 
 ---
 
@@ -41,7 +41,7 @@ The game is not directed to children under 13, and we do not knowingly collect p
 If we change this policy, we will publish the new version on this same page with its update date.
 
 ### Contact
-Questions about this policy: jfrjimenez37@gmail.com
+Questions about this policy: barriogames.studio@gmail.com
 
 ---
 
@@ -80,4 +80,4 @@ El juego no está dirigido a menores de 13 años y no recopilamos a sabiendas da
 Si cambiamos esta política, publicaremos la nueva versión en esta misma página con su fecha de actualización.
 
 ### Contacto
-Para cualquier pregunta sobre esta política: jfrjimenez37@gmail.com
+Para cualquier pregunta sobre esta política: barriogames.studio@gmail.com
