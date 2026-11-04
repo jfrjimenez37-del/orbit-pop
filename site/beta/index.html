@@ -66,6 +66,15 @@ details { border-top: 1px dashed var(--line); padding-top: 10px; }
 summary { font-family: var(--display); font-size: 1.05rem; cursor: pointer; }
 details p { margin: 6px 0 0; color: var(--muted); font-size: .93rem; }
 .share { font-family: var(--display); font-size: 1.05rem; padding: 10px 12px; border-radius: 12px; border: 3px solid var(--ink); background: var(--pink); color: #fff; cursor: pointer; box-shadow: 0 4px 0 var(--ink); }
+.follow { text-align: center; color: #fff; display: grid; gap: 10px; }
+.follow h2 { color: var(--coin); text-shadow: 0 3px 0 #120d33; }
+.socs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.soc { display: grid; justify-items: center; gap: 4px; padding: 12px 6px; border-radius: 14px; border: 3px solid var(--ink); box-shadow: 0 4px 0 #120d33; background: var(--card); color: var(--ink); text-decoration: none; font-family: var(--display); font-size: .95rem; }
+.soc svg { width: 30px; height: 30px; }
+.soc.tt svg { color: #111; } .soc.ig svg { color: #d6297c; } .soc.yt svg { color: #e62117; }
+.soc:active { transform: translateY(3px); box-shadow: 0 1px 0 #120d33; }
+.soc:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
+.handle { margin: 0; color: #b9b2e6; font-size: .9rem; }
 footer { text-align: center; color: #b9b2e6; font-size: .85rem; }
 footer a { color: #fff; }
 a { color: #2f5fd0; }
@@ -151,7 +160,13 @@ a { color: #2f5fd0; }
     <button type="button" class="share" id="share" data-t="share">Invite a friend</button>
   </main>
 
-  <footer><span data-t="foot">Made by Barrio Games, a solo developer.</span> · <a href="https://jfrjimenez37-del.github.io/">ORBIT POP</a></footer>
+  <section class="follow" aria-labelledby="follow">
+    <h2 id="follow" data-t="follow_t">Follow ORBIT POP</h2>
+    <div class="socs"><a class="soc tt" href="https://www.tiktok.com/@orbitpopgame" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.6 2h-3.3v13.2a2.9 2.9 0 1 1-2.9-2.9c.3 0 .6 0 .9.1V9a6.3 6.3 0 1 0 5.3 6.2V8.5a7.6 7.6 0 0 0 4.4 1.4V6.6a4.4 4.4 0 0 1-4.4-4.6z"/></svg><span>TikTok</span></a><a class="soc ig" href="https://www.instagram.com/orbitpopgame/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="17.4" cy="6.6" r="1.3" fill="currentColor"/></svg><span>Instagram</span></a><a class="soc yt" href="https://www.youtube.com/@OrbitPopGame" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="5" width="21" height="14" rx="4" fill="currentColor"/><path d="M10 9v6l5.2-3z" fill="#fff"/></svg><span>YouTube</span></a></div>
+    <p class="handle">@orbitpopgame</p>
+  </section>
+
+  <footer><span data-t="foot">Made by Barrio Games, a solo developer.</span> · <a href="../">ORBIT POP</a></footer>
 </div>
 <script>
 const vid = document.getElementById("vid");
@@ -168,7 +183,7 @@ const T = {
     q1: "Tengo iPhone", a1: "Por ahora ORBIT POP es solo para Android. ¡Comparte esta página con un amigo que tenga Android!",
     q2: "No veo “Solicitar unirse al grupo”", a2: "Primero inicia sesión en Google (arriba a la derecha en la página del grupo). En el teléfono, abre el enlace en Chrome, no dentro de otra app.",
     q3: "¿Cómo envío comentarios?", a3: "Responde al correo de aprobación, escribe a", a3b: ", o deja una reseña privada en Google Play. Errores, ideas, ¡lo que sea!",
-    share: "Invitar a un amigo", copied: "¡Enlace copiado!", foot: "Hecho por Barrio Games, un desarrollador independiente.",
+    share: "Invitar a un amigo", follow_t: "Sigue a ORBIT POP", copied: "¡Enlace copiado!", foot: "Hecho por Barrio Games, un desarrollador independiente.",
     share_text: "Prueba ORBIT POP antes que nadie: únete a la beta para Android 🪐" },
   pt: { tag: "BETA PARA ANDROID", h1: "Joga antes de toda a gente", sub: "Um toque para virar a tua órbita. Desvia de meteoros, salta entre planetas e sobe 16 mundos.",
     sound_on: "🔊 Som", sound_off: "🔇 Sem som", h2: "Entra em 4 passos",
@@ -180,7 +195,7 @@ const T = {
     q1: "Tenho iPhone", a1: "Por agora o ORBIT POP é só para Android. Partilha esta página com um amigo que tenha Android!",
     q2: "Não vejo “Pedir para participar”", a2: "Primeiro inicia sessão na Google (canto superior direito da página do grupo). No telemóvel, abre o link no Chrome, não dentro de outra app.",
     q3: "Como envio sugestões?", a3: "Responde ao email de aprovação, escreve para", a3b: ", ou deixa uma avaliação privada no Google Play. Erros, ideias, tudo!",
-    share: "Convidar um amigo", copied: "Link copiado!", foot: "Feito pela Barrio Games, um programador independente.",
+    share: "Convidar um amigo", follow_t: "Segue o ORBIT POP", copied: "Link copiado!", foot: "Feito pela Barrio Games, um programador independente.",
     share_text: "Joga ORBIT POP antes de toda a gente: entra na beta para Android 🪐" },
 };
 const EN = {};
@@ -207,7 +222,7 @@ function syncSound() { sound.textContent = vid.muted ? T[lang].sound_on : T[lang
 sound.addEventListener("click", () => { vid.muted = !vid.muted; if (vid.paused) vid.play(); syncSound(); });
 
 document.getElementById("share").addEventListener("click", async function () {
-  const url = "https://jfrjimenez37-del.github.io/beta/" + (lang !== "en" ? "?lang=" + lang : "");
+  const url = location.origin + "/beta/" + (lang !== "en" ? "?lang=" + lang : "");
   const data = { title: "ORBIT POP", text: T[lang].share_text, url };
   if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e.name === "AbortError") return; } }
   try { await navigator.clipboard.writeText(T[lang].share_text + " " + url); this.textContent = T[lang].copied; } catch (e) { prompt("", url); }
