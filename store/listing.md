@@ -1,6 +1,8 @@
 # Google Play listing — ORBIT POP
 
-**App name (max 30):** ORBIT POP
+**App name (max 30):** en-US `Orbit Pop: One-Tap Arcade` (25) · es-419 `Orbit Pop: Arcade de un toque` (29)
+(the plain "ORBIT POP" is used by other apps' names; the subtitle tells it apart and adds search words.
+The name under the icon on the phone and inside the game stays ORBIT POP.)
 **Category:** Games › Arcade · **Tags:** Arcade, Casual, One-tap, Pixel art, Single player
 **Default language:** English (United States) – en-US. Translation: Spanish (Latin America) – es-419.
 **Graphics:** icon `store/icon_512.png` · feature graphic `store/feature_graphic_1024x500.png` (no text, any language)

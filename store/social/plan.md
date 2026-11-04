@@ -15,8 +15,7 @@ Archivos:
 
 ## 1. Perfiles
 
-- **Nombre:** ORBIT POP · **usuario:** `@orbitpopgame` (o `@barriogames` si harás más juegos; revisa que
-  esté libre en las tres).
+- **Nombre:** ORBIT POP · **usuario:** `@OrbitPopGame` en todas (TikTok ya creado con ese nombre).
 - **Foto:** `profile_800.png` (está pensada para el recorte redondo).
 - **Banner de YouTube:** `youtube_banner_2560x1440.png` (logo y frase dentro de la zona que se ve en
   el móvil; los teléfonos solo se ven en PC/TV).
