@@ -26,6 +26,8 @@ const SKIN_SHOW := ["poppy", "minty", "berry", "frosty", "ember", "volt", "ghost
 
 var main: Node
 var variant := "epic"
+var lang := "en"              # third argument: "es" uses the Spanish captions (<id>_es.png) and game texts
+var slow_lo := 0.12           # game speed in the slow motion
 var b0 := 0.110               # time of the first beat in the clip
 var end_t := 33.0
 var low := 258.0
@@ -84,12 +86,14 @@ func _initialize() -> void:
 		caps_dir = args[0].trim_suffix("/") + "/"
 	if args.size() > 1:
 		variant = args[1]
+	if args.size() > 2:
+		lang = args[2]
 	if variant != "epic":
 		b0 = 0.0
 	get_root().content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 	await process_frame
 	sv = get_root().get_node("Save")
-	sv.path = "user://promo_%s.cfg" % variant
+	sv.path = "user://promo_%s_%s.cfg" % [variant, lang]
 	sv.reset_all()
 	sv.best = 2400; sv.games = 60; sv.coins = 2350; sv.level = 18; sv.sessions = 9
 	sv.daily_last = sv._day_string()
@@ -101,7 +105,7 @@ func _initialize() -> void:
 		sv.achievements.append(a["id"])
 	if variant == "duel":
 		sv.best = SHORT_TARGET   # "my score" on the game over screen
-	get_root().get_node("L").set_lang("en")
+	get_root().get_node("L").set_lang(lang)
 	get_root().get_node("Monetization").offer_this_session = true   # no store offer over the footage
 	main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
@@ -136,6 +140,12 @@ func _initialize() -> void:
 		"skins": _tl_skins()
 		"fail": _tl_fail()
 		"stills": _tl_stills()
+		"solo": _tl_solo()
+		"button": _tl_button()
+		"levels": _tl_levels()
+		"jumps": _tl_jumps()
+		"moving": _tl_moving()
+		"daily": _tl_daily()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
 
@@ -282,6 +292,152 @@ func _tl_skins() -> void:
 	_end_card(20)
 
 
+## A gameplay shot: a world, fresh hazards, then the camera reset (and a flash / punch on a cut).
+func _cut(name: String, si: int, offset: float, sd: int, flash_a := 0.8, follow_z := 0.0) -> void:
+	_shot_play(name, si, offset, 6.0, sd)
+	if follow_z > 0.0:
+		_cam(follow_z, true)
+	else:
+		_cam(1.0, false)
+	if flash_a > 0.0:
+		_flash(flash_a)
+		_punch(0.22)
+
+
+## Short: "I made this game alone" (song from bar 7).
+func _tl_solo() -> void:
+	end_t = 12.0
+	_at(0.0, func(): _cut("so1", 12, 22.0, 11, 0.0, 1.8))
+	_cap_at(0, 4, "solo1", low)
+	_beats(1, 4, 0.06)
+	_at(bt(4), func(): _cut("so2", 13, 26.0, 21); _shake(2.5))
+	_cap_at(4, 8, "solo2", low)
+	_at(bt(8), func(): _cut("so3", 10, 24.0, 51))
+	_cap_at(8, 12, "solo3", low)
+	_at(bt(12), func(): _cut("so4", 15, 30.0, 101))
+	_cap_at(12, 16, "solo4", low)
+	_at(bt(16), func(): _cut("so5", 9, 24.0, 41))
+	_cap_at(16, 20, "solo5", low)
+	_beats(5, 20, 0.07)
+	_end_card(20)
+
+
+## Short: "One button. How hard can it be?" calm world on the build-up, chaos on the drop (bar 25).
+func _tl_button() -> void:
+	end_t = 12.0
+	_at(0.0, func(): _cut("b1", 0, 8.0, 70, 0.0))
+	_cap_at(0, 4, "btn1", low)
+	_cap_at(4, 8, "btn2", low)
+	_at(bt(8), func(): _cut("b2", 15, 34.0, 101, 1.0); _punch(0.35); _shake(4.0))
+	_cap_at(8, 12, "btn3", mid)
+	_beats(9, 12, 0.12)
+	_at(bt(12), func(): _cut("b3", 11, 28.0, 81))
+	_cap_at(12, 16, "btn4", low)
+	_at(bt(16), func(): _cut("b4", 14, 26.0, 61))
+	_cap_at(16, 20, "survive", low)
+	_beats(13, 20, 0.08)
+	_end_card(20)
+
+
+## Short: world 1 vs world 16, back and forth, faster and faster (bar 18).
+func _tl_levels() -> void:
+	end_t = 12.0
+	var cuts := [[0, 0, "wn_1", 4], [4, 15, "wn_16", 4], [8, 2, "wn_3", 2], [10, 14, "wn_15", 2],
+		[12, 5, "wn_6", 2], [14, 13, "wn_14", 2]]
+	for c in cuts:
+		var off: float = 12.0 if int(c[1]) < 6 else 30.0
+		_at(bt(c[0]), func(): _cut("lv%d" % c[1], c[1], off, 200 + int(c[1]), 0.0 if c[0] == 0 else 0.7))
+		_cap_at(c[0], c[0] + c[3], c[2], low)
+	_at(bt(16), func(): _cut("lv9", 9, 24.0, 41))
+	_cap_at(16, 20, "stop", low)
+	_beats(1, 20, 0.07)
+	_end_card(20)
+
+
+## Short: planet jumps, close on the player (bar 9).
+func _tl_jumps() -> void:
+	end_t = 12.0
+	var cuts := [[0, 7], [4, 10], [8, 12], [12, 13], [16, 11]]
+	for c in cuts:
+		_at(bt(c[0]), func(): _cut("j%d" % c[1], c[1], 14.0, 300 + int(c[1]), 0.0 if c[0] == 0 else 0.6, 1.6))
+	_cap_at(0, 6, "sat1", low)
+	_cap_at(6, 11, "sat2", low)
+	_cap_at(11, 16, "sat3", low)
+	_cap_at(16, 20, "sat4", low)
+	_beats(1, 20, 0.05)
+	_end_card(20)
+
+
+## Short: "3 planets? Easy." then they start moving, in slow motion on the quiet bar (bar 14).
+func _tl_moving() -> void:
+	end_t = 12.0
+	slowmo = Vector2(bt(4.5), bt(8))
+	slow_lo = 0.35
+	_at(0.0, func(): _cut("m1", 12, 22.0, 11, 0.0))
+	_cap_at(0, 4, "mv1", low)
+	_at(bt(4), func(): _cut("m2", 13, 22.0, 21, 0.5))
+	_cap_at(4, 8, "mv2", low - 10.0)
+	_at(bt(8), func(): _cut("m3", 14, 28.0, 61, 1.0); _shake(3.0))
+	_cap_at(8, 12, "mv3", mid)
+	_at(bt(12), func(): _cut("m4", 15, 30.0, 101))
+	_cap_at(12, 16, "survive", low)
+	_at(bt(16), func(): _cut("m5", 13, 26.0, 91))
+	_cap_at(16, 20, "how_far", low)
+	_beats(9, 20, 0.08)
+	_end_card(20)
+
+
+## Short: the daily challenge (bar 20, ends on the quiet bars).
+func _tl_daily() -> void:
+	end_t = 12.0
+	_at(0.0, func(): _shot_challenges())
+	_cap_at(0, 4, "dl1", 36.0)
+	_at(bt(4), func(): _shot_daily("dy1", 9, 22.0, 41); _flash(0.8); _punch(0.2))
+	_cap_at(4, 8, "dl2", low - 10.0)
+	_at(bt(8), func(): _shot_daily("dy2", 13, 26.0, 21); _flash(0.7); _punch(0.2))
+	_cap_at(8, 12, "dl3", mid)
+	_at(bt(12), func(): _shot_daily("dy3", 15, 30.0, 101); _flash(0.7); _punch(0.2))
+	_cap_at(12, 16, "dl4", low)
+	_at(bt(16), func(): _shot_daily("dy4", 10, 24.0, 51); _flash(0.6); _punch(0.2))
+	_cap_at(16, 20, "dl5", low)
+	_beats(5, 20, 0.07)
+	_end_card(20)
+
+
+func _shot_challenges() -> void:
+	_begin()
+	shot = "challenges"
+	gameplay = false
+	sv.daily_run = {"day": sv.daily_today(), "tries": 0, "video": 0, "best": 142, "paid": false}
+	main.go_menu()
+	main.ui.hide_popup()
+	main.ui.show_duel()
+
+
+## A daily-challenge run (its HUD shows today's best to beat), warmed up off camera.
+func _shot_daily(name: String, si: int, offset: float, sd: int) -> void:
+	_begin()
+	shot = name
+	gameplay = true
+	banners = false
+	bot_jumps = true
+	main.ui.visible = true
+	logo.visible = false
+	for k in 12:
+		sv.daily_run = {"day": sv.daily_today(), "tries": 0, "video": 0, "best": 142, "paid": false}
+		seed(sd + k * 1000)
+		main.state = main.S.MENU
+		main.start_daily()
+		main.ui.hide_hint()
+		_place(si, offset)
+		if _preplay(360):
+			break
+	main.score = 96 + si * 2
+	main.ui.set_score(main.score)
+	main.ui.set_daily_target(142)
+	_quiet()
+
+
 ## Clean 1080x1920 game frames (no HUD, no captions) for the channel art: run without
 ## --write-movie (under xvfb); PNGs go to /tmp/epic/stills/.
 func _tl_stills() -> void:
@@ -312,7 +468,10 @@ func _at(t: float, f: Callable) -> void:
 
 
 func _cap_at(n0: float, n1: float, id: String, y: float) -> void:
-	var img := Image.load_from_file(caps_dir + id + ".png")
+	var file := caps_dir + id + ".png"
+	if lang != "en" and FileAccess.file_exists(caps_dir + id + "_" + lang + ".png"):
+		file = caps_dir + id + "_" + lang + ".png"
+	var img := Image.load_from_file(file)
 	var sp := Sprite2D.new()
 	sp.texture = ImageTexture.create_from_image(img)
 	sp.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -616,7 +775,7 @@ func _flash(a: float) -> void:
 func _time_scale(t: float) -> float:
 	if t < slowmo.x or t >= slowmo.y:
 		return 1.0
-	var lo := 0.12
+	var lo := slow_lo
 	if t < slowmo.x + 0.3 and slowmo.x > 0.0:
 		var k := (t - slowmo.x) / 0.3
 		return lerpf(1.0, lo, k * k * (3.0 - 2.0 * k))
