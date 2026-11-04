@@ -1102,6 +1102,7 @@ func test_duels(save) -> void:
 	ok(link.begins_with("https://" + Linker.HOST + "/duel/?c=ORBIT-") and Linker.code_in(link) == code, "duel link carries the code (%s)" % link)
 	ok(Linker.code_in("https://example.com/duel/?c=" + code) == "" and Linker.code_in(Linker.HOST + "/duel/?c=nothing") == "", "only our duel links count")
 	ok(Linker.url_text({"scheme": "https", "host": Linker.HOST, "path": "/duel/", "query": "c=" + code}) == link, "link rebuilt from the plugin's parts")
+	ok(Linker.code_in("https://jfrjimenez37-del.github.io/duel/?c=" + code) == code, "links of the first site (1.0.12) still open")
 	var l10 = get_root().get_node("L")
 	ok(l10.t("DUEL_SHARE", [142, link]).contains(link) and l10.t("DUEL_SHARE_BACK", [150, link]).contains(link), "the duel message has the link")
 	# rewards: nobody loses coins; a few paid duels a day

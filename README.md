@@ -322,7 +322,10 @@ hacia un planeta) y, desde el mundo 8, lluvias de cometas y jaulas de rayos. El 
 - **Ranking de amigos:** RANKING ▸ AMIGOS (el ranking mundial filtrado a amigos de Play Games;
   Google pide una vez permiso para ver la lista de amigos).
 - **Duelos (por turnos, sin servidores, `scripts/game/duel.gd`):** en la misma ventana RETOS.
-  **Enlace de duelo (1.0.12):** el mensaje lleva `https://jfrjimenez37-del.github.io/duel/?c=CÓDIGO`.
+  **Enlace de duelo:** el mensaje lleva `https://orbitpopgame.github.io/duel/?c=CÓDIGO` (desde 1.0.13;
+  la 1.0.12 compartía `jfrjimenez37-del.github.io`, que sigue publicada y el juego sigue abriendo).
+  La web vive en dos repositorios de GitHub Pages con el mismo contenido (`site/`):
+  `orbitpopgame/orbitpopgame.github.io` (la principal) y `jfrjimenez37-del/jfrjimenez37-del.github.io`.
   Con el plugin "Deeplink" de Cengiz (AssetLib, carpeta `addons/DeeplinkPlugin`, configurado por
   `addons/DeeplinkPlugin/export.cfg`) el enlace abre el juego directamente con el reto
   (`scripts/services/linker.gd`; si llega en mitad de una partida, se muestra al volver al menú).

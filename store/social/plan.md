@@ -60,7 +60,7 @@ YouTube). En TikTok, añade 1 de tendencia si encaja.
 ### C · Reto de duelo — `shorts/duel.mp4` (12 s)
 Código real del video (objetivo 150, la misma partida para todos):
 `ORBIT-801GJ0JS30GS-ORBITPOP` · enlace que abre el juego:
-`https://jfrjimenez37-del.github.io/duel/?c=ORBIT-801GJ0JS30GS-ORBITPOP`
+`https://orbitpopgame.github.io/duel/?c=ORBIT-801GJ0JS30GS-ORBITPOP`
 - **YouTube:** Can you beat my score? (code in comments) #shorts #mobilegame
 - **TikTok:** bet you can't beat 150 😤 same run, no power-ups. code in the comments 👇 #indiegame #mobilegame #challenge
 - **Instagram:** Can you beat my score? 🏆 Same obstacles, no power-ups. Duel code in the comments 👇

@@ -8,7 +8,8 @@ extends Node
 
 signal duel_link(code_text: String)
 
-const HOST := "jfrjimenez37-del.github.io"
+const HOST := "orbitpopgame.github.io"          # the links the game shares
+const OLD_HOSTS := ["jfrjimenez37-del.github.io"] # still opened (links sent by 1.0.12)
 const PATH := "/duel/"
 
 var _node: Node
@@ -22,7 +23,10 @@ static func duel_url(code: String) -> String:
 
 ## The duel code inside a link (or "" when it is not a duel link of ours).
 static func code_in(url: String) -> String:
-	if url.find(HOST + "/duel") < 0:
+	var ours := false
+	for h in [HOST] + OLD_HOSTS:
+		ours = ours or url.find(h + "/duel") >= 0
+	if not ours:
 		return ""
 	var d := Duel.decode(url)
 	return str(d.get("code", ""))
