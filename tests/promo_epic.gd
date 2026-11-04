@@ -391,7 +391,7 @@ func _tl_moving() -> void:
 func _tl_daily() -> void:
 	end_t = 12.0
 	_at(0.0, func(): _shot_challenges())
-	_cap_at(0, 4, "dl1", 36.0)
+	_cap_at(0, 4, "dl1", vh - 30.0)   # below the challenges window
 	_at(bt(4), func(): _shot_daily("dy1", 9, 22.0, 41); _flash(0.8); _punch(0.2))
 	_cap_at(4, 8, "dl2", low - 10.0)
 	_at(bt(8), func(): _shot_daily("dy2", 13, 26.0, 21); _flash(0.7); _punch(0.2))
@@ -412,6 +412,7 @@ func _shot_challenges() -> void:
 	main.go_menu()
 	main.ui.hide_popup()
 	main.ui.show_duel()
+	get_root().get_node("Monetization").hide_banner()   # no test banner in the footage
 
 
 ## A daily-challenge run (its HUD shows today's best to beat), warmed up off camera.
