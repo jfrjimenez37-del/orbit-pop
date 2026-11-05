@@ -258,14 +258,22 @@ func _on_restored(owned: Array) -> void:
 	store_changed.emit()
 
 
-## Welcome offer: once, after the 3rd run, if Play sells the half-price pack and no pack is owned.
+## Welcome offer: after the 5th and the 20th run (not while one is still running), if Play sells
+## the half-price pack and no pack is owned.
 func should_offer_welcome() -> bool:
-	return not Save.welcome_shown and Save.games >= MonetizationConfig.WELCOME_AFTER_GAMES and store_available() \
-		and store.has_method("listed") and store.listed(MonetizationConfig.WELCOME_PRODUCT) and starter_listed()
+	var at: Array = MonetizationConfig.WELCOME_AT_GAMES
+	return Save.welcome_count < at.size() and Save.games >= int(at[Save.welcome_count]) and welcome_secs() <= 0 \
+		and store_available() and store.has_method("listed") and store.listed(MonetizationConfig.WELCOME_PRODUCT) \
+		and starter_listed()
 
 
 func start_welcome() -> void:
 	Save.welcome_shown = true
+	Save.welcome_count += 1
+	# a player past both marks (old save) gets it once, not twice in a row
+	while Save.welcome_count < MonetizationConfig.WELCOME_AT_GAMES.size() \
+			and Save.games >= int(MonetizationConfig.WELCOME_AT_GAMES[Save.welcome_count]):
+		Save.welcome_count += 1
 	Save.welcome_until = int(unix.call()) + MonetizationConfig.WELCOME_HOURS * 3600
 	Save.save_data()
 

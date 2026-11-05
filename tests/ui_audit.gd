@@ -228,6 +228,12 @@ func _audit_all(lang: String) -> void:
 	ui.show_welcome()
 	await _check(lang, "welcome offer")
 	ui.hide_popup()
+	ui.show_rank_help()
+	await _check(lang, "rank help")
+	for kd in Director.KINDS:
+		ui.show_obstacle_info(str(kd[0]))
+		await _check(lang, "obstacle info " + str(kd[0]))
+	ui.hide_popup()
 	for dr in [{"mode": "new", "mine": 9999, "theirs": -1, "name": "", "pay": 0, "result": "", "code": "X"},
 			{"mode": "reply", "mine": 9999, "theirs": 9998, "name": DUEL_NAME, "pay": 50, "result": "win", "code": "X"},
 			{"mode": "reply", "mine": 1, "theirs": 9999, "name": DUEL_NAME, "pay": 10, "result": "loss", "code": "X"},

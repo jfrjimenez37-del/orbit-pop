@@ -90,6 +90,7 @@ var _alt_lbl: Label
 var _style_box: Control
 var _menu_coin_box: Control
 var _hud_top: Control
+var _style_glow: PremiumGlow
 var _over_place: Label
 var _over_next: Label
 var _over_tip1: Label
@@ -1165,6 +1166,10 @@ func _build_style() -> void:
 		_style_focus = Save.selected(id)
 		_refresh_style())
 	var panel := _panel(box, Vector2(0, 21), Vector2(164, 256))
+	_style_glow = PremiumGlow.new()
+	_style_glow.position = Vector2(6, -4)
+	_style_glow.size = Vector2(68, 68)
+	panel.add_child(_style_glow)
 	_style_preview = TextureRect.new()
 	_style_preview.texture = AtlasTexture.new()
 	_style_preview.scale = Vector2(3, 3)
@@ -1328,6 +1333,9 @@ func _refresh_style() -> void:
 	_style_need.text = _need_text(_style_tab, f)
 	_style_need.size = Vector2(_text_w(_style_need.text), 10)
 	var rar: String = it.get("rarity", "")
+	_style_glow.on = _style_tab == "skins" and Catalog.premium(it)
+	_style_glow.color = Catalog.RARITY_COLORS.get(rar, Color.WHITE)
+	_style_glow.queue_redraw()
 	_style_rarity.visible = rar != ""
 	if rar != "":
 		_style_rarity.text = L.t("R_" + rar.to_upper())
@@ -1654,6 +1662,9 @@ func refresh_ranking() -> void:
 		_obstacle_list()
 		return
 	if _rank_tab == "ranking":
+		var qb := _button(_rank_list, "white", "?", "", Vector2(14, 13))
+		qb.position = Vector2(146, 2)
+		qb.pressed.connect(show_rank_help)
 		var region := Progress.region()
 		if _rank_board == "":
 			_my_runs()
@@ -1731,6 +1742,17 @@ func _obstacle_list() -> void:
 		var ic := ObstacleIcon.new(kd[0], not got)
 		ic.position = Vector2(8, y)
 		_rank_list.add_child(ic)
+		if got:   # tap a met obstacle: what it does and how to dodge it
+			var hit := Button.new()
+			hit.flat = true
+			hit.focus_mode = Control.FOCUS_NONE
+			hit.position = Vector2(4, y - 2)
+			hit.size = Vector2(156, 22)
+			var kind: String = kd[0]
+			hit.pressed.connect(func():
+				Sfx.play("select")
+				show_obstacle_info(kind))
+			_rank_list.add_child(hit)
 		var key := "OB_" + str(kd[0]).to_upper()
 		_left_label(_rank_list, L.t(key) if got else "???", Vector2(32, y + 1), INK if got else MUTED)
 		_left_label(_rank_list, L.t(key + "_D") if got else L.t("OB_LOCKED", int(kd[2])), Vector2(32, y + 10), MUTED)
@@ -1742,6 +1764,39 @@ func _obstacle_list() -> void:
 			refresh_ranking())
 	var pl := _label(_rank_list, "%d/%d" % [_rank_page + 1, pages], 1, MUTED)
 	_center_label(pl, 164, 188)
+	if seen > 1:
+		var hint := _label(_rank_list, L.t("OB_TAP"), 1, Color8(190, 180, 210))
+		_center_label(hint, 164, 206)
+
+
+## An obstacle of the collection: big picture, name, what it does, how to dodge it, first world.
+func show_obstacle_info(kind: String) -> void:
+	var key := "OB_" + kind.to_upper()
+	var p := _open_popup(L.t(key), "obstacle", 168)
+	var ic := ObstacleIcon.new(kind, false)
+	ic.scale = Vector2(2, 2)
+	ic.position = Vector2(58, 2)
+	p.add_child(ic)
+	var y := 46
+	for j in 2:
+		var l := _label(p, L.t("%s_INFO_%d" % [key, j + 1]), 1, INK)
+		_center_label(l, 156, y + j * 10)
+	y += 26
+	var how := _label(p, L.t("OB_HOW"), 1, COIN_INK)
+	_center_label(how, 156, y)
+	y += 11
+	for j in 2:
+		var tip: String = L.t("TIP_%s_%d" % [kind.to_upper(), j + 1])
+		if j == 0 and tip.find(": ") >= 0:
+			tip = tip.substr(tip.find(": ") + 2)   # without the "TIP:" word of the game over tips
+		var tl := _label(p, tip, 1, MUTED)
+		_center_label(tl, 156, y + j * 10)
+	y += 26
+	for kd in Director.KINDS:
+		if kd[0] == kind:
+			var fw := _label(p, L.t("OB_FIRST", int(kd[2])), 1, Color8(150, 110, 200))
+			_center_label(fw, 156, y)
+	_close_button(p, y + 16)
 
 
 func _my_runs() -> void:
@@ -1788,6 +1843,9 @@ func _board_view(pg) -> void:
 			for j in 2:
 				var hl := _label(_rank_list, L.t("RANK_HIDDEN_%d" % (j + 1)), 1, Color8(190, 120, 150))
 				_center_label(hl, 164, 80 + j * 10)
+			var hb := _button(_rank_list, "pink", L.t("RANK_HOW"), "", Vector2(100, 18))
+			hb.position = Vector2(32, 104)
+			hb.pressed.connect(show_rank_help)
 	for i in mini(rows.size(), 10):
 		var r: Dictionary = rows[i]
 		var y := 20 + i * 12
@@ -1827,6 +1885,28 @@ func _play_games_footer(pg, y: int) -> void:
 	else:
 		var off := _label(_rank_list, L.t("PLAY_GAMES_OFF"), 1, Color8(190, 120, 150))
 		_center_label(off, 164, y + 20)
+
+
+## How to show up in the Play Games rankings (a private profile hides your scores).
+func show_rank_help() -> void:
+	Progress.ga.design("UI:Open:RankHelp")
+	var p := _open_popup(L.t("RANK_HELP_T"), "rank_help", 150)
+	for i in 4:
+		var l := _label(p, L.t("RANK_HELP_%d" % (i + 1)), 1, INK if i < 3 else GREEN_INK)
+		_center_label(l, 156, 6 + i * 13)
+	var why := _label(p, L.t("RANK_HELP_WHY"), 1, MUTED)
+	_center_label(why, 156, 60)
+	var pg = Progress.games
+	var ob := _button(p, "green", L.t("RANK_OPEN_PG") if pg.signed_in else L.t("SIGN_IN"), "trophy", Vector2(120, 22))
+	ob.position = Vector2(18, 78)
+	ob.pressed.connect(func():
+		if pg.signed_in:
+			_open_board("GLOBAL")
+		elif pg.available:
+			pg.sign_in()
+		else:
+			toast(L.t("PLAY_GAMES_OFF"), Color8(255, 150, 160)))
+	_close_button(p, 108)
 
 
 func _open_board(board: String) -> void:
@@ -1884,6 +1964,10 @@ func _open_popup(title: String, kind := "", h := 136) -> NinePatchRect:
 	var t := _label(_popup_box, title, 2)
 	_center_label(t, 156, 0)
 	var p := _panel(_popup_box, Vector2(0, 22), Vector2(156, h))
+	# over every screen (it can open from the ranking / style screens), under toasts and the flash
+	popup.move_to_front()
+	_toast.move_to_front()
+	flash_rect.move_to_front()
 	if not popup.visible:
 		popup.visible = true
 		popup.modulate.a = 0.0

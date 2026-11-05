@@ -56,6 +56,7 @@ func _initialize() -> void:
 	await test_events(save)
 	await test_surges(save)
 	await test_v120(save)
+	await test_v121(save)
 	print("\n%d checks, %d failed" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -236,15 +237,15 @@ func test_save(save) -> void:
 	ok(r1["record"], "first run is a record")
 	ok(not save.is_unlocked(minty), "MINTY still locked at 12")
 	save.best = 0; save.games = 0; save.total = 0
-	r1 = save.submit_run(12 + 4)
-	ok(r1["unlocked"].has(minty), "MINTY unlocked at 16")
+	r1 = save.submit_run(30)
+	ok(r1["unlocked"].has(minty), "MINTY unlocked at 30")
 	var r2: Dictionary = save.submit_run(5)
 	ok(not r2["record"], "lower score is not a record")
 	save.skin = minty
 	save.save_data()
 	save.best = 0; save.games = 0; save.skin = 0
 	save.load_data()
-	ok(save.best == 16 and save.games == 2 and save.total == 21, "stats persisted (%d,%d,%d)" % [save.best, save.games, save.total])
+	ok(save.best == 30 and save.games == 2 and save.total == 35, "stats persisted (%d,%d,%d)" % [save.best, save.games, save.total])
 	ok(save.skin == minty, "skin persisted")
 	# rarity catalog
 	var last_rank := 0
@@ -258,18 +259,18 @@ func test_save(save) -> void:
 	# old saves stored the skin index: index 9 was COOKIE
 	ok(Catalog.SKINS[Catalog.skin_index(9)]["id"] == "cookie" and Catalog.skin_index("nova") == Catalog.find("skins", "nova"), "legacy skin index maps to id")
 	ok(save._seen_ids([0, 5, "volt"]) == ["poppy", "cosmo", "volt"], "legacy seen list converts to ids")
-	# world-reached skins
+	# score skins (1.0.21: by score, no longer by world reached)
 	var ghosty := Catalog.find("skins", "ghosty")
-	save.stats["best_world"] = 5
-	ok(not save.is_unlocked(ghosty), "GHOSTY locked before world 6")
-	save.stats["best_world"] = 6
-	ok(save.is_unlocked(ghosty) and save.submit_run(1)["unlocked"].has(ghosty), "GHOSTY unlocked at world 6 and announced")
+	save.stats["best_world"] = 16
+	ok(not save.is_unlocked(ghosty), "GHOSTY locked below 260 points, whatever the world")
+	save.best = 260
+	ok(save.is_unlocked(ghosty) and save.submit_run(1)["unlocked"].has(ghosty), "GHOSTY unlocked at 260 points and announced")
 	save.stats = {}
 	var omega := Catalog.find("skins", "omega")
-	save.best = 999
-	ok(not save.is_unlocked(omega), "OMEGA needs 1000")
-	save.best = 1000
-	ok(save.is_unlocked(omega), "OMEGA unlocked at 1000")
+	save.best = 1499
+	ok(not save.is_unlocked(omega), "OMEGA needs 1500")
+	save.best = 1500
+	ok(save.is_unlocked(omega), "OMEGA unlocked at 1500")
 	save.best = 16
 	ok(not save.is_unlocked(2), "BERRY still locked")
 	save.reset_all()
@@ -1915,17 +1916,21 @@ func test_v120(save) -> void:
 	ok(main.ui._over_tip1.text == l10n.t("TIP_ANY_1"), "v120: a general tip when the killer is unknown")
 	for kd in Director.KINDS:
 		ok(l10n.has("TIP_" + str(kd[0]).to_upper() + "_1"), "v120: a tip for %s" % kd[0])
-	# welcome offer: after the 3rd run, once, 48 h, the starter at half price in the shop
-	save.games = 3
-	save.welcome_shown = false
+	# welcome offer: after the 5th run (and the 20th), 48 h, the starter at half price in the shop
+	save.games = 4
+	save.welcome_count = 0
 	save.daily_last = save._day_string()
 	main.go_menu()
-	ok(main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome", "v120: the welcome offer shows after 3 runs")
+	ok(not (main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome"), "v120: no welcome offer before the 5th run")
+	save.games = 5
+	save.daily_last = save._day_string()
+	main.go_menu()
+	ok(main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome", "v120: the welcome offer shows after 5 runs")
 	var secs: int = get_root().get_node("Monetization").welcome_secs()
 	ok(secs > 47 * 3600 and secs <= 48 * 3600, "v120: for 48 hours (%d h)" % (secs / 3600))
 	main.ui.hide_popup()
 	main.go_menu()
-	ok(not (main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome"), "v120: only once")
+	ok(not (main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome"), "v120: not again while it runs")
 	main.ui._shop_tab = "packs"
 	main.ui.refresh_shop()
 	var shop_txt := ""
@@ -1933,10 +1938,82 @@ func test_v120(save) -> void:
 		if c is Label:
 			shop_txt += c.text + "|"
 	ok(shop_txt.contains(l10n.t("WELCOME_LEFT", 48)), "v120: the shop shows the -50 % starter with its hours")
+	# expired: again at the 20th run, then never
+	save.welcome_until = 0
+	save.games = 19
+	main.go_menu()
+	ok(not (main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome"), "v120: not at run 19")
+	save.games = 20
+	main.go_menu()
+	ok(main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome" and save.welcome_count == 2, "v120: again after the 20th run")
+	main.ui.hide_popup()
+	save.welcome_until = 0
+	save.games = 60
+	main.go_menu()
+	ok(not (main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome"), "v120: two times at most")
+	save.welcome_until = int(Time.get_unix_time_from_system()) + 3600
 	save.grant("starter_50")
 	ok(save.owns("starter") and save.owns("no_ads") and get_root().get_node("Monetization").welcome_secs() == 0,
 		"v120: the half-price pack counts as the starter pack (no ads)")
 	main.queue_free()
 	await process_frame
 	Orbit.reset()
+	save.reset_all()
+
+
+## 1.0.21: skins and trails by score (worth more), old unlocks kept, premium aura, obstacle info,
+## ranking help.
+func test_v121(save) -> void:
+	# a first run to world 5 (90 points) no longer hands out a pile of skins
+	save.reset_all()
+	save.best = 90
+	save.stats = {"best_world": 5}
+	var got: Array = []
+	for i in Catalog.SKINS.size():
+		if save.unlocked("skins", i):
+			got.append(Catalog.SKINS[i]["id"])
+	var trails: Array = []
+	for i in Catalog.TRAILS.size():
+		if save.unlocked("trails", i):
+			trails.append(Catalog.TRAILS[i]["id"])
+	ok(got == ["poppy", "minty", "berry"] and trails == ["classic"], "v121: 90 points unlock 2 skins, no trail (%s / %s)" % [str(got), str(trails)])
+	var by_world := 0
+	for cat in ["skins", "trails"]:
+		for it in Catalog.items(cat):
+			if it["need"][0] == "world":
+				by_world += 1
+	ok(by_world == 0, "v121: nothing unlocks by world reached any more")
+	# an old save keeps what it had: a player with world 9 under the old rules keeps MAGMA etc.
+	var cfg := ConfigFile.new()
+	cfg.set_value("stats", "best", 300)
+	cfg.set_value("stats", "games", 40)
+	cfg.set_value("player", "level", 12)
+	cfg.set_value("progress", "stats", {"best_world": 9})
+	cfg.save(save.path)
+	save.load_data()
+	var keep := ["frosty", "ember", "volt", "ghosty", "alien", "crystal", "cosmo", "magma"]
+	var kept := true
+	for id in keep:
+		kept = kept and save.unlocked("skins", Catalog.find("skins", id))
+	ok(kept and save.unlocked("trails", Catalog.find("trails", "galaxy")) and save.unlocked("trails", Catalog.find("trails", "smoke")),
+		"v121: an old save keeps its skins and trails")
+	ok(not save.unlocked("skins", Catalog.find("skins", "royal")) and save.unlock_rules == 2, "v121: but nothing more than it had")
+	save.save_data()
+	save.load_data()
+	ok(save.unlocked("skins", Catalog.find("skins", "magma")), "v121: kept after saving and loading again")
+	# premium look
+	ok(Catalog.premium(Catalog.SKINS[Catalog.find("skins", "magma")]) and Catalog.premium(Catalog.SKINS[Catalog.find("skins", "ninja")])
+		and not Catalog.premium(Catalog.SKINS[Catalog.find("skins", "minty")]), "v121: legendary / expensive skins are premium")
+	save.reset_all()
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	main.ui.show_obstacle_info("boomerang")
+	ok(main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "obstacle", "v121: an obstacle's info window")
+	main.ui.show_rank_help()
+	ok(main.ui.popup.get_meta("kind", "") == "rank_help", "v121: how to appear in the ranking")
+	main.queue_free()
+	await process_frame
 	save.reset_all()

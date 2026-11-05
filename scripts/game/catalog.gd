@@ -8,38 +8,39 @@ const RARITIES := ["common", "rare", "epic", "legendary", "mythic"]
 const RARITY_COLORS := {"common": Color8(150, 160, 186), "rare": Color8(70, 150, 255), "epic": Color8(176, 90, 255),
 	"legendary": Color8(255, 170, 30), "mythic": Color8(255, 70, 150)}
 
-## need: "best"/"total" score, "world" = reach that world number, "coins" price, "shop" product.
+## need: "best"/"total" score, "coins" price, "shop" product, "level" player level ("world" =
+## reach that world number is still understood, no item uses it since 1.0.21).
 ## color: trail/burst tint. fx: [kind, Color] drawn by OrbitPlayer.
 const SKINS := [
 	{"id": "poppy", "name": "POPPY", "rarity": "common", "need": ["best", 0], "color": Color8(255, 212, 60)},
-	{"id": "minty", "name": "MINTY", "rarity": "common", "need": ["best", 15], "color": Color8(110, 230, 160)},
-	{"id": "berry", "name": "BERRY", "rarity": "common", "need": ["best", 40], "color": Color8(255, 128, 178)},
+	{"id": "minty", "name": "MINTY", "rarity": "common", "need": ["best", 30], "color": Color8(110, 230, 160)},
+	{"id": "berry", "name": "BERRY", "rarity": "common", "need": ["best", 70], "color": Color8(255, 128, 178)},
 	{"id": "cookie", "name": "COOKIE", "rarity": "common", "need": ["coins", 600], "color": Color8(230, 172, 108)},
 	{"id": "melony", "name": "MELONY", "rarity": "common", "need": ["coins", 900], "color": Color8(124, 204, 96)},
-	{"id": "frosty", "name": "FROSTY", "rarity": "rare", "need": ["world", 3], "color": Color8(172, 226, 255)},
-	{"id": "ember", "name": "EMBER", "rarity": "rare", "need": ["world", 4], "color": Color8(255, 122, 58)},
-	{"id": "volt", "name": "VOLT", "rarity": "rare", "need": ["world", 5], "color": Color8(255, 214, 40), "fx": ["bolt", Color8(255, 240, 120)]},
-	{"id": "pixel", "name": "PIXEL", "rarity": "rare", "need": ["total", 2500], "color": Color8(240, 96, 140)},
+	{"id": "frosty", "name": "FROSTY", "rarity": "rare", "need": ["best", 110], "color": Color8(172, 226, 255)},
+	{"id": "ember", "name": "EMBER", "rarity": "rare", "need": ["best", 150], "color": Color8(255, 122, 58)},
+	{"id": "volt", "name": "VOLT", "rarity": "rare", "need": ["best", 200], "color": Color8(255, 214, 40), "fx": ["bolt", Color8(255, 240, 120)]},
+	{"id": "pixel", "name": "PIXEL", "rarity": "rare", "need": ["total", 6000], "color": Color8(240, 96, 140)},
 	{"id": "bubbly", "name": "BUBBLY", "rarity": "rare", "need": ["coins", 1500], "color": Color8(255, 172, 232)},
 	{"id": "robo", "name": "ROBO", "rarity": "rare", "need": ["coins", 2200], "color": Color8(190, 202, 220)},
 	{"id": "panda", "name": "PANDA", "rarity": "rare", "need": ["shop", "star_pack"], "color": Color8(246, 246, 252)},
-	{"id": "ghosty", "name": "GHOSTY", "rarity": "epic", "need": ["world", 6], "color": Color8(196, 160, 255), "fx": ["wisp", Color8(190, 150, 255)]},
-	{"id": "alien", "name": "ALIEN", "rarity": "epic", "need": ["world", 7], "color": Color8(110, 220, 110), "fx": ["sparkle", Color8(170, 255, 140)]},
-	{"id": "crystal", "name": "CRYSTAL", "rarity": "epic", "need": ["world", 8], "color": Color8(150, 220, 255), "fx": ["sparkle", Color8(200, 245, 255)]},
-	{"id": "luna", "name": "LUNA", "rarity": "epic", "need": ["world", 11], "color": Color8(214, 222, 255), "fx": ["stars", Color8(255, 240, 160)]},
-	{"id": "cosmo", "name": "COSMO", "rarity": "epic", "need": ["best", 250], "color": Color8(150, 112, 236), "fx": ["stars", Color8(255, 226, 90)]},
+	{"id": "ghosty", "name": "GHOSTY", "rarity": "epic", "need": ["best", 260], "color": Color8(196, 160, 255), "fx": ["wisp", Color8(190, 150, 255)]},
+	{"id": "alien", "name": "ALIEN", "rarity": "epic", "need": ["best", 320], "color": Color8(110, 220, 110), "fx": ["sparkle", Color8(170, 255, 140)]},
+	{"id": "crystal", "name": "CRYSTAL", "rarity": "epic", "need": ["best", 380], "color": Color8(150, 220, 255), "fx": ["sparkle", Color8(200, 245, 255)]},
+	{"id": "luna", "name": "LUNA", "rarity": "epic", "need": ["best", 450], "color": Color8(214, 222, 255), "fx": ["stars", Color8(255, 240, 160)]},
+	{"id": "cosmo", "name": "COSMO", "rarity": "epic", "need": ["best", 520], "color": Color8(150, 112, 236), "fx": ["stars", Color8(255, 226, 90)]},
 	{"id": "ninja", "name": "NINJA", "rarity": "epic", "need": ["coins", 4000], "color": Color8(232, 52, 64), "fx": ["sparkle", Color8(255, 90, 100)]},
 	{"id": "drake", "name": "DRAKE", "rarity": "epic", "need": ["coins", 5500], "color": Color8(112, 204, 92), "fx": ["embers", Color8(170, 255, 110)]},
 	{"id": "neon", "name": "NEON", "rarity": "epic", "need": ["shop", "star_pack"], "color": Color8(64, 232, 226), "fx": ["sparkle", Color8(255, 90, 210)]},
-	{"id": "magma", "name": "MAGMA", "rarity": "legendary", "need": ["world", 9], "color": Color8(255, 120, 40), "fx": ["embers", Color8(255, 170, 50)]},
-	{"id": "royal", "name": "ROYAL", "rarity": "legendary", "need": ["world", 10], "color": Color8(176, 100, 232), "fx": ["aura", Color8(255, 214, 70)]},
-	{"id": "titan", "name": "TITAN", "rarity": "legendary", "need": ["world", 13], "color": Color8(132, 128, 160), "fx": ["aura", Color8(255, 180, 60)]},
+	{"id": "magma", "name": "MAGMA", "rarity": "legendary", "need": ["best", 600], "color": Color8(255, 120, 40), "fx": ["embers", Color8(255, 170, 50)]},
+	{"id": "royal", "name": "ROYAL", "rarity": "legendary", "need": ["best", 700], "color": Color8(176, 100, 232), "fx": ["aura", Color8(255, 214, 70)]},
+	{"id": "titan", "name": "TITAN", "rarity": "legendary", "need": ["best", 820], "color": Color8(132, 128, 160), "fx": ["aura", Color8(255, 180, 60)]},
 	{"id": "skully", "name": "SKULLY", "rarity": "legendary", "need": ["coins", 9000], "color": Color8(238, 232, 216), "fx": ["aura", Color8(200, 190, 255)]},
 	{"id": "prism", "name": "PRISM", "rarity": "legendary", "need": ["coins", 15000], "color": Color8(255, 255, 255), "fx": ["rainbow", Color.WHITE]},
 	{"id": "goldie", "name": "GOLDIE", "rarity": "legendary", "need": ["shop", "star_pack"], "color": Color8(255, 204, 44), "fx": ["aura", Color8(255, 230, 110)]},
-	{"id": "nova", "name": "NOVA", "rarity": "mythic", "need": ["best", 500], "color": Color8(255, 214, 60), "fx": ["nova", Color8(255, 220, 90)]},
-	{"id": "omega", "name": "OMEGA", "rarity": "mythic", "need": ["best", 1000], "color": Color8(170, 110, 255), "fx": ["omega", Color.WHITE]},
-	{"id": "quasar", "name": "QUASAR", "rarity": "mythic", "need": ["world", 16], "color": Color8(120, 240, 255), "fx": ["nova", Color8(120, 240, 255)]},
+	{"id": "nova", "name": "NOVA", "rarity": "mythic", "need": ["best", 1000], "color": Color8(255, 214, 60), "fx": ["nova", Color8(255, 220, 90)]},
+	{"id": "omega", "name": "OMEGA", "rarity": "mythic", "need": ["best", 1500], "color": Color8(170, 110, 255), "fx": ["omega", Color.WHITE]},
+	{"id": "quasar", "name": "QUASAR", "rarity": "mythic", "need": ["total", 50000], "color": Color8(120, 240, 255), "fx": ["nova", Color8(120, 240, 255)]},
 ]
 ## Old saves stored the skin as an index into this original order.
 const LEGACY_SKINS := ["poppy", "minty", "berry", "frosty", "ember", "cosmo", "goldie", "neon", "panda", "cookie", "bubbly", "robo", "drake"]
@@ -47,25 +48,25 @@ const LEGACY_SKINS := ["poppy", "minty", "berry", "frosty", "ember", "cosmo", "g
 ## Trails by rarity. style: how OrbitPlayer draws it (see _draw_trail), cols: palette.
 const TRAILS := [
 	{"id": "classic", "name": "CLASSIC", "rarity": "common", "need": ["best", 0], "style": "squares", "cols": []},
-	{"id": "dots", "name": "DOTS", "rarity": "common", "need": ["level", 3], "style": "dots", "cols": [Color8(255, 255, 255), Color8(60, 140, 255)]},
+	{"id": "dots", "name": "DOTS", "rarity": "common", "need": ["level", 6], "style": "dots", "cols": [Color8(255, 255, 255), Color8(60, 140, 255)]},
 	{"id": "dash", "name": "DASH", "rarity": "common", "need": ["coins", 300], "style": "dash", "cols": [Color8(255, 230, 90), Color8(255, 255, 255)]},
 	{"id": "sparkle", "name": "SPARKLE", "rarity": "rare", "need": ["coins", 800], "style": "sparkle", "cols": [Color8(255, 255, 255), Color8(255, 240, 140)]},
-	{"id": "bubbles", "name": "BUBBLES", "rarity": "rare", "need": ["world", 3], "style": "rings", "cols": [Color8(170, 230, 255), Color8(255, 255, 255)]},
-	{"id": "leaves", "name": "LEAVES", "rarity": "rare", "need": ["level", 5], "style": "leaves", "cols": [Color8(120, 220, 90), Color8(70, 170, 70)]},
+	{"id": "bubbles", "name": "BUBBLES", "rarity": "rare", "need": ["best", 120], "style": "rings", "cols": [Color8(170, 230, 255), Color8(255, 255, 255)]},
+	{"id": "leaves", "name": "LEAVES", "rarity": "rare", "need": ["level", 10], "style": "leaves", "cols": [Color8(120, 220, 90), Color8(70, 170, 70)]},
 	{"id": "pixel", "name": "PIXEL", "rarity": "rare", "need": ["coins", 1500], "style": "checker", "cols": [Color8(255, 110, 160), Color8(255, 255, 255)]},
 	{"id": "hearts", "name": "HEARTS", "rarity": "rare", "need": ["shop", "trail_pack"], "style": "hearts", "cols": [Color8(255, 100, 150), Color8(255, 170, 200)]},
-	{"id": "smoke", "name": "SMOKE", "rarity": "rare", "need": ["level", 10], "style": "smoke", "cols": [Color8(220, 220, 236), Color8(170, 170, 196)]},
-	{"id": "fire", "name": "FIRE", "rarity": "epic", "need": ["world", 5], "style": "fire", "cols": [Color8(255, 230, 80), Color8(255, 140, 40), Color8(230, 60, 40)]},
-	{"id": "ice", "name": "ICE", "rarity": "epic", "need": ["world", 6], "style": "crystals", "cols": [Color8(150, 230, 255), Color8(60, 140, 255)]},
-	{"id": "bolt", "name": "BOLT", "rarity": "epic", "need": ["level", 15], "style": "bolt", "cols": [Color8(255, 220, 40), Color8(255, 150, 30)]},
+	{"id": "smoke", "name": "SMOKE", "rarity": "rare", "need": ["level", 16], "style": "smoke", "cols": [Color8(220, 220, 236), Color8(170, 170, 196)]},
+	{"id": "fire", "name": "FIRE", "rarity": "epic", "need": ["best", 230], "style": "fire", "cols": [Color8(255, 230, 80), Color8(255, 140, 40), Color8(230, 60, 40)]},
+	{"id": "ice", "name": "ICE", "rarity": "epic", "need": ["best", 300], "style": "crystals", "cols": [Color8(150, 230, 255), Color8(60, 140, 255)]},
+	{"id": "bolt", "name": "BOLT", "rarity": "epic", "need": ["level", 24], "style": "bolt", "cols": [Color8(255, 220, 40), Color8(255, 150, 30)]},
 	{"id": "notes", "name": "NOTES", "rarity": "epic", "need": ["coins", 3000], "style": "notes", "cols": [Color8(200, 140, 255), Color8(255, 140, 220)]},
 	{"id": "stars", "name": "STARS", "rarity": "epic", "need": ["shop", "trail_pack"], "style": "stars", "cols": [Color8(255, 220, 60), Color8(255, 250, 200)]},
-	{"id": "halo", "name": "HALO", "rarity": "epic", "need": ["world", 12], "style": "rings", "cols": [Color8(255, 236, 140), Color8(255, 255, 255)]},
-	{"id": "neon", "name": "NEON", "rarity": "epic", "need": ["level", 20], "style": "neon", "cols": [Color8(60, 240, 255), Color8(255, 70, 220)]},
+	{"id": "halo", "name": "HALO", "rarity": "epic", "need": ["best", 560], "style": "rings", "cols": [Color8(255, 236, 140), Color8(255, 255, 255)]},
+	{"id": "neon", "name": "NEON", "rarity": "epic", "need": ["level", 32], "style": "neon", "cols": [Color8(60, 240, 255), Color8(255, 70, 220)]},
 	{"id": "rainbow", "name": "RAINBOW", "rarity": "legendary", "need": ["shop", "trail_pack"], "style": "rainbow", "cols": []},
-	{"id": "galaxy", "name": "GALAXY", "rarity": "legendary", "need": ["world", 8], "style": "galaxy", "cols": [Color8(150, 100, 255), Color8(80, 120, 255), Color8(255, 255, 255)]},
-	{"id": "comet", "name": "COMET", "rarity": "legendary", "need": ["level", 30], "style": "comet", "cols": [Color8(255, 255, 255), Color8(140, 210, 255), Color8(80, 120, 255)]},
-	{"id": "plasma", "name": "PLASMA", "rarity": "legendary", "need": ["world", 15], "style": "neon", "cols": [Color8(255, 90, 200), Color8(120, 90, 255)]},
+	{"id": "galaxy", "name": "GALAXY", "rarity": "legendary", "need": ["best", 480], "style": "galaxy", "cols": [Color8(150, 100, 255), Color8(80, 120, 255), Color8(255, 255, 255)]},
+	{"id": "comet", "name": "COMET", "rarity": "legendary", "need": ["level", 42], "style": "comet", "cols": [Color8(255, 255, 255), Color8(140, 210, 255), Color8(80, 120, 255)]},
+	{"id": "plasma", "name": "PLASMA", "rarity": "legendary", "need": ["best", 900], "style": "neon", "cols": [Color8(255, 90, 200), Color8(120, 90, 255)]},
 	{"id": "gold", "name": "GOLD", "rarity": "legendary", "need": ["coins", 8000], "style": "coins", "cols": [Color8(255, 206, 50), Color8(255, 250, 200)]},
 	{"id": "aurora", "name": "AURORA", "rarity": "mythic", "need": ["level", 50], "style": "aurora", "cols": []},
 ]
@@ -89,6 +90,47 @@ const WORLDS := [
 	{"id": "pendulum", "name": "PENDULUM", "need": ["best", 0], "top": Color8(14, 18, 50), "bottom": Color8(60, 80, 150), "planet": "planet_mint", "planet2": "planet", "cloud": Color(0.7, 0.75, 1.0, 0.5), "stars": true},
 	{"id": "pulsar", "name": "PULSAR", "need": ["best", 0], "top": Color8(6, 6, 24), "bottom": Color8(40, 30, 110), "planet": "planet_gold", "planet2": "planet_violet", "cloud": Color(0.6, 0.6, 1.0, 0.4), "stars": true},
 ]
+
+## 1.0.21 made skins and trails cost more (score instead of worlds reached, higher levels). What
+## a player had already unlocked under these old rules stays theirs (Save._keep_old_unlocks).
+const OLD_NEEDS := {
+	"skins:minty": ["best", 15],
+	"skins:berry": ["best", 40],
+	"skins:frosty": ["world", 3],
+	"skins:ember": ["world", 4],
+	"skins:volt": ["world", 5],
+	"skins:pixel": ["total", 2500],
+	"skins:ghosty": ["world", 6],
+	"skins:alien": ["world", 7],
+	"skins:crystal": ["world", 8],
+	"skins:luna": ["world", 11],
+	"skins:cosmo": ["best", 250],
+	"skins:magma": ["world", 9],
+	"skins:royal": ["world", 10],
+	"skins:titan": ["world", 13],
+	"skins:nova": ["best", 500],
+	"skins:omega": ["best", 1000],
+	"skins:quasar": ["world", 16],
+	"trails:dots": ["level", 3],
+	"trails:bubbles": ["world", 3],
+	"trails:leaves": ["level", 5],
+	"trails:smoke": ["level", 10],
+	"trails:fire": ["world", 5],
+	"trails:ice": ["world", 6],
+	"trails:bolt": ["level", 15],
+	"trails:halo": ["world", 12],
+	"trails:neon": ["level", 20],
+	"trails:galaxy": ["world", 8],
+	"trails:comet": ["level", 30],
+	"trails:plasma": ["world", 15],
+}
+## Premium look (aura in the game and glow in the style screen): legendary / mythic skins and
+## the expensive ones (coins from 4000, or bought in the shop).
+static func premium(it: Dictionary) -> bool:
+	var need: Array = it.get("need", [])
+	return it.get("rarity", "") in ["legendary", "mythic"] or (need.size() > 1 and need[0] == "shop") \
+		or (need.size() > 1 and need[0] == "coins" and int(need[1]) >= 4000)
+
 
 const CATEGORIES := {"skins": SKINS, "trails": TRAILS, "worlds": WORLDS}  # worlds: not sold
 

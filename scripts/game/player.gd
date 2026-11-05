@@ -155,6 +155,9 @@ func _draw() -> void:
 		if shield > 0.6 or fmod(shield, 0.2) < 0.1:
 			draw_arc(Vector2(0, -1), 10.0, 0.0, TAU, 20, Color(0.7, 0.95, 1.0, 0.9), 1.0)
 	var fx: Array = Save.SKINS[skin].get("fx", [])
+	var premium := alive and Catalog.premium(Save.SKINS[skin])
+	if premium:
+		_draw_premium(true)
 	if not fx.is_empty() and alive:
 		_draw_fx(fx[0], fx[1], true)
 	draw_set_transform(Vector2.ZERO, _dead_rot, Vector2(sx * flipx, sy))
@@ -162,6 +165,26 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 	if not fx.is_empty() and alive:
 		_draw_fx(fx[0], fx[1], false)
+	if premium:
+		_draw_premium(false)
+
+
+## Premium skins (legendary, mythic, the expensive ones): a halo in the rarity colour with slow
+## rays behind the critter, and a glint that runs around it.
+func _draw_premium(back: bool) -> void:
+	var rc: Color = Catalog.RARITY_COLORS.get(Save.SKINS[skin].get("rarity", ""), Color.WHITE)
+	var c := Vector2(0, -1)
+	if back:
+		var pulse := 0.5 + 0.5 * sin(_t * 2.6)
+		draw_circle(c, 11.0 + pulse, Color(rc, 0.13 + 0.07 * pulse))
+		for i in 4:
+			var a := i * TAU / 4.0 + _t * 0.7
+			var d := Vector2(cos(a), sin(a))
+			draw_line(c + d * 9.0, c + d * (13.0 + sin(_t * 4.0 + i)), Color(rc, 0.4), 1.0)
+		return
+	var ph := fmod(_t * 0.7, 1.0)
+	var a2 := _t * 2.2
+	_sparkle(c + Vector2(cos(a2), sin(a2)) * 10.0, Color(1, 1, 1, sin(ph * PI)), sin(ph * PI))
 
 
 const SHAPES := {

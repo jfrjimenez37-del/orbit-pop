@@ -33,7 +33,9 @@ var daily_last := ""          # local date of the last claim (YYYY-MM-DD)
 var free_ads_date := ""
 var free_ads_used := 0
 var starter_seen := false
-var welcome_shown := false     # welcome offer (starter at -50 %) already offered
+var unlock_rules := 2         # 1 = before 1.0.21 (see _keep_old_unlocks)
+var welcome_shown := false     # (1.0.20) welcome offer already offered once
+var welcome_count := 0         # times the welcome offer (starter at -50 %) was offered
 var welcome_until := 0         # unix time its countdown ends
 var reduce_motion := false   # Settings: no ascent scroll / sway
 var sessions := 0             # app launches (no interstitial in the very first one)
@@ -99,6 +101,7 @@ func load_data() -> void:
 	region = str(cfg.get_value("settings", "region", ""))
 	starter_seen = bool(cfg.get_value("shop", "starter_seen", false))
 	welcome_shown = bool(cfg.get_value("shop", "welcome_shown", false))
+	welcome_count = int(cfg.get_value("shop", "welcome_count", 1 if welcome_shown else 0))
 	welcome_until = int(cfg.get_value("shop", "welcome_until", 0))
 	review_asks = int(cfg.get_value("meta", "review_asks", 0))
 	reduce_motion = bool(cfg.get_value("settings", "reduce_motion", false))
@@ -136,6 +139,8 @@ func load_data() -> void:
 			if int(kd[2]) <= mini(int(stats.get("best_world", 1)), 8) and not seen_default.has(kd[0]):
 				seen_default.append(kd[0])
 	seen_obstacles = cfg.get_value("meta", "seen_obstacles", seen_default)
+	if int(cfg.get_value("meta", "unlock_rules", 1)) < 2:
+		_keep_old_unlocks()
 	achievements = cfg.get_value("progress", "achievements", [])
 	top_scores = cfg.get_value("progress", "top_scores", [])
 	missions = cfg.get_value("progress", "missions", {"day": -1, "list": [], "week": -1, "weekly": {}})
@@ -167,6 +172,8 @@ func save_data() -> void:
 	cfg.set_value("settings", "region", region)
 	cfg.set_value("shop", "starter_seen", starter_seen)
 	cfg.set_value("shop", "welcome_shown", welcome_shown)
+	cfg.set_value("shop", "welcome_count", welcome_count)
+	cfg.set_value("meta", "unlock_rules", unlock_rules)
 	cfg.set_value("shop", "welcome_until", welcome_until)
 	cfg.set_value("meta", "review_asks", review_asks)
 	cfg.set_value("settings", "reduce_motion", reduce_motion)
@@ -288,8 +295,27 @@ func grant(product: String) -> void:
 
 # ------------------------------------------------------------------ cosmetics
 
+## 1.0.21: what was unlocked under the old (easier) rules stays unlocked: kept as owned items.
+func _keep_old_unlocks() -> void:
+	for key in Catalog.OLD_NEEDS:
+		if owned_items.has(key):
+			continue
+		var need: Array = Catalog.OLD_NEEDS[key]
+		var ok := false
+		match need[0]:
+			"best": ok = best >= int(need[1])
+			"total": ok = total >= int(need[1])
+			"world": ok = int(stats.get("best_world", 1)) >= int(need[1])
+			"level": ok = level >= int(need[1])
+		if ok:
+			owned_items.append(key)
+	unlock_rules = 2
+
+
 func unlocked(cat: String, i: int) -> bool:
 	var it: Dictionary = Catalog.items(cat)[i]
+	if owned_items.has(cat + ":" + it["id"]):
+		return true   # bought, or kept from the old unlock rules
 	var need: Array = it["need"]
 	match need[0]:
 		"shop":
@@ -613,7 +639,9 @@ func reset_all() -> void:
 	daily_day = 0; daily_last = ""; free_ads_date = ""; free_ads_used = 0
 	starter_seen = false
 	welcome_shown = false
+	welcome_count = 0
 	welcome_until = 0
+	unlock_rules = 2
 	review_asks = 0
 	review_day = -9999
 	reduce_motion = false

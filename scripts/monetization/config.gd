@@ -28,10 +28,11 @@ const FALLBACK_PRICES := {"starter": "$1.99", "starter_50": "$0.99", "no_ads": "
 	"coins_30000": "$9.99"}
 ## Extra goodies granted once when a bundle is first bought.
 const BUNDLE_BONUS := {"starter": {"coins": 1000}, "starter_50": {"coins": 1000}, "supporter": {"coins": 1500}}
-## Welcome offer: after the 3rd run, the starter pack at half price ("starter_50", its own Play
-## product priced at half of "starter") for WELCOME_HOURS, once. Only shown if Play lists it.
+## Welcome offer: after the 5th run and again after the 20th, the starter pack at half price
+## ("starter_50", its own Play product priced at half of "starter") for WELCOME_HOURS each time.
+## Only shown if Play lists the product and no pack is owned.
 const WELCOME_PRODUCT := "starter_50"
-const WELCOME_AFTER_GAMES := 3
+const WELCOME_AT_GAMES := [5, 20]
 const WELCOME_HOURS := 48
 ## Starter offer pops up once after this many runs (then stays in the shop until bought).
 const STARTER_AFTER_GAMES := 8

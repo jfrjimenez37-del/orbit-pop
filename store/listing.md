@@ -34,7 +34,7 @@ Send a challenge: your friend plays the exact same run, no powers, one try. High
 A new run every day, the same for everyone. And every week a special event (comet storm, mine field, laser night, speed week...) with coin rewards and its own leaderboard.
 
 🎨 29 SKINS AND 22 TRAILS
-Common, rare, epic, legendary and mythic characters, some with special effects. Unlock them by reaching new worlds, beating records or spending coins.
+Common, rare, epic, legendary and mythic characters, some with special effects. Unlock them by beating your record, leveling up or spending coins; the rarest ones shine with a special aura.
 
 🏆 COMPETE
 Global and regional leaderboards with Google Play Games, 34 achievements, 3 daily missions and a weekly challenge.
@@ -75,7 +75,7 @@ Envía un duelo: tu amigo juega exactamente la misma partida, sin poderes y con 
 Una partida nueva cada día, la misma para todos. Y cada semana un evento especial (tormenta de cometas, campo de minas, noche de láseres, semana veloz...) con monedas de premio y su propio ranking.
 
 🎨 29 SKINS Y 22 ESTELAS
-Personajes comunes, raros, épicos, legendarios y míticos, algunos con efectos especiales. Consíguelos llegando a nuevos mundos, batiendo récords o con monedas.
+Personajes comunes, raros, épicos, legendarios y míticos, algunos con efectos especiales. Consíguelos batiendo tu récord, subiendo de nivel o con monedas; los más raros brillan con un aura especial.
 
 🏆 COMPITE
 Rankings mundiales y regionales con Google Play Juegos, 34 logros, 3 misiones diarias y un reto semanal.

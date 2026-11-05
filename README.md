@@ -5,6 +5,21 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.21 (código 23)
+
+- **Skins y estelas valen más**: ya no se ganan por mundo alcanzado sino por **puntos** (récord o
+  puntos totales) y con niveles más altos (`Catalog.SKINS` / `TRAILS`). Una primera partida hasta
+  el mundo 5 (90 puntos) da 2 skins en vez de 5 + 2 estelas. Lo que cada jugador ya tenía con las
+  reglas antiguas se conserva (`Catalog.OLD_NEEDS`, `Save._keep_old_unlocks`, una vez).
+- **Aura premium**: las skins legendarias, míticas, de tienda o de 4000+ monedas llevan un halo
+  del color de su rareza con rayos y un destello, en el juego y en la pantalla de estilo.
+- **Oferta de bienvenida** tras la 5.ª y la 20.ª partida (48 h cada vez).
+- **Colección de obstáculos**: al tocar uno visto, una ventana con qué hace, cómo esquivarlo y en
+  qué mundo aparece.
+- **Ranking**: botón "?" y "¿CÓMO SALGO?" con los pasos para quitar el perfil privado de Play
+  Juegos y un botón para abrirlo.
+- Las ventanas emergentes salen siempre por encima de la pantalla abierta.
+
 ## 1.0.20 (código 22)
 
 - **Eventos semanales**: cada uno en un solo mundo y escalando solos (`Director.escalate`): la
