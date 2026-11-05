@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Live-action commercial: actors from Google Flow + the real game (tests/promo_epic.gd "ad").
 
-    python3 tools/make_ad.py <takes_dir> <game.mov> <end_card.mp4> <music> <lang> <out.mp4>
+    python3 tools/make_ad.py <takes_dir> <game.mov> <end_card.mp4> <music> <lang> <out.mp4> [phone.mov]
 
 takes_dir holds OrbitPop_S01_Reaction_EN_v1.mp4, OrbitPop_S02_MyTurn_EN_v1.mp4 and
 OrbitPop_S03_GreenScreen_v1.mp4 (720x1280). game.mov is the 18.5 s render of the "ad" variant:
 A 0-3 near miss · B 3-7 duel · C 7-10 overtaking · D 10-12.5 duel result · E 12.5-15.5 moving
-planets · F 15.5-18.5 logo. The game goes into the green phone screen frame by frame (corners
+planets · F 15.5-18.5 logo (the 15 s cut uses A, B, C, D). The game goes into the green phone screen frame by frame (corners
 found from the green, the notch and bezel stay on top). Output 1080x1920, 30 fps.
 """
 import os, subprocess, sys, tempfile
@@ -20,25 +20,23 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # (source, from, to)  -- actor takes by short name, game segments from the game render
 CUTS = [
-    ("S01", 0.6, 2.9),      # "No way!" (speech 1.4-2.3 s)
-    ("game", 0.0, 3.0),     # near miss in slow motion
-    ("S02", 0.9, 3.0),      # "My turn!" (speech 1.4-2.5 s)
-    ("S03", 0.4, 4.4),      # the duel on the phone (game 3-7 s inside the green screen)
-    ("game", 7.0, 10.0),    # overtaking the friend's score
-    ("game", 10.0, 12.5),   # the real duel result
-    ("S02", 5.2, 7.0),      # silent laugh
-    ("game", 12.5, 15.5),   # moving planets, pulsar beams
-    ("end", 0.0, 3.3),      # end card + logo
+    ("S01", 0.6, 2.6),      # "No way!" (speech 1.4-2.3 s)
+    ("game", 0.0, 2.5),     # near miss in slow motion
+    ("S02", 0.9, 2.9),      # "My turn!" (speech 1.4-2.5 s)
+    ("S03", 0.4, 3.4),      # the duel on the phone (GREEN_GAME inside the green screen)
+    ("game", 8.6, 9.9),     # overtaking the friend's score: YOU'RE AHEAD!
+    ("game", 10.2, 11.9),   # the real duel result
+    ("end", 0.0, 2.5),      # end card + logo
 ]
 TAKES = {"S01": "OrbitPop_S01_Reaction_EN_v1.mp4", "S02": "OrbitPop_S02_MyTurn_EN_v1.mp4",
          "S03": "OrbitPop_S03_GreenScreen_v1.mp4"}
-GREEN_GAME = (3.0, 7.0)
+GREEN_GAME = (4.0, 7.0)
 # caption per cut index: (lines, pixel size, top, bottom colour, y centre, from, to (cut time))
 CAPS = {
     "en": {0: (["NO WAY!"], 18, WHITE, GOLD, 1520, 0.75, 9), 2: (["MY TURN!"], 18, WHITE, CYAN, 1520, 0.45, 9),
-           7: (["CAN YOU BEAT", "THIS SCORE?"], 18, WHITE, GOLD, 1450, 0.2, 9), 8: (["PLAY FREE"], 24, WHITE, GOLD, 680, 0.5, 9)},
+           6: (["PLAY FREE"], 24, WHITE, GOLD, 680, 0.4, 9)},
     "es": {0: (["¡NO PUEDE SER!"], 18, WHITE, GOLD, 1520, 0.75, 9), 2: (["¡ME TOCA!"], 18, WHITE, CYAN, 1520, 0.45, 9),
-           7: (["¿SUPERAS ESTA", "PUNTUACIÓN?"], 18, WHITE, GOLD, 1450, 0.2, 9), 8: (["JUEGA GRATIS"], 24, WHITE, GOLD, 680, 0.5, 9)},
+           6: (["JUEGA GRATIS"], 24, WHITE, GOLD, 680, 0.4, 9)},
 }
 DUCK = 0.16    # music under the actors' voices
 BED = 0.40     # music under the game
@@ -109,7 +107,12 @@ def green_composite(phone_frames, game_frames, out_dir):
         game = np.asarray(Image.open(game_frames[min(i, len(game_frames) - 1)]).convert("RGB"))
         gh = int(round(game.shape[1] * qh / qw))              # the screen is taller than 9:16
         pad = max(0, (gh - game.shape[0]) // 2)
-        game = np.pad(game, ((pad, pad), (0, 0), (0, 0)), mode="edge")
+        # the screen is taller than the game: fill the strips with the flat average colour of the
+        # game's top / bottom band (stretching the edge row turns moving clouds into white bars)
+        top = game[:40].reshape(-1, 3).mean(axis=0)
+        bot = game[-40:].reshape(-1, 3).mean(axis=0)
+        game = np.concatenate([np.tile(top, (pad, game.shape[1], 1)), game,
+                               np.tile(bot, (pad, game.shape[1], 1))]).astype(np.uint8)
         gi = Image.fromarray(game)
         src = [(0, 0), (gi.width, 0), (gi.width, gi.height), (0, gi.height)]
         warped = gi.transform((W, H), Image.PERSPECTIVE, coeffs([tuple(p) for p in q], src), Image.BICUBIC)
@@ -122,6 +125,9 @@ def green_composite(phone_frames, game_frames, out_dir):
 
 def main():
     takes, game, end_card, music, lang, out = sys.argv[1:7]
+    # optional: the same footage rendered at the phone's screen shape (1080x2220) from game time
+    # 3.0 s, so the game fills the green screen without any padding
+    phone = sys.argv[7] if len(sys.argv) > 7 else ""
     tmp = tempfile.mkdtemp(prefix="ad_", dir=os.path.dirname(os.path.abspath(out)))
     caps = CAPS[lang]
     seg_files = []
@@ -133,7 +139,10 @@ def main():
         d = b - a
         if src == "S03":
             ph = frames(os.path.join(takes, TAKES["S03"]), a, b, os.path.join(tmp, "ph"))
-            gm = frames(game, GREEN_GAME[0], GREEN_GAME[1], os.path.join(tmp, "gm"), scale=False)
+            if phone:
+                gm = frames(phone, GREEN_GAME[0] - 3.0, GREEN_GAME[1] - 3.0, os.path.join(tmp, "gm"), scale=False)
+            else:
+                gm = frames(game, GREEN_GAME[0], GREEN_GAME[1], os.path.join(tmp, "gm"), scale=False)
             comp = green_composite(ph, gm, os.path.join(tmp, "comp"))
             run(["ffmpeg", "-v", "error", "-y", "-framerate", str(FPS), "-i", os.path.join(tmp, "comp", "%04d.png"),
                  "-t", "%.3f" % d, "-c:v", "libx264", "-crf", "15", "-preset", "medium", "-pix_fmt", "yuv420p", seg])
