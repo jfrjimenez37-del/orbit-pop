@@ -1987,6 +1987,7 @@ func show_diag() -> void:
 	var p := _open_popup("DIAG", "diag", 236)
 	var ga: Analytics = Progress.ga
 	Diag.log("analytics: %s, queued %d, sent %d, dropped %d, last http %s" % [ga.status_text(), ga.queue.size(), ga.sent, ga.dropped, ga.last_status])
+	Diag.log("player id: " + ga.user_id)   # for data deletion requests (orbitpopgame.github.io/delete-data/)
 	var txt := Diag.text()
 	DisplayServer.clipboard_set(txt)
 	var lab := Label.new()
