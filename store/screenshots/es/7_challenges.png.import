@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dquj0aoip0yq7"
-path="res://.godot/imported/7_missions.png-a0a0bc86976184937d97bc8db1afc197.ctex"
+uid="uid://b7ypwigv0dk1f"
+path="res://.godot/imported/7_challenges.png-26e0a26ca56788d92e3227dfc187b473.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://store/screenshots/es/7_missions.png"
-dest_files=["res://.godot/imported/7_missions.png-a0a0bc86976184937d97bc8db1afc197.ctex"]
+source_file="res://store/screenshots/es/7_challenges.png"
+dest_files=["res://.godot/imported/7_challenges.png-26e0a26ca56788d92e3227dfc187b473.ctex"]
 
 [params]
 

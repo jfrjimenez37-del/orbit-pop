@@ -12,13 +12,13 @@ W, H = 1080, 1920
 OUT = (38, 28, 66)
 # frame file, background top/bottom, caption per language
 SHOTS = [
-    ("g1_9", (62, 120, 214), (120, 190, 250), {"en": "ONE TAP TO FLIP YOUR ORBIT", "es": "UN TOQUE PARA GIRAR AL REVÉS"}),
-    ("g2_7", (28, 24, 70), (70, 60, 140), {"en": "DODGE, SWITCH ORBITS, SURVIVE", "es": "ESQUIVA Y CAMBIA DE ÓRBITA"}),
-    ("g3_8", (214, 110, 60), (250, 190, 110), {"en": "10 WORLDS, UP TO 3 PLANETS", "es": "10 MUNDOS, HASTA 3 PLANETAS"}),
-    ("g4_6", (110, 60, 160), (220, 110, 170), {"en": "GRAB COINS ON EVERY RUN", "es": "RECOGE MONEDAS EN CADA PARTIDA"}),
-    ("u5_abilities", (30, 80, 150), (90, 160, 230), {"en": "LEVEL UP 7 POWERS", "es": "SUBE DE NIVEL 7 HABILIDADES"}),
-    ("u6_skins", (40, 120, 90), (110, 200, 150), {"en": "26 SKINS AND 20 TRAILS", "es": "26 SKINS Y 20 ESTELAS"}),
-    ("u7_missions", (170, 90, 30), (240, 170, 70), {"en": "DAILY MISSIONS AND REWARDS", "es": "MISIONES Y PREMIOS DIARIOS"}),
+    ("g1_5", (62, 120, 214), (120, 190, 250), {"en": "ONE TAP TO FLIP YOUR ORBIT", "es": "UN TOQUE PARA GIRAR AL REVÉS"}),
+    ("g2_6", (28, 24, 70), (70, 60, 140), {"en": "DODGE, SWITCH ORBITS, SURVIVE", "es": "ESQUIVA Y CAMBIA DE ÓRBITA"}),
+    ("g3_7", (214, 110, 60), (250, 190, 110), {"en": "16 WORLDS, UP TO 4 PLANETS", "es": "16 MUNDOS, HASTA 4 PLANETAS"}),
+    ("g4_5", (110, 60, 160), (220, 110, 170), {"en": "A NEW OBSTACLE IN EVERY WORLD", "es": "UN OBSTÁCULO NUEVO EN CADA MUNDO"}),
+    ("u5_abilities", (30, 80, 150), (90, 160, 230), {"en": "LEVEL UP 8 POWERS", "es": "SUBE DE NIVEL 8 HABILIDADES"}),
+    ("u6_skins", (40, 120, 90), (110, 200, 150), {"en": "29 SKINS AND 22 TRAILS", "es": "29 SKINS Y 22 ESTELAS"}),
+    ("u7_challenges", (170, 90, 30), (240, 170, 70), {"en": "DUELS AND WEEKLY EVENTS", "es": "DUELOS Y EVENTOS SEMANALES"}),
     ("u8_ranking", (120, 40, 90), (220, 90, 140), {"en": "CLIMB THE WORLD RANKING", "es": "SUBE EN EL RANKING MUNDIAL"}),
 ]
 
@@ -118,7 +118,7 @@ def build(raw, lang, out_dir):
         for l in lines:
             bg.alpha_composite(l, ((W - l.width) // 2, y))
             y += l.height - 10
-        path = os.path.join(out_dir, "%d_%s.png" % (i + 1, name.split("_", 1)[1] if name.startswith("u") else ["play", "night", "planets", "coins"][int(name[1]) - 1]))
+        path = os.path.join(out_dir, "%d_%s.png" % (i + 1, name.split("_", 1)[1] if name.startswith("u") else ["play", "night", "planets", "obstacles"][int(name[1]) - 1]))
         bg.convert("RGB").save(path, optimize=True)
         print(path)
 

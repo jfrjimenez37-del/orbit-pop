@@ -21,14 +21,17 @@ ORBIT POP is a one-tap arcade game: your little critter races around in orbit an
 🌍 16 WILD WORLDS
 Sky, lagoon, sunset, candy, night... then twin, three and four-planet systems where you jump from orbit to orbit, and planets that dance, swing and pulse while you play. Climb from the clouds to deep space!
 
+☄️ A NEW OBSTACLE IN EVERY WORLD
+Boomerangs that come back, satellites, solar flares, UFOs dropping mines, asteroid belts, meteors that split in two and pulsar beams. Every one you meet joins your obstacle collection.
+
 ⚡ LEVEL UP AND GET STRONGER
-Earn XP every run and unlock 7 permanent powers: shield, coin magnet, slow-mo, teleport, head start, second life and bonus coins. Upgrade them with the coins you collect.
+Earn XP every run and unlock 8 permanent powers: shield, coin magnet, slow-mo (hold your finger down), teleport (swipe), bubble boost, head start, second life and bonus coins. Upgrade them with the coins you collect.
 
 ⚔️ DUEL YOUR FRIENDS
 Send a challenge: your friend plays the exact same run, no powers, one try. Highest score wins!
 
-📅 DAILY CHALLENGE
-A new run every day, the same for everyone. Beat the world on today's leaderboard.
+📅 DAILY CHALLENGE AND WEEKLY EVENTS
+A new run every day, the same for everyone. And every week a special event (comet storm, mine field, laser night, speed week...) with coin rewards and its own leaderboard.
 
 🎨 29 SKINS AND 22 TRAILS
 Common, rare, epic, legendary and mythic characters, some with special effects. Unlock them by reaching new worlds, beating records or spending coins.
@@ -59,14 +62,17 @@ ORBIT POP es un arcade de un solo toque: tu personaje da vueltas en órbita y ca
 🌍 16 MUNDOS DISTINTOS
 Cielo, laguna, atardecer, caramelo, noche... luego sistemas de dos, tres y cuatro planetas donde saltas de una órbita a otra, y planetas que bailan, se mecen y laten mientras juegas. ¡Sube de las nubes al espacio profundo!
 
+☄️ UN OBSTÁCULO NUEVO EN CADA MUNDO
+Bumeranes que vuelven, satélites, llamaradas solares, ovnis que sueltan minas, cinturones de asteroides, meteoritos que se parten en dos y rayos púlsar. Cada uno que encuentres se suma a tu colección.
+
 ⚡ SUBE DE NIVEL Y HAZTE MÁS FUERTE
-Gana experiencia en cada partida y desbloquea 7 habilidades permanentes: escudo, imán de monedas, cámara lenta, teletransporte, salida avanzada, segunda vida y más monedas. Mejóralas con las monedas que recoges.
+Gana experiencia en cada partida y desbloquea 8 habilidades permanentes: escudo, imán de monedas, cámara lenta (mantén el dedo), teletransporte (desliza), burbujas+, salida avanzada, segunda vida y más monedas. Mejóralas con las monedas que recoges.
 
 ⚔️ RETA A TUS AMIGOS
 Envía un duelo: tu amigo juega exactamente la misma partida, sin poderes y con un solo intento. ¡Gana quien haga más puntos!
 
-📅 RETO DIARIO
-Una partida nueva cada día, la misma para todos. Supera al mundo en el ranking de hoy.
+📅 RETO DIARIO Y EVENTOS SEMANALES
+Una partida nueva cada día, la misma para todos. Y cada semana un evento especial (tormenta de cometas, campo de minas, noche de láseres, semana veloz...) con monedas de premio y su propio ranking.
 
 🎨 29 SKINS Y 22 ESTELAS
 Personajes comunes, raros, épicos, legendarios y míticos, algunos con efectos especiales. Consíguelos llegando a nuevos mundos, batiendo récords o con monedas.

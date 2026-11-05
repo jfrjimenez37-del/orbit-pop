@@ -23,13 +23,20 @@ func _initialize() -> void:
 	sv.reset_all()
 	sv.best = 214; sv.games = 120; sv.total = 9800; sv.coins = 4250
 	sv.level = 18; sv.xp = 600
-	sv.abilities = {"coins": 3, "shield": 2, "magnet": 3, "slowmo": 2, "teleport": 2, "headstart": 1, "secondlife": 1}
-	sv.stats = {"best_world": 7, "near_total": 640}
+	sv.abilities = {"coins": 3, "shield": 2, "magnet": 3, "slowmo": 2, "teleport": 2, "bubbles": 2, "headstart": 1, "secondlife": 1}
+	sv.stats = {"best_world": 15, "near_total": 640}
+	sv.best = 712
+	sv.level = 28
+	# no tutorial, gesture tips or NEW OBSTACLE banners over the pictures
+	sv.tutorial_done = true
+	sv.jump_tip_done = true
+	sv.ability_tips = ["hold", "swipe"]
+	sv.seen_obstacles = Director.KINDS.map(func(kd): return kd[0])
 	sv.owned_items = ["skins:cookie", "skins:ninja", "skins:drake", "trails:fire", "trails:notes"]
 	sv.purchases = ["no_ads"]   # no test banner in the store pictures
 	sv.daily_last = sv._day_string()
 	sv.achievements = ["first", "score25", "score50", "score100", "score200", "world3", "world5", "world7", "near100", "near500"]
-	sv.add_top_score(214, 7); sv.add_top_score(188, 6); sv.add_top_score(151, 5)
+	sv.add_top_score(712, 15); sv.add_top_score(604, 14); sv.add_top_score(451, 12)
 	get_root().get_node("L").set_lang(args[1] if args.size() > 1 else "en")
 	pg = get_root().get_node("Progress").games
 	pg.signed_in = true
@@ -51,8 +58,15 @@ func shot(name: String) -> void:
 	print("shot ", name)
 
 
-func world(i: int, score: int) -> void:
-	Orbit.set_shape(Stages.LIST[i]["orbits"], true)
+func world(i: int, score: int, only: Array = []) -> void:
+	# a world change left pending by the previous scene must not morph this one away
+	main._stage_pending = -1
+	main._morph_t = -1.0
+	main.director.hold = false
+	main._clear_field()
+	main.ui.hide_tip()
+	Orbit.set_shape(Stages.LIST[i]["orbits"], true, Stages.motion(i))
+	main.director.only = only
 	main.stage = i
 	main.director.stage = i
 	main.world_no = i + 1
@@ -88,18 +102,16 @@ func _process(_dt: float) -> bool:
 			main.player.set_skin(Catalog.find("skins", "cosmo"))
 			main.player.trail_style = "galaxy"
 			world(4, 163)
-		# 3: three planets
+		# 3: four planets (MOONS) with its solar flares
 		800:
 			main.player.set_skin(Catalog.find("skins", "magma"))
 			main.player.trail_style = "fire"
-			world(7, 331)
-		# 4: coins flying in with the magnet
+			world(10, 402, ["flare", "flare", "lead", "pinch"])
+		# 4: moving planets (PENDULUM) with pulsar beams and a UFO
 		1200:
-			sv.abilities["magnet"] = 5
 			main.player.set_skin(Catalog.find("skins", "omega"))
 			main.player.trail_style = "aurora"
-			world(5, 216)
-			main.director.next_coin = main.gt + 0.3
+			world(14, 688, ["beams", "ufo"])
 		1500:
 			main.state = main.S.MENU
 			main.go_menu()
@@ -114,8 +126,12 @@ func _process(_dt: float) -> bool:
 		1545: shot("u6_skins")
 		1550:
 			main.go_menu()
-			ui.show_mission()
-		1570: shot("u7_missions")
+			sv.event_week_test = 0   # COMET STORM
+			sv.event_run = {"week": 0, "tries": 4, "best": 96, "paid": 2}
+			sv.daily_run = {"day": sv.daily_today(), "tries": 1, "video": 0, "best": 143, "paid": true}
+			sv.duels = {"wins": 12, "losses": 5}
+			ui.show_duel()
+		1570: shot("u7_challenges")
 		1575:
 			ui.hide_popup()
 			main.open_ranking()
@@ -123,11 +139,9 @@ func _process(_dt: float) -> bool:
 			ui.refresh_ranking()
 		1600: shot("u8_ranking")
 		1605: return true
-	if frame > 1200 and frame < 1500:
-		main.director.next_coin = minf(main.director.next_coin, main.gt + 1.4)   # lots of coins to pull in
 	# candidate frames for the gameplay scenes
 	for sc in [[1, 30], [2, 400], [3, 800], [4, 1200]]:
 		var f0: int = sc[1]
-		if frame > f0 + 120 and (frame - f0) % 40 == 0 and frame < f0 + 380:
+		if frame > f0 + 120 and (frame - f0) % 40 == 0 and frame < mini(f0 + 380, 1500):
 			shot("g%d_%d" % [sc[0], (frame - f0) / 40])
 	return false

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b0noh8ghvtidw"
-path="res://.godot/imported/4_coins.png-58bf33747fe4f25ebc8994db2ebc1101.ctex"
+uid="uid://775a77sph3wk"
+path="res://.godot/imported/4_obstacles.png-89dcc8263487fb7ba315f55d3148a6ef.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://store/screenshots/es/4_coins.png"
-dest_files=["res://.godot/imported/4_coins.png-58bf33747fe4f25ebc8994db2ebc1101.ctex"]
+source_file="res://store/screenshots/en/4_obstacles.png"
+dest_files=["res://.godot/imported/4_obstacles.png-89dcc8263487fb7ba315f55d3148a6ef.ctex"]
 
 [params]
 
