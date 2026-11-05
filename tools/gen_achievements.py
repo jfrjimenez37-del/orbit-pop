@@ -6,6 +6,7 @@ Run from the project root:  python3 tools/gen_achievements.py [--skip "Primer vu
 """
 import io, os, sys, zipfile
 from PIL import Image, ImageDraw
+sys.path.insert(0, os.path.dirname(__file__))
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 SPR = os.path.join(ROOT, "assets", "sprites")
@@ -59,7 +60,22 @@ TIERS = [((214, 132, 66), (255, 214, 160), (96, 150, 255)),
 OUTLINE = (38, 28, 66)
 
 
-def icon(sprite: str, tier: int) -> Image.Image:
+def number_badge(im: Image.Image, text: str) -> None:
+    """A dark plate with the goal number at the bottom of the medal: every icon is unique
+    (Play Console refuses two achievements with the same icon)."""
+    from font5x7 import G
+    w = len(text) * 6 - 1
+    x0, y0 = (64 - w) // 2, 45
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle((x0 - 3, y0 - 2, x0 + w + 2, y0 + 8), radius=3, fill=OUTLINE + (255,))
+    for i, ch in enumerate(text):
+        for yy, row in enumerate(G[ch]):
+            for xx, v in enumerate(row):
+                if v == "#":
+                    im.putpixel((x0 + i * 6 + xx, y0 + yy), (255, 255, 255, 255))
+
+
+def icon(sprite: str, tier: int, number: str = "") -> Image.Image:
     ring, ring_hi, bg = TIERS[tier]
     im = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
@@ -83,8 +99,19 @@ def icon(sprite: str, tier: int) -> Image.Image:
         src = src.crop((16, 0, 32, 16))      # idle frame of the sprite sheet
     k = max(1, min(32 // src.width, 32 // src.height))
     src = src.resize((src.width * k, src.height * k), Image.NEAREST)
-    im.alpha_composite(src, ((64 - src.width) // 2, (64 - src.height) // 2 + 1))
+    im.alpha_composite(src, ((64 - src.width) // 2, (64 - src.height) // 2 + (-4 if number else 1)))
+    if number:
+        number_badge(im, number)
     return im.resize((512, 512), Image.NEAREST)
+
+
+def goal_text(gid: str) -> str:
+    """The number in the id (score25 -> 25, total100000 -> 100K); "" when there is none."""
+    digits = "".join(c for c in gid if c.isdigit())
+    if not digits:
+        return ""
+    n = int(digits)
+    return "%dK" % (n // 1000) if n >= 10000 else str(n)
 
 
 def main() -> None:
@@ -96,14 +123,18 @@ def main() -> None:
         for order, (gid, name, desc, pts, spr, tier) in enumerate(ACH, 1):
             assert "," not in name and "," not in desc and pts % 5 == 0
             if name in skip:   # already created in Play Console: export its icon for manual upload
-                icon(spr, tier).save(os.path.join(ROOT, "store", "ach_%s.png" % gid))
+                icon(spr, tier, goal_text(gid)).save(os.path.join(ROOT, "store", "ach_%s.png" % gid))
                 continue
             meta.write("%s,%s,False,,Revealed,%d,%d\n" % (name, desc, pts, order))
             fn = "ach_%s.png" % gid
             maps.write("%s,%s\n" % (name, fn))
             buf = io.BytesIO()
-            icon(spr, tier).save(buf, "PNG")
+            icon(spr, tier, goal_text(gid)).save(buf, "PNG")
             z.writestr(fn, buf.getvalue())
+            # loose copies too, to replace icons one by one in Play Console
+            os.makedirs(os.path.join(ROOT, "store", "achievement_icons"), exist_ok=True)
+            with open(os.path.join(ROOT, "store", "achievement_icons", fn), "wb") as f:
+                f.write(buf.getvalue())
         z.writestr("AchievementsMetadata.csv", meta.getvalue().encode("utf-8"))
         z.writestr("AchievementsIconsMappings.csv", maps.getvalue().encode("utf-8"))
     print("total points:", sum(a[3] for a in ACH), "->", OUT)
