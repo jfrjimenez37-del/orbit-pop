@@ -9,6 +9,7 @@ var gap := 0.0          # gap center angle
 var gap_half := 0.6
 var speed := 70.0
 var t_fire := 0.0
+var nova := false        # SUPERNOVA surge: same wave, star-white and wider on screen
 var _rr := RADIUS + Orbit.PLAYER_R
 var _r_far := 80.0
 var _pr := Orbit.PLANET_R
@@ -93,6 +94,12 @@ func _draw() -> void:
 		return
 	var rw := wave_r(t)
 	if rw > _r_far + 40.0:
+		return
+	if nova:
+		draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(1, 0.6, 0.2, 0.35), 9.0)
+		draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(0.15, 0.1, 0.25, 0.8), 5.0)
+		draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(1, 0.85, 0.3), 3.0)
+		draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(1, 1, 0.9), 1.0)
 		return
 	draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(0.15, 0.1, 0.25, 0.8), 4.0)
 	draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(1, 0.45, 0.6), 2.0)

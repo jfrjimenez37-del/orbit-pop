@@ -5,6 +5,26 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.19 (código 21)
+
+- **Combo de roces**: los roces seguidos multiplican solo los puntos del roce (×2 desde el 3.º,
+  ×3 desde el 6.º, ×5 desde el 10.º: 2, 2, 4, 4, 4, 6, 6, 6, 6, 10…), con contador "COMBO N ×M"
+  bajo la barra del mundo; un paso normal lo rompe. Combos de 5, 10 y 20 dan 5, 15 y 40 monedas.
+  Dos misiones diarias nuevas ("HAZ UN COMBO DE 5 / 8"); el mejor combo queda en las estadísticas.
+- **¡PERFECTO!**: un roce a menos de 0,045 rad da +2 más, destello, una pausa de 70 ms (todo se
+  detiene, también los obstáculos: no cambia la dificultad), vibración corta y sonido especial
+  (sin destello ni pausa con "Movimiento reducido").
+- **Eventos orbitales** en plena partida (desde el mundo 2, el primero a los 45-60 s, luego cada
+  40-60 s; no en los eventos semanales): LLUVIA DE METEORITOS (6 s de lluvia, patrones más
+  seguidos), TORMENTA DE COMETAS (6 s solo cometas), SUPERNOVA (una onda grande, busca el hueco; en
+  mundos que se mueven pasa a cometas) y PULSO GRAVITATORIO (vas un 20 % más rápido 6 s; la
+  velocidad solo cambia con el campo vacío, así cada patrón se comprueba a la velocidad en que se
+  juega). Todo pasa por la comprobación de justicia. Tienen su propio generador aleatorio, así
+  que no cambian el resto de la partida de una semilla.
+- **Tarjeta para compartir**: el botón compartir del final manda una imagen 1080×1920 con el
+  momento del golpe (sin la interfaz), el logo, la puntuación, ¡RÉCORD! si lo es, el mundo, el
+  mejor combo y "¿ME SUPERAS?", más un texto con el enlace de Google Play.
+
 ## 1.0.18 (código 20)
 
 - **Evento semanal** (`scripts/game/events.gd`): uno distinto cada semana (lunes a domingo, hora

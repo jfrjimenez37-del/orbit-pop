@@ -26,6 +26,8 @@ const MISSIONS := [
 	{"id": "score_total", "text": "M_SCORE_TOTAL", "goal": 300, "reward": 150, "xp": 90, "mode": "sum"},
 	{"id": "near", "text": "M_NEAR", "goal": 25, "reward": 120, "xp": 70, "mode": "sum"},
 	{"id": "world", "text": "M_WORLD", "goal": 5, "reward": 150, "xp": 100, "mode": "max"},
+	{"id": "combo", "text": "M_COMBO", "goal": 5, "reward": 120, "xp": 70, "mode": "max"},
+	{"id": "combo", "text": "M_COMBO", "goal": 8, "reward": 180, "xp": 110, "mode": "max"},
 ]
 const WEEKLY := [
 	{"id": "score_total", "text": "M_SCORE_TOTAL", "goal": 2000, "reward": 600, "xp": 400, "mode": "sum"},
@@ -226,6 +228,10 @@ func event(name: String, value := 1) -> void:
 			_run["coins"] = int(_run.get("coins", 0)) + value
 			_stat_add("coins_picked", value)
 			_mission_feed("coins_run", int(_run["coins"]))
+		"combo":
+			if value > int(Save.stats.get("best_combo", 0)):
+				Save.stats["best_combo"] = value
+			_mission_feed("combo", value)
 		"score_now":
 			_run["score"] = value
 			_mission_feed("score_run", value)
@@ -318,4 +324,4 @@ const STORE_URL := "https://play.google.com/store/apps/details?id=com.barriogame
 
 
 func share(score: int, img: Image) -> bool:
-	return sharer.share_score(L.t("SHARE_TEXT", score), img)
+	return sharer.share_score(L.t("SHARE_TEXT", score) + " " + STORE_URL, img)

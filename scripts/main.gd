@@ -48,7 +48,18 @@ const HOLD_SHOW := 0.15        # the charging ring appears after this
 const SWIPE_PX := 14.0
 const SWIPE_TIME := 0.35
 var _touch := {}               # {pos, t (real s), dir, orbit, done}
-var _near_streak := 0          # near misses in a row: CLOSE x2, x3 (more points)
+var _near_streak := 0          # combo: near misses in a row (a normal pass breaks it)
+var best_combo := 0            # longest combo of this run (share card, stats)
+var _death_frame: Image        # the field at the moment of the hit (share card)
+var _run_record := false
+var _freeze := 0.0             # PERFECT hit-stop: the game stands still for a few frames
+## Combo multiplier on the near-miss points only (so the worlds do not fly by): [combo from, x]
+const COMBO_TIERS := [[10, 5], [6, 3], [3, 2]]
+## Coins for reaching these combos in a run
+const COMBO_COINS := {5: 5, 10: 15, 20: 40}
+## A near miss closer than this (rad) is a PERFECT: flash, hit-stop, buzz, +2
+const PERFECT_CLEAR := 0.045
+const PERFECT_FREEZE := 0.07
 var _missions_before: Array = []   # missions + weekly at the start of the run (menu card after it)
 var _mission_card_pending := false
 var _perf_slow := 0          # frames over 33 ms
@@ -372,9 +383,13 @@ func _send_duel() -> void:
 		ui.toast(L.t("COPIED"), Color8(120, 255, 200))
 
 
+## Shares a designed score card (the moment of the hit, score, world, best combo, a dare) and a
+## text with the store link.
 func _share() -> void:
-	var img := get_viewport().get_texture().get_image()
-	img.resize(img.get_width() * 4, img.get_height() * 4, Image.INTERPOLATE_NEAREST)
+	Progress.ga.design("Share:Card", score)
+	var w := Stages.world(stage)
+	var img: Image = await ui.share_card(_death_frame, {"score": score, "world": world_no,
+		"world_name": L.t("WORLD_" + str(w["id"]).to_upper()), "combo": best_combo, "record": _run_record})
 	if not Progress.share(score, img):
 		ui.toast(L.t("COPIED"), Color8(120, 255, 200))
 
@@ -572,6 +587,7 @@ func start_run() -> void:
 	var ev: Dictionary = duel.get("event", {}) if dm else {}
 	director.only = ev.get("only", [])
 	director.omega_mul = float(ev.get("omega", 1.0))
+	director.surges = ev.is_empty()   # a weekly event already has its own theme
 	_event_stage = int(ev.get("stage", -1))
 	# HEADSTART: begin in a world already passed, with that world's points
 	var sw := 1 if dm else Save.chosen_start_world()
@@ -623,6 +639,9 @@ func start_run() -> void:
 	_touch = {}
 	player.hold = 0.0
 	_near_streak = 0
+	best_combo = 0
+	_freeze = 0.0
+	ui.set_combo(0, 1)
 	_ability_tip()
 	_missions_before = Progress.missions() + [Progress.weekly()]
 	_tut_shown_at = -1.0
@@ -660,6 +679,8 @@ func _die() -> void:
 		return
 	state = S.DYING
 	Monetization.run_active = false
+	_death_frame = null
+	_capture_death()
 	_death_angle = player.angle
 	_state_t = 0.0
 	player.die()
@@ -667,7 +688,6 @@ func _die() -> void:
 	_shake = 5.0
 	fx.burst(player.position, 22, [Color.WHITE, player.color(), Color8(255, 236, 90)], 110.0, 0.6, 3.0, 120.0)
 	fx.ring(player.position, Color.WHITE, 4.0, 26.0, 0.35)
-	ui.flash()
 	Sfx.play("hit")
 	Save.vibrate(70)
 
@@ -676,6 +696,9 @@ func _game_over() -> void:
 	state = S.OVER
 	Diag.log("perf: world %d, worst frame %.0f ms, %d frames over 33 ms" % [world_no, _perf_worst, _perf_slow])
 	var res := Save.submit_run(score)
+	_run_record = res["record"] and score > 0
+	if best_combo >= 3:
+		Progress.ga.design("Run:BestCombo", best_combo)
 	Monetization.on_game_over(res["record"] and score > 0)
 	Progress.run_finished(score, world_no, gt)
 	var earned := _run_coins()
@@ -881,6 +904,9 @@ func _process(delta: float) -> void:
 			_hold_update()
 			_tutorial(delta)
 			var left := delta * _tut_scale
+			if _freeze > 0.0:   # PERFECT hit-stop: nothing moves for a moment (fair: the hazards stop too)
+				_freeze -= delta
+				left = 0.0
 			if slowmo_left > 0.0:
 				slowmo_left -= delta
 				left *= Upgrades.SLOWMO_SCALE
@@ -950,6 +976,9 @@ func _sim(dt: float) -> void:
 			_hist.pop_front()
 	_update_world(dt)
 	var spawn := director.update(gt, player.angle, player.dir, hazards, player.orbit)
+	if director.announce != "":
+		_surge_banner(director.announce)
+		director.announce = ""
 	for h in spawn["hazards"]:
 		if _tut_step == 1 and _tut_meteor == null and h is Meteor:
 			_tut_meteor = h
@@ -1008,7 +1037,37 @@ func _sim(dt: float) -> void:
 			take = b.touches(player.angle, player.orbit)
 		if take:
 			_collect(b)
-	bg.speed_mul = 1.0 + director.level(gt) * 1.5
+	bg.speed_mul = (1.0 + director.level(gt) * 1.5) * (1.0 + (director._grav_mul(gt) - 1.0) * 6.0)   # gravity pulse: the sky rushes
+
+
+## The field at the hit for the share card: one frame drawn without the HUD, then the flash.
+func _capture_death() -> void:
+	ui.hud.visible = false
+	await RenderingServer.frame_post_draw
+	_death_frame = _grab_frame()
+	if state == S.DYING:
+		ui.hud.visible = true
+		ui.flash()
+
+
+## The last frame drawn (the field at the hit), without the HUD's ability buttons / tips: just
+## the picture. Null on the headless test renderer.
+func _grab_frame() -> Image:
+	var tex := get_viewport().get_texture()
+	if tex == null:
+		return null
+	var img := tex.get_image()
+	return img if img != null and not img.is_empty() else null
+
+
+## An orbital surge starts: its name and a hint in the tip band, a low warning sound.
+func _surge_banner(kind: String) -> void:
+	var key := "SURGE_" + kind.to_upper()
+	ui.show_tip(L.t(key), L.t(key + "_D"), 2.4)
+	Sfx.play("warn", 0.7, -2.0)
+	Save.vibrate(20)
+	_shake = maxf(_shake, 2.0)
+	Progress.ga.design("Surge:" + kind.capitalize() + ":" + _ga_world())
 
 
 ## The first time an obstacle kind shows up: its name and how to beat it, with a moment of
@@ -1253,22 +1312,51 @@ func _award(h) -> void:
 	if h.min_clear < Orbit.NEAR:
 		near_count += 1
 		Progress.event("near")
-		# near misses in a row: x2, x3 (2, 4, 6 points), bigger text and a higher sound
-		_near_streak = mini(_near_streak + 1, 3)
-		var pts := 2 * _near_streak
+		# combo: near misses in a row multiply the near-miss points (x2 from 3, x3 from 6, x5 from 10)
+		_near_streak += 1
+		best_combo = maxi(best_combo, _near_streak)
+		Progress.event("combo", _near_streak)
+		var mult := combo_mult(_near_streak)
+		var perfect: bool = h.min_clear < PERFECT_CLEAR
+		var pts := 2 * mult + (2 if perfect else 0)
 		_add_score(pts)
-		var txt: String = L.t("CLOSE_FX") if _near_streak == 1 else L.t("CLOSE_X", [_near_streak, pts])
-		fx.text(txt, player.position + Vector2(0, -14), Color8(120, 255, 200) if _near_streak == 1 else Color8(255, 236, 90), 1.0 + 0.25 * (_near_streak - 1))
-		fx.ring(player.position, Color.WHITE, 6.0, 20.0 + 6.0 * (_near_streak - 1), 0.25)
-		fx.burst(player.position, 8 * _near_streak, [Color.WHITE, Color8(120, 255, 200)], 60.0, 0.3, 2.0)
-		Sfx.play("close", 1.0 + 0.12 * (_near_streak - 1))
-		if _near_streak > 1:
-			_shake = maxf(_shake, 1.0 + _near_streak * 0.5)
+		var big := minf(1.0 + 0.12 * (mult - 1), 1.5)
+		var txt: String = L.t("PERFECT_FX", pts) if perfect else (L.t("CLOSE_FX") if mult == 1 else "+%d" % pts)
+		var col := Color.WHITE if perfect else (Color8(120, 255, 200) if mult == 1 else Color8(255, 236, 90))
+		fx.text(txt, player.position + Vector2(0, -14), col, big + (0.3 if perfect else 0.0))
+		fx.ring(player.position, Color.WHITE, 6.0, 20.0 + 4.0 * mult + (10.0 if perfect else 0.0), 0.25)
+		fx.burst(player.position, 8 + 4 * mult + (12 if perfect else 0), [Color.WHITE, col], 60.0 + (40.0 if perfect else 0.0), 0.3, 2.0)
+		Sfx.play("close", 1.0 + 0.06 * mini(_near_streak - 1, 10))
+		if perfect:
+			Sfx.play("record", 1.7, -8.0)
+			Save.vibrate(25)
+			if not Save.reduce_motion:
+				_freeze = PERFECT_FREEZE
+				ui.flash(0.45)
+		if mult > 1:
+			_shake = maxf(_shake, 0.8 + mult * 0.4)
+		ui.set_combo(_near_streak, mult)
+		if COMBO_COINS.has(_near_streak):
+			var c: int = COMBO_COINS[_near_streak]
+			picked_coins += c
+			ui.set_run_coins(picked_coins)
+			fx.text(L.t("COMBO_COINS", [_near_streak, c]), player.position + Vector2(0, -26), Color8(255, 214, 72), 1.2, 1.1)
+			Sfx.play("coin", 1.2)
 	else:
+		if _near_streak >= 3:
+			fx.text(L.t("COMBO_END", _near_streak), player.position + Vector2(0, -24), Color(1, 1, 1, 0.8), 0.9)
 		_near_streak = 0
+		ui.set_combo(0, 1)
 		_add_score(1)
 		fx.text("+1", p, Color.WHITE)
 		Sfx.play("score", 1.0, -4.0)
+
+
+static func combo_mult(combo: int) -> int:
+	for t in COMBO_TIERS:
+		if combo >= int(t[0]):
+			return int(t[1])
+	return 1
 
 
 func _add_score(n: int) -> void:

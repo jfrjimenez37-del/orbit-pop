@@ -16,6 +16,32 @@ var bubble_rate := 1.0     # BUBBLE RUSH boost: 2.0 = twice as many bubbles
 var hold := false          # world change in progress: no new spawns
 var stage := 0             # current Stages index (unlocks obstacles)
 var world := 1             # world number shown to the player (keeps growing after the worlds loop)
+## Orbital surges (1.0.19): short special moments in a normal run, announced with a banner:
+##   shower  (6 s of meteor rain, patterns closer together)
+##   comets  (6 s of comets only)
+##   nova    (a supernova: one big shockwave, find its gap)
+##   gravity (a gravity pulse: the player runs 20 % faster for 6 s)
+## The gravity pulse only changes speed with an empty field (no spawns until it is clear, at
+## both ends), so every pattern is still checked at the speed it is played at. A separate random
+## generator keeps the rest of a seed's run (duels, daily) the same.
+const SURGE_KINDS := ["shower", "comets", "nova", "gravity"]
+const SURGE_FIRST := Vector2(45.0, 60.0)   # game seconds before the first one
+const SURGE_EVERY := Vector2(40.0, 60.0)
+const SURGE_LEN := 6.0
+const GRAVITY_X := 0.2
+const GRAVITY_RAMP := 0.8
+var surges := true
+var surge_rng := RandomNumberGenerator.new()
+var next_surge := INF
+var surge := ""             # the surge going on, "" = none
+var surge_phase := ""       # gravity: wait_in, up, on, wait_out, down
+var surge_t1 := 0.0
+var surge_count := 0
+var announce := ""          # set when a surge starts (main shows its banner and clears it)
+var surge_test := ""        # tests: the next surge is this one
+var _grav := {}             # gravity pulse: {"up": ramp-up start, "down": ramp-down start}
+var _nova_done := false
+
 ## Weekly event rules (Events.LIST): only these patterns (empty = all) and a speed factor.
 var only: Array = []
 var omega_mul := 1.0
@@ -103,6 +129,15 @@ func reset(seed_value: int, recent_avg: float) -> void:
 	world = 1
 	only = []
 	omega_mul = 1.0
+	surges = true
+	surge_rng.seed = seed_value ^ 0x5EED0
+	next_surge = surge_rng.randf_range(SURGE_FIRST.x, SURGE_FIRST.y)
+	surge = ""
+	surge_phase = ""
+	surge_count = 0
+	announce = ""
+	_grav = {}
+	_nova_done = false
 
 
 func eff_time(t: float) -> float:
@@ -126,7 +161,103 @@ func level(t: float) -> float:
 
 
 func omega(t: float) -> float:
-	return lerpf(2.3, 3.3, level(t)) * omega_mul
+	return lerpf(2.3, 3.3, level(t)) * omega_mul * _grav_mul(t)
+
+
+## Gravity pulse speed factor at time t (1 outside it, smooth ramps at both ends).
+func _grav_mul(t: float) -> float:
+	if _grav.is_empty() or t < float(_grav["up"]):
+		return 1.0
+	var k := clampf((t - float(_grav["up"])) / GRAVITY_RAMP, 0.0, 1.0)
+	if _grav.has("down") and t > float(_grav["down"]):
+		k = 1.0 - clampf((t - float(_grav["down"])) / GRAVITY_RAMP, 0.0, 1.0)
+	return 1.0 + GRAVITY_X * k * k * (3.0 - 2.0 * k)
+
+
+## Starts / ends the surges. Returns true while new patterns must wait (gravity ramps).
+func _surge_update(t: float, active: Array) -> bool:
+	if not surges or not only.is_empty():
+		return false
+	if surge == "":
+		if t >= next_surge and not hold and stage >= 1 and spawned_first:
+			var kind: String = surge_test if surge_test != "" else SURGE_KINDS[surge_rng.randi() % SURGE_KINDS.size()]
+			surge_test = ""
+			if kind == "nova" and Orbit.moving():
+				kind = "comets"   # shockwaves are left out of the moving worlds
+			surge = kind
+			surge_count += 1
+			announce = kind
+			_nova_done = false
+			surge_t1 = t + SURGE_LEN
+			if kind == "gravity":
+				surge_phase = "wait_in"
+				_drop_pending()
+				return true
+		return false
+	if surge == "gravity":
+		var clear: bool = active.is_empty() and _pending.is_empty()
+		match surge_phase:
+			"wait_in":
+				if clear:
+					_grav = {"up": t}
+					surge_phase = "up"
+				return true
+			"up":
+				if t >= float(_grav["up"]) + GRAVITY_RAMP:
+					surge_phase = "on"
+					surge_t1 = t + SURGE_LEN
+					return false
+				return true
+			"on":
+				if t >= surge_t1 - 2.5:   # no pattern may run into the slow-down
+					surge_phase = "wait_out"
+					_drop_pending()
+					return true
+				return false
+			"wait_out":
+				if clear:
+					_grav["down"] = t
+					surge_phase = "down"
+				return true
+			"down":
+				if t >= float(_grav["down"]) + GRAVITY_RAMP:
+					_grav = {}
+					_end_surge(t)
+					return false
+				return true
+	if t >= surge_t1:
+		_end_surge(t)
+	return false
+
+
+func _end_surge(t: float) -> void:
+	surge = ""
+	surge_phase = ""
+	next_surge = t + surge_rng.randf_range(SURGE_EVERY.x, SURGE_EVERY.y)
+
+
+## The pattern a surge asks for, or "" (then the usual pick).
+func _surge_pattern() -> String:
+	match surge:
+		"shower":
+			return ["rain", "rain", "pinch", "lead", "here"][rng.randi() % 5]
+		"comets":
+			return "comet_rain" if Orbit.planets().size() >= 2 and rng.randf() < 0.5 else "comet"
+		"nova":
+			return "" if _nova_done else "pulse"
+	return ""
+
+
+## Pause between patterns (half as long in a shower or a comet storm).
+func _gap(t: float) -> float:
+	return lerpf(0.9, 0.08, level(t)) * (0.5 if surge in ["shower", "comets"] else 1.0)
+
+
+func _committed(hs: Array) -> void:
+	if surge == "nova":
+		for h in hs:
+			if h is Pulse and h.nova:
+				_nova_done = true
 
 
 ## d omega / dt (rad/s^2), used by the fairness check for long patterns.
@@ -156,6 +287,8 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		next_big = t + rng.randf_range(COIN_BIG_EVERY.x, COIN_BIG_EVERY.y)
 		var bo2 := rng.randi_range(0, Orbit.count() - 1)
 		out["bubbles"].append(Bubble.new().setup(angle + PI + rng.randf_range(-1.0, 1.0), t, COIN_LIFE, bo2, "big"))
+	if _surge_update(t, active):
+		return out
 	if t < next_t:
 		return out
 	if not _pending.is_empty():
@@ -165,9 +298,14 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 	# at most ATTEMPTS_PER_FRAME candidates per frame (phones): the search goes on next frame
 	var last := mini(_attempt + ATTEMPTS_PER_FRAME, ATTEMPTS)
 	for attempt in range(_attempt, last):
-		var name: String = "lead" if not spawned_first else _pick(t)
+		var name: String = "lead" if not spawned_first else _surge_pattern()
+		if name == "":
+			name = _pick(t)
 		var res := _build(name, t, angle, dir, w, level(t), attempt, k)
 		var hs: Array = res["hazards"]
+		if surge == "nova" and name == "pulse":
+			for h in hs:
+				h.nova = true
 		var all := active.duplicate()
 		all.append_array(hs)
 		var fair := Survival.can_survive(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP,
@@ -183,8 +321,9 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 			_attempt = 0
 			spawned_first = true
 			committed += 1
-			next_t = t + float(res["length"]) + lerpf(0.9, 0.08, level(t))
+			next_t = t + float(res["length"]) + _gap(t)
 			out["hazards"] = hs
+			_committed(hs)
 			return out
 		rejected += 1
 		for h in hs:
@@ -217,8 +356,9 @@ func _finish_pending(t: float, out: Dictionary) -> Dictionary:
 		_attempt = 0
 		spawned_first = true
 		committed += 1
-		next_t = float(p["t"]) + float(p["res"]["length"]) + lerpf(0.9, 0.08, level(p["t"]))
+		next_t = float(p["t"]) + float(p["res"]["length"]) + _gap(float(p["t"]))
 		out["hazards"] = hs
+		_committed(hs)
 		return out
 	rejected += 1
 	for h in hs:

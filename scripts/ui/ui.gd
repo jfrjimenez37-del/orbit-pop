@@ -90,6 +90,8 @@ var _alt_lbl: Label
 var _style_box: Control
 var _menu_coin_box: Control
 var _hud_top: Control
+var _combo_lbl: Label
+var _combo_shown := 0
 var _over_box: Control
 var _run_coins_lbl: Label
 var _menu_level: Label
@@ -609,6 +611,9 @@ func _build_hud() -> void:
 	_wp_best.color = Color8(255, 128, 178)
 	_wp_best.size = Vector2(1, 5)
 	top.add_child(_wp_best)
+	# combo of near misses in a row, under the world progress bar
+	_combo_lbl = _label(top, "", 1, GOLD)
+	_combo_lbl.visible = false
 	# coins picked up in this run (top right)
 	_run_coins_box = _container(hud)
 	_run_coins_box.anchor_left = 1.0; _run_coins_box.anchor_right = 1.0
@@ -621,6 +626,87 @@ func _build_hud() -> void:
 	_pause_btn.position = Vector2(4, 4)
 	_pause_btn.pressed.connect(func(): pause_pressed.emit())
 	_pause_title = _label(hud, "", 4)
+
+
+## Share card (1080x1920): the moment of the run under a dark veil, the logo, the score, the world
+## reached, the best combo and a dare. Drawn in a 180x320 SubViewport with the game's own font and
+## scaled x6 without smoothing, like the store pictures. data: score, best, world, world_name, combo.
+func share_card(frame: Image, data: Dictionary) -> Image:
+	var vp := SubViewport.new()
+	vp.size = Vector2i(180, 320)
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	vp.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	add_child(vp)
+	var c := Control.new()
+	c.theme = root.theme
+	c.size = Vector2(180, 320)
+	vp.add_child(c)
+	var bg := ColorRect.new()
+	bg.color = Color8(46, 28, 92)
+	bg.size = Vector2(180, 320)
+	c.add_child(bg)
+	if frame != null and not frame.is_empty():
+		var tr := TextureRect.new()
+		tr.texture = ImageTexture.create_from_image(frame)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		tr.size = Vector2(180, 320)
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		c.add_child(tr)
+	var veil := ColorRect.new()
+	veil.color = Color(0.06, 0.03, 0.16, 0.5)
+	veil.size = Vector2(180, 320)
+	c.add_child(veil)
+	var logo := TextureRect.new()
+	logo.texture = _tex("logo")
+	logo.position = Vector2(roundf((180 - logo.texture.get_width()) * 0.5), 14)
+	c.add_child(logo)
+	var y := 14 + logo.texture.get_height() + 16
+	var sc := _label(c, str(int(data.get("score", 0))), 5)
+	_center_label(sc, 180, y)
+	y += 48
+	if bool(data.get("record", false)):
+		var nb := _label(c, L.t("NEW_BEST"), 1, Color8(255, 128, 178))
+		_center_label(nb, 180, y)
+		y += 12
+	var wl := _label(c, L.t("WORLD_N", int(data.get("world", 1))) + " - " + str(data.get("world_name", "")), 1, GOLD)
+	_center_label(wl, 180, y)
+	y += 12
+	if int(data.get("combo", 0)) >= 3:
+		var cl := _label(c, L.t("CARD_COMBO", int(data.get("combo", 0))), 1, Color8(150, 230, 255))
+		_center_label(cl, 180, y)
+	var dare := _label(c, L.t("CARD_DARE"), 2, Color.WHITE)
+	_center_label(dare, 180, 262)
+	var play := _label(c, L.t("CARD_PLAY"), 1, GOLD)
+	_center_label(play, 180, 290)
+	await RenderingServer.frame_post_draw
+	await RenderingServer.frame_post_draw
+	var img := vp.get_texture().get_image()
+	vp.queue_free()
+	if img == null or img.is_empty():
+		return null
+	img.resize(1080, 1920, Image.INTERPOLATE_NEAREST)
+	return img
+
+
+## Combo counter in the HUD: shown from 2 near misses in a row, pops on every one, x2 / x3 / x5.
+func set_combo(n: int, mult: int) -> void:
+	if _combo_lbl == null:
+		return
+	if n < 2:
+		_combo_lbl.visible = false
+		_combo_shown = 0
+		return
+	_combo_lbl.text = L.t("COMBO_N", n) + ("  x%d" % mult if mult > 1 else "")
+	_combo_lbl.modulate = [GOLD, GOLD, Color8(255, 236, 90), Color8(255, 170, 70), Color8(255, 170, 70), Color8(255, 110, 150)][mini(mult, 5)]
+	_center_label(_combo_lbl, 180, 51)
+	_combo_lbl.visible = true
+	if n != _combo_shown:
+		_combo_shown = n
+		_combo_lbl.pivot_offset = Vector2(_text_w(_combo_lbl.text) * 0.5, 4)
+		_combo_lbl.scale = Vector2(1.35, 1.35)
+		create_tween().tween_property(_combo_lbl, "scale", Vector2.ONE, 0.15)
 
 
 ## Altitude shown under the pause button: 25 points = 1 km.
@@ -786,8 +872,8 @@ func announce_record() -> void:
 	_center_label(_hud_best, 180, 34)
 
 
-func flash() -> void:
-	flash_rect.color = Color(1, 1, 1, 0.85)
+func flash(a := 0.85) -> void:
+	flash_rect.color = Color(1, 1, 1, a)
 	create_tween().tween_property(flash_rect, "color:a", 0.0, 0.25)
 
 

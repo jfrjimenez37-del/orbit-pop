@@ -54,6 +54,7 @@ func _initialize() -> void:
 	await test_tutorial(save)
 	await test_gestures(save)
 	await test_events(save)
+	await test_surges(save)
 	print("\n%d checks, %d failed" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -632,15 +633,16 @@ func test_progress(save) -> void:
 	var day0 := 1_900_000_000.0
 	var seen := {}
 	var distinct := true
-	for d in 15:
+	var pool: int = prog.MISSIONS.size()
+	for d in pool:
 		save.clock_override = day0 + d * 86400
 		var idx: Array = prog.daily_indices(save.day_number())
 		distinct = distinct and idx.size() == 3 and idx[0] != idx[1] and idx[1] != idx[2] and idx[0] != idx[2]
 		seen[idx[0]] = true
-	ok(distinct and seen.size() == 15, "3 different missions a day, the whole pool of 15 in 15 days")
+	ok(distinct and seen.size() == pool, "3 different missions a day, the whole pool of %d in %d days" % [pool, pool])
 	save.clock_override = day0
 	var first: Array = prog.daily_indices(save.day_number())
-	save.clock_override = day0 + 15 * 86400
+	save.clock_override = day0 + pool * 86400
 	ok(prog.daily_indices(save.day_number()) == first, "missions repeat cyclically")
 	ok(prog.missions().size() == 3 and not prog.weekly().is_empty(), "today has 3 missions + a weekly challenge")
 	# complete today's missions whatever they are
@@ -1547,19 +1549,37 @@ func test_gestures(save) -> void:
 	main._collect(b)
 	ok(main.score - s0 == 2 + 2 * Upgrades.BUBBLE_BONUS, "gestures: BUBBLES level 2: a bubble gives %d" % (main.score - s0))
 	ok(main.ui.ability_desc("bubbles", 2) != "" and Upgrades.find("bubbles")["max"] == 4, "gestures: BUBBLES ability listed")
-	# near misses in a row: 2, 4, 6, then a normal pass resets the streak
+	# combo: near misses in a row give 2, 2, then x2 from the 3rd (4), x3 from the 6th (6), x5 from
+	# the 10th (10); a PERFECT (very close) adds 2 and freezes the game for a moment
 	var near := Meteor.new().setup(0.0, main.gt, 0.5, 80.0, 0)
-	near.min_clear = 0.0
+	near.min_clear = 0.08
 	var s1: int = main.score
-	for i in 4:
+	var c0: int = main.picked_coins
+	var got: Array = []
+	for i in 10:
+		var b4: int = main.score
 		main._award(near)
-	ok(main.score - s1 == 2 + 4 + 6 + 6, "gestures: near misses in a row give 2, 4, 6, 6 (%d)" % (main.score - s1))
+		got.append(main.score - b4)
+	ok(got == [2, 2, 4, 4, 4, 6, 6, 6, 6, 10], "gestures: combo points %s" % str(got))
+	ok(main.best_combo == 10 and main.picked_coins - c0 == 5 + 15, "gestures: combo 5 and 10 pay 5 + 15 coins")
+	ok(main.ui._combo_lbl.visible and main.ui._combo_lbl.text.contains("10"), "gestures: the HUD shows the combo")
 	var far := Meteor.new().setup(0.0, main.gt, 0.5, 80.0, 0)
 	far.min_clear = 1.0
 	main._award(far)
+	ok(main._near_streak == 0 and not main.ui._combo_lbl.visible, "gestures: a normal pass ends the combo")
 	var s2: int = main.score
-	main._award(near)
-	ok(main.score - s2 == 2, "gestures: a normal pass resets the streak")
+	var perfect := Meteor.new().setup(0.0, main.gt, 0.5, 80.0, 0)
+	perfect.min_clear = 0.01
+	save.reduce_motion = false
+	main._award(perfect)
+	ok(main.score - s2 == 4 and main._freeze > 0.0, "gestures: PERFECT gives +2 more and a hit-stop")
+	var g0: float = main.gt
+	main.set_process(false)
+	main._process(1.0 / 60.0)
+	ok(main.gt == g0, "gestures: nothing moves during the hit-stop")
+	main._freeze = 0.0
+	perfect.free()
+	ok(int(save.stats.get("best_combo", 0)) >= 10, "gestures: best combo kept in the statistics")
 	near.free(); far.free()
 	main.queue_free()
 	await process_frame
@@ -1734,4 +1754,81 @@ func test_events(save) -> void:
 	await process_frame
 	Orbit.reset()
 	save.event_week_test = -999999
+	save.reset_all()
+
+
+## 1.0.19 orbital surges: each kind starts with its banner and ends, the gravity pulse only speeds
+## the player up with an empty field (both ramps), the bot gets through them, none in weekly events.
+func test_surges(save) -> void:
+	save.reset_all()
+	save.tutorial_done = true; save.jump_tip_done = true
+	save.ability_tips = ["hold", "swipe"]
+	save.seen_obstacles = Director.KINDS.map(func(kd): return kd[0])
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	var dt := 1.0 / 60.0
+	for case in [["shower", 2], ["comets", 5], ["nova", 4], ["gravity", 2], ["gravity", 9], ["nova", 13]]:
+		var kind: String = case[0]
+		var si: int = case[1]
+		seed(8100 + si)
+		main.duel = {}
+		main.start_run()
+		main.director.offset = 40.0
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
+		main.stage = si
+		main.director.stage = si
+		main.world_no = 99
+		main.director.next_surge = 4.0
+		main.director.surge_test = kind
+		var started := ""
+		var ended := false
+		var grav_ok := true
+		var max_mul := 1.0
+		var was_up := false
+		var nova_seen := false
+		var frames := 0
+		while main.state == main.S.PLAYING and frames < 60 * 30:
+			if frames % 2 == 0 and TestBot.decide(main):
+				main._flip()
+			main._grace = 0.0
+			var phase: String = main.director.surge_phase
+			main._process(dt)
+			if main.director.surge != "" and started == "":
+				started = main.director.surge
+			if started != "" and main.director.surge == "" and frames > 0:
+				ended = true
+			var m: float = main.director._grav_mul(main.gt)
+			max_mul = maxf(max_mul, m)
+			# the speed only moves (ramps) while the field is empty
+			if m > 1.0001 and m < 1.0 + Director.GRAVITY_X - 0.0001 and not main.hazards.is_empty():
+				grav_ok = false
+			for h in main.hazards:
+				if h is Pulse and h.nova:
+					nova_seen = true
+			frames += 1
+		var want := kind if not (kind == "nova" and Orbit.moving()) else "comets"
+		ok(main.state == main.S.PLAYING, "surges: the bot gets through a %s in world %d (died at %.1f s)" % [kind, si + 1, main.gt])
+		ok(started == want and ended, "surges: %s in world %d starts and ends (%s, %s)" % [kind, si + 1, started, ended])
+		if want == "gravity":
+			ok(grav_ok and absf(max_mul - 1.0 - Director.GRAVITY_X) < 0.001, "surges: gravity pulse x%.2f, ramps only on an empty field" % max_mul)
+		if want == "nova":
+			ok(nova_seen, "surges: the supernova wave showed up")
+		if main.state == main.S.DYING:
+			main._game_over()
+	# no surges in weekly events
+	save.event_week_test = 0
+	main.start_event()
+	main.director.next_surge = 0.0
+	for i in 600:
+		main._grace = 0.0
+		main.shield_until = INF
+		main._process(dt)
+	ok(main.director.surge_count == 0, "surges: none in a weekly event")
+	save.event_week_test = -999999
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
 	save.reset_all()
