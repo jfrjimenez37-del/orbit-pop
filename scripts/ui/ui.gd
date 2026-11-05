@@ -451,23 +451,25 @@ func _build_menu() -> void:
 	_place(rk, 1.0, -64, 26, 28)
 	rk.offset_left += 60; rk.offset_right += 60
 	rk.pressed.connect(func(): ranking_pressed.emit())
-	# top right: shop and daily gift (inset from the corner: rounded screens and notches)
+	# top right: shop, daily gift and settings (inset from the corner: rounded screens and notches)
 	_menu_top_right = _container(menu)
 	_menu_top_right.anchor_left = 1.0; _menu_top_right.anchor_right = 1.0
-	_menu_top_right.offset_left = -58; _menu_top_right.offset_top = 3
-	for k in 2:
-		var tb := _button(_menu_top_right, "pink", "", ["cart", "gift"][k], Vector2(24, 20))
+	_menu_top_right.offset_left = -85; _menu_top_right.offset_top = 3
+	for k in 3:
+		var tb := _button(_menu_top_right, "white" if k == 2 else "pink", "", ["cart", "gift", "gear"][k], Vector2(24, 20))
 		tb.position = Vector2(k * 27, 0)
-		tb.pressed.connect([func(): shop_pressed.emit(), show_daily][k])
+		tb.pressed.connect([func(): shop_pressed.emit(), show_daily, show_settings][k])
+		if k == 2:
+			continue
 		var badge := _label(tb, "!", 1, GOLD)
 		badge.position = Vector2(19, -4)
 		if k == 0:
 			_shop_badge = badge
 		else:
 			_gift_badge = badge
-	# bottom row: missions, styles, the big DUELS button (duels, daily challenge, events), settings
-	var row := [["mission", "white", show_mission, 26], ["skins", "white", func(): skins_pressed.emit(), 26],
-		["duel", "yellow", show_duel, 62], ["gear", "white", show_settings, 26]]
+	# second row, centered under PLAY: styles, the DUELS button (duels, daily challenge, events), missions
+	var row := [["skins", "white", func(): skins_pressed.emit(), 26], ["duel", "yellow", show_duel, 62],
+		["mission", "white", show_mission, 26]]
 	var total := 0.0
 	for r in row:
 		total += float(r[3]) + 3.0
