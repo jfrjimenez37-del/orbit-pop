@@ -5,6 +5,32 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.16 (código 18)
+
+- **Habilidades sin botones** (los botones del HUD solo muestran las cargas):
+  - **Cámara lenta**: mantener un dedo pulsado 0,5 s (un anillo se llena alrededor del personaje
+    desde 0,15 s, para que un toque normal no la active). Dura 3 / 4,5 / 6 s según el nivel; cargas
+    = nivel.
+  - **Teletransporte**: deslizar el dedo (14 px en menos de 0,35 s). A lo largo de la órbita salta
+    1,25 rad en esa dirección; hacia otro planeta, cae en su órbita. Siempre al punto seguro más
+    cercano (`Survival.can_survive`). El giro del toque que empieza el gesto se deshace.
+  - Un consejo la primera partida con cada habilidad ("MANTÉN = CÁMARA LENTA", "DESLIZA =
+    TELETRANSPORTE").
+- **Nueva habilidad BURBUJAS+** (nivel 6, 4 niveles): cada burbuja da +1 por nivel (2 → 6). No
+  cuenta en duelos.
+- **Roces seguidos**: ¡CERCA! +2, luego x2 (+4) y x3 (+6); un paso normal reinicia la racha.
+- La lista de habilidades (8 filas) cabe en pantallas de 320 px de alto.
+
+## 1.0.15 (código 17)
+
+- Tarjeta de misiones al volver al menú (lo que avanzó en la partida).
+- Ventana "¡NUEVO SKIN / ESTELA!" con USAR / LUEGO al desbloquear o comprar.
+- Regalo diario: calendario de 7 días, también cuando ya se recogió hoy.
+- Menú: tienda y regalo arriba a la derecha, botón DUELOS grande; precios en rojo si faltan
+  monedas.
+- Cartel de mundo más largo y cámara lenta breve la primera vez que se llega a un mundo.
+- DIAG muestra las líneas más nuevas primero.
+
 ## 1.0.14 (código 16)
 
 - **Textos**: `tests/ui_audit.gd` abre todas las pantallas y ventanas en los 4 idiomas con números

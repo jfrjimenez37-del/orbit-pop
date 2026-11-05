@@ -167,7 +167,7 @@ func _audit_all(lang: String) -> void:
 	await _check(lang, "world banner")
 	ui.announce_record()
 	await _check(lang, "hud record")
-	for tip in [["TAP_HINT", "TUT_TAP_SUB"], ["TUT_NICE", "TUT_NICE_SUB"], ["TUT_JUMP", "TUT_JUMP_SUB"], ["TUT_NICE", "TUT_JUMP_DONE"]]:
+	for tip in [["TAP_HINT", "TUT_TAP_SUB"], ["TUT_NICE", "TUT_NICE_SUB"], ["TUT_JUMP", "TUT_JUMP_SUB"], ["TUT_NICE", "TUT_JUMP_DONE"], ["TIP_HOLD", "TIP_HOLD_SUB"], ["TIP_SWIPE", "TIP_SWIPE_SUB"]]:
 		ui.show_tip(L.t(tip[0]), L.t(tip[1]))
 		await _check(lang, "tip " + tip[1])
 	ui.hide_tip()

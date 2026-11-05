@@ -45,6 +45,7 @@ func _initialize() -> void:
 	await test_simulation(save)
 	await test_analytics(save)
 	await test_tutorial(save)
+	await test_gestures(save)
 	print("\n%d checks, %d failed" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -1451,4 +1452,93 @@ func test_tutorial(save) -> void:
 		save.jump_tip_done = true
 	ok(sw and save.jump_tip_done, "tutorial: a jump at the crossing ends the tip")
 	main.queue_free()
+	save.reset_all()
+
+
+## 1.0.16 abilities: HOLD = slow-mo (after HOLD_TIME, lasts by level), SWIPE = teleport (along the
+## orbit or onto the planet it points at, undoing the swipe's own flip), BUBBLES ability, and
+## near misses in a row (x2, x3).
+func test_gestures(save) -> void:
+	save.reset_all()
+	save.tutorial_done = true; save.jump_tip_done = true
+	save.ability_tips = ["hold", "swipe"]
+	save.abilities = {"slowmo": 2, "teleport": 2, "bubbles": 2}
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.duel = {}
+	main.start_run()
+	main._clear_field()
+	ok(main.slowmo_charges == 2 and main.teleports == 2, "gestures: charges from the ability levels")
+	var now := Time.get_ticks_msec() / 1000.0
+	# a short press: no slow-mo
+	main._touch = {"pos": Vector2(90, 200), "t": now - 0.2, "dir": main.player.dir, "orbit": 0, "done": false, "pointer": true}
+	main._hold_update()
+	ok(main.slowmo_left <= 0.0 and main.player.hold > 0.0, "gestures: 0.2 s held: ring charging, no slow-mo yet")
+	main._touch["t"] = now - 0.6
+	main._hold_update()
+	ok(main.slowmo_left == Upgrades.SLOWMO_TIMES[2] and main.slowmo_charges == 1 and main.player.hold == 0.0,
+		"gestures: held 0.5 s: slow-mo for %.1f s (level 2)" % Upgrades.SLOWMO_TIMES[2])
+	main._touch = {}
+	main.slowmo_left = 0.0
+	main.player.slowmo = false
+	# swipe along the orbit (one planet): jump TELEPORT_ARC that way, the tap's flip undone
+	var d0: int = main.player.dir
+	main._flip()   # the swipe's own tap
+	main._touch = {"pos": Vector2(90, 200), "t": Time.get_ticks_msec() / 1000.0, "dir": d0, "orbit": 0, "done": false, "pointer": true}
+	var a0: float = main.player.angle
+	var tangent: Vector2 = (Orbit.pos(0, a0 + 0.02) - Orbit.pos(0, a0 - 0.02)).normalized()
+	var ev := InputEventScreenDrag.new()
+	ev.position = Vector2(90, 200) + tangent * 30.0
+	main._gesture(ev)
+	var moved := wrapf(main.player.angle - a0, -PI, PI)
+	ok(main.teleports == 1 and main.player.dir == d0 and absf(moved - Upgrades.TELEPORT_ARC) < 0.55,
+		"gestures: swipe along the orbit teleports forward %.2f rad, direction kept" % moved)
+	# swipe toward the other planet: onto its orbit
+	main._touch = {}
+	Orbit.set_shape(Stages.LIST[5]["orbits"], true)
+	main.player.teleport_to(0, 0.0)
+	var p0: Vector2 = Orbit.pos(0, 0.0)
+	var other := Vector2.ZERO
+	var dmin := INF
+	for s in 72:
+		var q: Vector2 = Orbit.pos(1, -PI + TAU * s / 72.0)
+		if q.distance_to(p0) < dmin:
+			dmin = q.distance_to(p0)
+			other = q
+	var d1: int = main.player.dir
+	main._flip()
+	main._touch = {"pos": Vector2(90, 200), "t": Time.get_ticks_msec() / 1000.0, "dir": d1, "orbit": 0, "done": false, "pointer": true}
+	var ev2 := InputEventScreenDrag.new()
+	ev2.position = Vector2(90, 200) + (other - p0).normalized() * 30.0
+	if main.player.orbit == 0:
+		main._gesture(ev2)
+		ok(main.player.orbit == 1 and main.teleports == 0, "gestures: swipe toward the other planet lands on its orbit")
+	else:
+		ok(true, "gestures: (the tap itself was a planet jump here)")
+	# BUBBLES ability: +1 per level on every bubble
+	var s0: int = main.score
+	var b := Bubble.new().setup(main.player.angle, main.gt, 5.0, main.player.orbit)
+	main.hazards_root.add_child(b)
+	main._collect(b)
+	ok(main.score - s0 == 2 + 2 * Upgrades.BUBBLE_BONUS, "gestures: BUBBLES level 2: a bubble gives %d" % (main.score - s0))
+	ok(main.ui.ability_desc("bubbles", 2) != "" and Upgrades.find("bubbles")["max"] == 4, "gestures: BUBBLES ability listed")
+	# near misses in a row: 2, 4, 6, then a normal pass resets the streak
+	var near := Meteor.new().setup(0.0, main.gt, 0.5, 80.0, 0)
+	near.min_clear = 0.0
+	var s1: int = main.score
+	for i in 4:
+		main._award(near)
+	ok(main.score - s1 == 2 + 4 + 6 + 6, "gestures: near misses in a row give 2, 4, 6, 6 (%d)" % (main.score - s1))
+	var far := Meteor.new().setup(0.0, main.gt, 0.5, 80.0, 0)
+	far.min_clear = 1.0
+	main._award(far)
+	var s2: int = main.score
+	main._award(near)
+	ok(main.score - s2 == 2, "gestures: a normal pass resets the streak")
+	near.free(); far.free()
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
 	save.reset_all()

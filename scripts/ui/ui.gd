@@ -575,7 +575,8 @@ func _build_hud() -> void:
 	_teleport_btn.anchor_top = 1.0; _teleport_btn.anchor_bottom = 1.0
 	_teleport_btn.offset_left = -34; _teleport_btn.offset_right = -6
 	_teleport_btn.offset_top = -40; _teleport_btn.offset_bottom = -12
-	_teleport_btn.pressed.connect(func(): teleport_pressed.emit())
+	_teleport_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE   # SWIPE to teleport (see main)
+	_teleport_btn.modulate.a = 0.8
 	_teleport_btn.visible = false
 	_teleport_count = _label(_teleport_btn, "", 1, Color.WHITE)
 	_teleport_count.position = Vector2(19, -4)
@@ -583,7 +584,8 @@ func _build_hud() -> void:
 	_slowmo_btn.anchor_top = 1.0; _slowmo_btn.anchor_bottom = 1.0
 	_slowmo_btn.offset_left = 6; _slowmo_btn.offset_right = 34
 	_slowmo_btn.offset_top = -40; _slowmo_btn.offset_bottom = -12
-	_slowmo_btn.pressed.connect(func(): slowmo_pressed.emit())
+	_slowmo_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE   # HOLD to slow time (see main)
+	_slowmo_btn.modulate.a = 0.8
 	_slowmo_btn.visible = false
 	_slowmo_count = _label(_slowmo_btn, "", 1, INK)
 	_slowmo_count.position = Vector2(19, -4)
@@ -685,9 +687,7 @@ func blocks_tap(pos: Vector2) -> bool:
 		return false
 	if _pause_btn.visible and _pause_btn.get_global_rect().grow(3).has_point(pos):
 		return true
-	if _slowmo_btn.visible and _slowmo_btn.get_global_rect().grow(2).has_point(pos):
-		return true
-	return _teleport_btn.visible and _teleport_btn.get_global_rect().grow(2).has_point(pos)
+	return false
 
 
 ## layer: altitude layer just entered ("" when the world stays in the same layer).
@@ -1242,10 +1242,10 @@ func _build_abilities() -> void:
 	_place(_ab_box, 0.5, -152, 164, ABILITIES_H)
 	var t := _label(_ab_box, L.t("ABILITIES"), 2)
 	_center_label(t, 164, 0)
-	var panel := _panel(_ab_box, Vector2(0, 21), Vector2(164, 252))
+	var panel := _panel(_ab_box, Vector2(0, 21), Vector2(164, 266))
 	_ab_list = _container(panel)
 	var back := _button(_ab_box, "white", L.t("BACK"), "back", Vector2(76, 22))
-	back.position = Vector2(44, 277)
+	back.position = Vector2(44, 291)
 	back.pressed.connect(func(): menu_pressed.emit())
 
 
@@ -1259,8 +1259,12 @@ static func ability_desc(id: String, lv: int) -> String:
 			return L.t(["AB_SHIELD_D1", "AB_SHIELD_D2", "AB_SHIELD_D3"][mini(lv, 3) - 1])
 		"magnet":
 			return L.t("AB_MAGNET_D")
-		"slowmo", "teleport":
+		"slowmo":
+			return L.t("AB_SLOWMO_D", [lv, Upgrades.SLOWMO_TIMES[mini(lv, 3)]])
+		"teleport":
 			return L.t("AB_CHARGES_D", lv)
+		"bubbles":
+			return L.t("AB_BUBBLES_D", 2 + lv * Upgrades.BUBBLE_BONUS)
 		"headstart":
 			return L.t("AB_HEADSTART_D", Upgrades.HEADSTART_WORLD[mini(lv, 3)])
 	return L.t("AB_SECONDLIFE_D")
@@ -1277,7 +1281,7 @@ func refresh_abilities() -> void:
 	cb.position = Vector2(8, 6)
 	var lv := L.t("LEVEL_N", Save.level)
 	_left_label(_ab_list, lv, Vector2(156 - _text_w(lv), 7), INK)
-	var y := 22
+	var y := 20
 	for a in Upgrades.ABILITIES:
 		var id: String = a["id"]
 		var cur := Save.ability(id)
@@ -1327,18 +1331,18 @@ func refresh_abilities() -> void:
 				Save.save_data()
 				Sfx.play("select")
 				refresh_abilities())
-		y += 32
+		y += AB_ROW
 	# free level by watching videos (levels 1 -> 2 and 2 -> 3, one a day)
 	var vid := Save.video_target()
 	if vid != "" and Save.video_open_today():
 		var n := int(Save.video_up.get("n", 0)) if Save.video_up.get("id", "") == vid else 0
 		var vb := _button(_ab_list, "pink", "%s +1  %d/%d" % [L.t("AB_" + vid.to_upper()), n, Save.video_needed(vid)], "video", Vector2(140, 16))
-		vb.position = Vector2(12, 236)
+		vb.position = Vector2(12, 246)
 		vb.disabled = not Monetization.rewarded_ready()
 		vb.pressed.connect(func(): ability_video_pressed.emit())
 	else:
 		var tip := _label(_ab_list, L.t("AB_TIP") if vid == "" else L.t("VIDEO_TOMORROW"), 1, MUTED)
-		_center_label(tip, 164, 240)
+		_center_label(tip, 164, 250)
 
 
 func show_abilities() -> void:
@@ -1608,7 +1612,8 @@ func _open_board(board: String) -> void:
 
 ## Banner ads sit at the bottom of every menu screen (not the main menu, runs or game over).
 const STYLE_H := 304
-const ABILITIES_H := 300
+const ABILITIES_H := 314
+const AB_ROW := 28   # 8 abilities: button 20 + level pips, fits a 320 px tall screen
 const POPUP_BANNER_KINDS := ["mission", "settings", "daily", "duel"]
 
 

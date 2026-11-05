@@ -40,6 +40,14 @@ var _tut_shown_at := -1.0
 var _jump_tip := false
 var _jump_tries := 0
 var _world_intro_left := 0.0   # first time in a world: a second of slow motion with its banner
+## Gestures: the tap flips at once as always; keeping the finger still for HOLD_TIME starts the
+## SLOW-MO, moving it SWIPE_PX within SWIPE_TIME undoes that flip and TELEPORTS that way.
+const HOLD_TIME := 0.5
+const HOLD_SHOW := 0.15        # the charging ring appears after this
+const SWIPE_PX := 14.0
+const SWIPE_TIME := 0.35
+var _touch := {}               # {pos, t (real s), dir, orbit, done}
+var _near_streak := 0          # near misses in a row: CLOSE x2, x3 (more points)
 var _missions_before: Array = []   # missions + weekly at the start of the run (menu card after it)
 var _mission_card_pending := false
 var _perf_slow := 0          # frames over 33 ms
@@ -569,6 +577,10 @@ func start_run() -> void:
 	_tut_meteor = null
 	_tut_scale = 1.0
 	_world_intro_left = 0.0
+	_touch = {}
+	player.hold = 0.0
+	_near_streak = 0
+	_ability_tip()
 	_missions_before = Progress.missions() + [Progress.weekly()]
 	_tut_shown_at = -1.0
 	_jump_tip = false
@@ -674,6 +686,7 @@ func _game_over() -> void:
 # ------------------------------------------------------------------ input
 
 func _unhandled_input(event: InputEvent) -> void:
+	_gesture(event)
 	var tap := false
 	if (event is InputEventScreenTouch or event is InputEventMouseButton) and state == S.PLAYING \
 			and ui.blocks_tap(event.position):
@@ -709,7 +722,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	match state:
 		S.PLAYING:
 			if _grace <= 0.0:
+				var before := {"pos": event.position if "position" in event else Vector2.ZERO,
+					"t": Time.get_ticks_msec() / 1000.0, "dir": player.dir, "orbit": player.orbit, "done": false,
+					"pointer": not (event is InputEventKey)}
 				_flip()
+				_touch = before if before["pointer"] else {}
 		S.PAUSED:
 			pass  # use the CONTINUE / MENU buttons
 
@@ -816,6 +833,7 @@ func _process(delta: float) -> void:
 				player.flip()
 			player.advance(delta)
 		S.PLAYING:
+			_hold_update()
 			_tutorial(delta)
 			var left := delta * _tut_scale
 			if slowmo_left > 0.0:
@@ -986,21 +1004,118 @@ func _collect(b: Bubble) -> void:
 			fx.text("+%d" % b.value, p + Vector2(0, -10), Color8(255, 222, 70))
 		Sfx.play("coin", 1.0 + minf(0.3, 0.05 * (picked_coins % 7)), -3.0)
 		return
-	_add_score(2)
+	var pts := 2 + (Save.ability("bubbles") * Upgrades.BUBBLE_BONUS if duel.is_empty() else 0)
+	_add_score(pts)
 	bubbles_popped += 1
 	Progress.event("bubble")
 	fx.burst(p, 14, [Color.WHITE, Color8(120, 220, 255), Color8(255, 222, 70)], 70.0, 0.4, 2.0)
 	fx.ring(p, Color8(180, 240, 255), 4.0, 18.0, 0.3)
-	fx.text(L.t("POP_FX"), p + Vector2(0, -12), Color8(255, 236, 90))
+	fx.text(L.t("POP_FX", pts), p + Vector2(0, -12), Color8(255, 236, 90))
 	Sfx.play("pop")
 
 
-func use_teleport() -> void:
+## Finger moving / lifted after a tap: a quick swipe becomes a TELEPORT, lifting ends the hold.
+func _gesture(event: InputEvent) -> void:
+	if _touch.is_empty() or state != S.PLAYING:
+		return
+	var released: bool = (event is InputEventScreenTouch and not event.pressed) \
+		or (event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+	if released:
+		_touch = {}
+		player.hold = 0.0
+		return
+	var moved: bool = event is InputEventScreenDrag or (event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT
+		and event.device != InputEvent.DEVICE_ID_EMULATION)
+	if not moved or _touch["done"]:
+		return
+	var v: Vector2 = event.position - _touch["pos"]
+	if v.length() < SWIPE_PX:
+		return
+	_touch["done"] = true
+	player.hold = 0.0
+	if Time.get_ticks_msec() / 1000.0 - float(_touch["t"]) > SWIPE_TIME or teleports <= 0 or player.orbit != int(_touch["orbit"]):
+		return   # too slow, no charges, or the tap was a planet jump: keep it
+	if player.dir != int(_touch["dir"]):
+		player.flip()   # the swipe's own tap flipped: undo it, the swipe decides
+	use_teleport(v)
+
+
+## Finger kept still after a tap: the ring fills, then the SLOW-MO starts.
+func _hold_update() -> void:
+	if _touch.is_empty() or _touch["done"] or slowmo_charges <= 0 or slowmo_left > 0.0:
+		player.hold = 0.0
+		return
+	var held: float = Time.get_ticks_msec() / 1000.0 - float(_touch["t"])
+	player.hold = clampf((held - HOLD_SHOW) / (HOLD_TIME - HOLD_SHOW), 0.0, 1.0) if held > HOLD_SHOW else 0.0
+	if held >= HOLD_TIME:
+		_touch["done"] = true
+		player.hold = 0.0
+		use_slowmo()
+
+
+## The first runs with SLOW-MO / TELEPORT: a tip about their gesture (once each).
+func _ability_tip() -> void:
+	if not duel.is_empty() or _tut_step == 1:
+		return
+	for t in [["hold", slowmo_charges, "TIP_HOLD", "TIP_HOLD_SUB"], ["swipe", teleports, "TIP_SWIPE", "TIP_SWIPE_SUB"]]:
+		if int(t[1]) > 0 and not Save.ability_tips.has(t[0]):
+			Save.ability_tips.append(t[0])
+			Save.save_data()
+			var title: String = L.t(t[2])
+			var sub: String = L.t(t[3])
+			get_tree().create_timer(1.2).timeout.connect(func():
+				if state == S.PLAYING:
+					ui.show_tip(title, sub, 3.5))
+			return
+
+
+## Where a swipe takes the player: onto another planet's orbit if the swipe points at it,
+## otherwise TELEPORT_ARC along the current orbit; then the nearest safe spot around there.
+func _teleport_target(swipe: Vector2) -> Array:
+	var k := player.orbit
+	var a := player.angle
+	if swipe == Vector2.ZERO:
+		return [k, a + PI]   # keyboard T / tests: the opposite side
+	var sn := swipe.normalized()
+	var p := Orbit.pos(k, a)
+	var tangent := (Orbit.pos(k, a + 0.02) - Orbit.pos(k, a - 0.02)).normalized()
+	var along := sn.dot(tangent)
+	var best := [-1, 0.0, 0.0]   # orbit, angle, alignment
+	for j in Orbit.count():
+		if j == k:
+			continue
+		var near_a := 0.0
+		var near_d := INF
+		for s in 72:
+			var aa := -PI + TAU * s / 72.0
+			var dd := Orbit.pos(j, aa).distance_to(p)
+			if dd < near_d:
+				near_d = dd
+				near_a = aa
+		var to := Orbit.pos(j, near_a) - p
+		if to.length() < 2.0:
+			continue
+		var al := sn.dot(to.normalized())
+		if al > best[2]:
+			best = [j, near_a, al]
+	var dest := [k, a + (1.0 if along >= 0.0 else -1.0) * Upgrades.TELEPORT_ARC]
+	if int(best[0]) >= 0 and float(best[2]) > 0.6 and float(best[2]) > absf(along):
+		dest = [best[0], best[1]]
+	var rate: float = director.omega_rate(gt)
+	for off in [0.0, 0.12, -0.12, 0.24, -0.24, 0.36, -0.36, 0.5, -0.5]:
+		var cand: float = float(dest[1]) + off
+		if Survival.can_survive(hazards, gt, cand, player.dir, player.omega, false, int(dest[0]), Survival.MARGIN, Survival.TAP_GAP, 0.0, rate):
+			return [dest[0], cand]
+	return dest
+
+
+func use_teleport(swipe := Vector2.ZERO) -> void:
 	if teleports <= 0 or state != S.PLAYING:
 		return
 	teleports -= 1
 	var from := player.position
-	player.teleport()
+	var dest := _teleport_target(swipe)
+	player.teleport_to(int(dest[0]), float(dest[1]))
 	shield_until = maxf(shield_until, gt + 0.5)
 	fx.burst(from, 12, [Color8(200, 140, 255), Color.WHITE], 60.0, 0.35, 2.0)
 	fx.ring(player.position, Color8(200, 140, 255), 14.0, 3.0, 0.3)
@@ -1014,7 +1129,7 @@ func use_slowmo() -> void:
 	if slowmo_charges <= 0 or state != S.PLAYING or slowmo_left > 0.0:
 		return
 	slowmo_charges -= 1
-	slowmo_left = Upgrades.SLOWMO_TIME
+	slowmo_left = Upgrades.SLOWMO_TIMES[clampi(Save.ability("slowmo"), 0, Upgrades.SLOWMO_TIMES.size() - 1)]
 	player.slowmo = true
 	fx.ring(player.position, Color8(150, 190, 255), 6.0, 40.0, 0.4)
 	fx.text(L.t("SLOWMO_FX"), player.position + Vector2(0, -14), Color8(170, 200, 255))
@@ -1076,12 +1191,19 @@ func _award(h) -> void:
 	if h.min_clear < Orbit.NEAR:
 		near_count += 1
 		Progress.event("near")
-		_add_score(2)
-		fx.text(L.t("CLOSE_FX"), player.position + Vector2(0, -14), Color8(120, 255, 200))
-		fx.ring(player.position, Color.WHITE, 6.0, 20.0, 0.25)
-		fx.burst(player.position, 8, [Color.WHITE, Color8(120, 255, 200)], 60.0, 0.3, 2.0)
-		Sfx.play("close")
+		# near misses in a row: x2, x3 (2, 4, 6 points), bigger text and a higher sound
+		_near_streak = mini(_near_streak + 1, 3)
+		var pts := 2 * _near_streak
+		_add_score(pts)
+		var txt: String = L.t("CLOSE_FX") if _near_streak == 1 else L.t("CLOSE_X", [_near_streak, pts])
+		fx.text(txt, player.position + Vector2(0, -14), Color8(120, 255, 200) if _near_streak == 1 else Color8(255, 236, 90), 1.0 + 0.25 * (_near_streak - 1))
+		fx.ring(player.position, Color.WHITE, 6.0, 20.0 + 6.0 * (_near_streak - 1), 0.25)
+		fx.burst(player.position, 8 * _near_streak, [Color.WHITE, Color8(120, 255, 200)], 60.0, 0.3, 2.0)
+		Sfx.play("close", 1.0 + 0.12 * (_near_streak - 1))
+		if _near_streak > 1:
+			_shake = maxf(_shake, 1.0 + _near_streak * 0.5)
 	else:
+		_near_streak = 0
 		_add_score(1)
 		fx.text("+1", p, Color.WHITE)
 		Sfx.play("score", 1.0, -4.0)

@@ -15,13 +15,20 @@ const ABILITIES := [
 	{"id": "coins", "icon": "coin", "unlock": 2, "max": 5},
 	{"id": "shield", "icon": "shield", "unlock": 3, "max": 3},
 	{"id": "magnet", "icon": "magnet", "unlock": 5, "max": 5},
+	{"id": "bubbles", "icon": "bubble_up", "unlock": 6, "max": 4},
 	{"id": "slowmo", "icon": "slowmo", "unlock": 8, "max": 3, "active": true},
 	{"id": "teleport", "icon": "teleport", "unlock": 10, "max": 3, "active": true},
 	{"id": "headstart", "icon": "rocket", "unlock": 12, "max": 3},
 	{"id": "secondlife", "icon": "heart", "unlock": 15, "max": 1, "buy": 10000},
 ]
 const HEADSTART_WORLD := [1, 3, 5, 8]   # highest start world per headstart level
-const SLOWMO_TIME := 2.0
+const SLOWMO_TIME := 2.0          # keyboard S / tests: level 0 fallback
+## SLOW-MO: hold the screen; it lasts this long (real s) at each level, charges = level.
+const SLOWMO_TIMES := [2.0, 3.0, 4.5, 6.0]
+## TELEPORT: a swipe along the orbit jumps this far (rad); toward another planet, onto its orbit.
+const TELEPORT_ARC := 1.25
+## BUBBLES: each level adds this many points to every bubble popped (base 2).
+const BUBBLE_BONUS := 1
 const SLOWMO_SCALE := 0.5
 const SHIELD_RECHARGE := 60.0
 ## MAGNET: coins and bubbles closer than this (px, any orbit) fly to the player.
