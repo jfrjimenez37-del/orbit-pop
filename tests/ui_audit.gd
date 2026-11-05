@@ -214,6 +214,20 @@ func _audit_all(lang: String) -> void:
 	await _check(lang, "pause")
 	ui.show_game_over(99999, 99999, true, [Catalog.find("skins", "crystal")], true, false)
 	await _check(lang, "game over")
+	# a bad run: place among my best, the next world, a tip under the card (no continue offer)
+	sv.top_scores = [{"s": 99999, "w": 16}, {"s": 99998, "w": 16}, {"s": 99990, "w": 16}]
+	ui.show_game_over(99990, 99999, false, [], false, false)
+	ui.show_over_progress(99990, false, true)
+	ui.show_over_tip("belt")
+	await _check(lang, "game over tip")
+	for kd in Director.KINDS:
+		ui.show_over_tip(str(kd[0]))
+		await _check(lang, "game over tip " + str(kd[0]))
+	ui.show_over_progress(5, false, true)
+	await _check(lang, "game over far")
+	ui.show_welcome()
+	await _check(lang, "welcome offer")
+	ui.hide_popup()
 	for dr in [{"mode": "new", "mine": 9999, "theirs": -1, "name": "", "pay": 0, "result": "", "code": "X"},
 			{"mode": "reply", "mine": 9999, "theirs": 9998, "name": DUEL_NAME, "pay": 50, "result": "win", "code": "X"},
 			{"mode": "reply", "mine": 1, "theirs": 9999, "name": DUEL_NAME, "pay": 10, "result": "loss", "code": "X"},

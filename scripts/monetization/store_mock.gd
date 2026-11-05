@@ -21,6 +21,10 @@ func price(id: String) -> String:
 	return MonetizationConfig.FALLBACK_PRICES.get(id, "?")
 
 
+func listed(_id: String) -> bool:
+	return true
+
+
 func buy(id: String) -> void:
 	if fail_next:
 		fail_next = false

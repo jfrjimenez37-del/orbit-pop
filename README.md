@@ -5,6 +5,24 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.20 (código 22)
+
+- **Eventos semanales**: cada uno en un solo mundo y escalando solos (`Director.escalate`): la
+  dificultad llega al máximo a los 80 s sea cual sea el mundo, y el siguiente patrón llega antes
+  y se solapa con el anterior (hasta un 35 %), así que el mismo obstáculo viene cada vez más
+  seguido y más rápido. TORMENTA DE COMETAS solo con cometas en el mundo 1; mensaje al empezar
+  ("¡CADA VEZ MÁS Y MÁS RÁPIDO!") y textos más claros en la ventana del evento.
+- **Música** cada dos mundos (el mundo 3 llega en unos 40 s): ver `Sfx.BY_STAGE`.
+- **Fin de partida**: "TU MEJOR PARTIDA #3" (o "A 12 DE TU RÉCORD") y "MUNDO 6: FALTAN 12".
+  Tras una mala partida (sin récord ni desbloqueo, en las 25 primeras o con menos de un tercio
+  del récord), un **consejo** sobre el obstáculo que te venció (uno por tipo, 14 + uno general).
+- **Oferta de bienvenida**: tras la 3.ª partida, una vez, el pack inicial al 50 % durante 48 h.
+  **Pendiente en Play Console:** crear el producto `starter_50` a la mitad del precio de
+  `starter` (sin anuncios + 1000 monedas); hasta que exista, la oferta no sale.
+- **Notificaciones**: día 1 regalo / racha, día 2 "¡El mundo 6 te está esperando: solo te faltan
+  12 puntos!", día 3 el evento que termina pronto (si quedan monedas) o "los planetas te
+  extrañan", día 5 "Tu récord es 189. ¡Hoy es el día de superarlo!", día 7 mejoras / mundos.
+
 ## 1.0.19 (código 21)
 
 - **Combo de roces**: los roces seguidos multiplican solo los puntos del roce (×2 desde el 3.º,

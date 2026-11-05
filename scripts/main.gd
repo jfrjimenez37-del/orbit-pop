@@ -51,6 +51,7 @@ var _touch := {}               # {pos, t (real s), dir, orbit, done}
 var _near_streak := 0          # combo: near misses in a row (a normal pass breaks it)
 var best_combo := 0            # longest combo of this run (share card, stats)
 var _death_frame: Image        # the field at the moment of the hit (share card)
+var _killer_kind := ""         # obstacle kind that ended the run (tip after a bad run)
 var _run_record := false
 var _freeze := 0.0             # PERFECT hit-stop: the game stands still for a few frames
 ## Combo multiplier on the near-miss points only (so the worlds do not fly by): [combo from, x]
@@ -221,7 +222,10 @@ func go_menu() -> void:
 		_show_pending_link.call_deferred()
 	elif Save.daily_available():
 		ui.show_daily()
-	elif Monetization.should_offer_starter():
+	elif Monetization.should_offer_welcome():
+		Monetization.start_welcome()
+		ui.show_welcome()
+	elif Monetization.should_offer_starter() and Monetization.welcome_secs() <= 0:
 		Save.starter_seen = true
 		Save.save_data()
 		ui.show_starter()
@@ -588,6 +592,7 @@ func start_run() -> void:
 	director.only = ev.get("only", [])
 	director.omega_mul = float(ev.get("omega", 1.0))
 	director.surges = ev.is_empty()   # a weekly event already has its own theme
+	director.escalate = not ev.is_empty()
 	_event_stage = int(ev.get("stage", -1))
 	# HEADSTART: begin in a world already passed, with that world's points
 	var sw := 1 if dm else Save.chosen_start_world()
@@ -647,6 +652,9 @@ func start_run() -> void:
 	_tut_shown_at = -1.0
 	_jump_tip = false
 	ui.hide_tip()
+	if dm and duel.get("kind", "duel") == "event":
+		var ek := "EV_" + str(duel["event"]["id"]).to_upper()
+		ui.show_tip(L.t(ek), L.t("EVENT_RAMP"), 3.0)
 	Progress.ga.progression("Start", _ga_mode(), _ga_world())
 	Sfx.play("go")
 
@@ -716,6 +724,11 @@ func _game_over() -> void:
 	var xp_gain := _award_xp()
 	ui.show_game_over(score, Save.best, res["record"], res["unlocked"], duel.is_empty() and Monetization.can_continue(score, continued),
 		Monetization.continue_is_free())
+	ui.show_over_progress(score, _run_record, _event_stage < 0)
+	# a bad run (nothing new): a tip about the obstacle that got the player
+	if duel.is_empty() and not _run_record and res["unlocked"].is_empty() and (Save.games <= 25 or score < maxi(10, Save.best / 3)):
+		ui.show_over_tip(_killer_kind)
+		Progress.ga.design("Tip:Shown:" + (_killer_kind if _killer_kind != "" else "any"))
 	if not duel.is_empty():
 		var dr := _finish_duel()
 		ui.show_duel_result(dr)
@@ -1014,6 +1027,7 @@ func _sim(dt: float) -> void:
 			if _tut_step == 1:
 				continue   # the tutorial waits for the first tap: no death before it
 			_killer = h.get_script().get_global_name() if h.get_script() else "Hazard"
+			_killer_kind = Director.kind_of(h)
 			_die()
 			return
 		if c < INF:

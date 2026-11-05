@@ -1,7 +1,7 @@
 class_name MonetizationConfig
 ## Every business knob in one place. Product ids must match Google Play Console.
 
-const PRODUCTS := ["starter", "no_ads", "star_pack", "trail_pack", "supporter", "coins_x2",
+const PRODUCTS := ["starter", "starter_50", "no_ads", "star_pack", "trail_pack", "supporter", "coins_x2",
 	"coins_1500", "coins_5000", "coins_12000", "coins_30000"]
 ## Consumables: product id -> coins granted every purchase (bigger bags give more per dollar).
 const BEST_VALUE := "supporter"   # tagged in the shop (the coin bags say it in the 30000 bag)
@@ -11,6 +11,7 @@ const SUPPORTER_INCLUDES := ["no_ads", "star_pack", "trail_pack"]
 ## name/desc are localization keys (see l10n.gd)
 const PRODUCT_INFO := {
 	"starter": {"name": "P_STARTER", "desc": "P_STARTER_D", "icon": "gift"},
+	"starter_50": {"name": "P_STARTER", "desc": "P_STARTER_D", "icon": "gift"},
 	"no_ads": {"name": "P_NOADS", "desc": "P_NOADS_D", "icon": "noads"},
 	"star_pack": {"name": "P_STAR", "desc": "P_STAR_D", "icon": "star"},
 	"trail_pack": {"name": "P_TRAILS", "desc": "P_TRAILS_D", "icon": "trail"},
@@ -22,11 +23,16 @@ const PRODUCT_INFO := {
 	"coins_30000": {"name": "P_COINS30", "desc": "P_COINS30_D", "icon": "coin"},
 }
 ## Shown until the store returns localized prices.
-const FALLBACK_PRICES := {"starter": "$1.99", "no_ads": "$2.99", "star_pack": "$1.99", "trail_pack": "$0.99",
+const FALLBACK_PRICES := {"starter": "$1.99", "starter_50": "$0.99", "no_ads": "$2.99", "star_pack": "$1.99", "trail_pack": "$0.99",
 	"supporter": "$3.99", "coins_x2": "$2.99", "coins_1500": "$0.99", "coins_5000": "$2.99", "coins_12000": "$4.99",
 	"coins_30000": "$9.99"}
 ## Extra goodies granted once when a bundle is first bought.
-const BUNDLE_BONUS := {"starter": {"coins": 1000}, "supporter": {"coins": 1500}}
+const BUNDLE_BONUS := {"starter": {"coins": 1000}, "starter_50": {"coins": 1000}, "supporter": {"coins": 1500}}
+## Welcome offer: after the 3rd run, the starter pack at half price ("starter_50", its own Play
+## product priced at half of "starter") for WELCOME_HOURS, once. Only shown if Play lists it.
+const WELCOME_PRODUCT := "starter_50"
+const WELCOME_AFTER_GAMES := 3
+const WELCOME_HOURS := 48
 ## Starter offer pops up once after this many runs (then stays in the shop until bought).
 const STARTER_AFTER_GAMES := 8
 

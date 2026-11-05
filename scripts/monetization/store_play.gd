@@ -58,6 +58,11 @@ func price(id: String) -> String:
 	return _prices.get(id, MonetizationConfig.FALLBACK_PRICES.get(id, "?"))
 
 
+## True if Play returned this product (exists and is active in Play Console).
+func listed(id: String) -> bool:
+	return _prices.has(id)
+
+
 func buy(id: String) -> void:
 	if not _connected:
 		purchase_done.emit(id, false, "STORE OFFLINE")

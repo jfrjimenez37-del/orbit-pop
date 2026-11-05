@@ -90,6 +90,10 @@ var _alt_lbl: Label
 var _style_box: Control
 var _menu_coin_box: Control
 var _hud_top: Control
+var _over_place: Label
+var _over_next: Label
+var _over_tip1: Label
+var _over_tip2: Label
 var _combo_lbl: Label
 var _combo_shown := 0
 var _over_box: Control
@@ -882,12 +886,18 @@ func flash(a := 0.85) -> void:
 func _build_over() -> void:
 	over = _screen()
 	var box := _container(over)
-	_place(box, 0.5, -118, 136, 236)
+	_place(box, 0.5, -124, 136, 258)
 	_over_box = box
 	var title := _label(box, L.t("GAME_OVER"), 2)
 	_center_label(title, 136, 0)
-	var panel := _panel(box, Vector2(0, 24), Vector2(136, 200))
+	var panel := _panel(box, Vector2(0, 24), Vector2(136, 222))
 	_over_panel = panel
+	# where this run stands among my best ones, and the next world (show_over_progress)
+	_over_place = _label(panel, "", 1, Color8(150, 110, 200))
+	_over_next = _label(panel, "", 1, Color8(214, 140, 30))
+	# a tip after a bad run, under the panel (show_over_tip)
+	_over_tip1 = _label(box, "", 1, Color8(255, 236, 140))
+	_over_tip2 = _label(box, "", 1, Color.WHITE)
 	var cap := _label(panel, L.t("SCORE"), 1, MUTED)
 	_center_label(cap, 136, 7)
 	_over_score = _label(panel, "0", 4, INK)
@@ -938,7 +948,7 @@ func _build_over() -> void:
 func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_continue := false, free_continue := false) -> void:
 	_over_continue.visible = can_continue and not free_continue
 	_over_continue_free.visible = can_continue and free_continue
-	var y := 138
+	var y := 160
 	_over_continue.position = Vector2(14, y)
 	_over_continue_free.position = Vector2(14, y)
 	if can_continue:
@@ -971,12 +981,51 @@ func show_game_over(score: int, best: int, record: bool, unlocked: Array, can_co
 	_over_ranks = {}
 	_over_was_record = record and score > 0
 	_over_rank.text = ""
+	_over_place.text = ""
+	_over_next.text = ""
+	_over_tip1.text = ""
+	_over_tip2.text = ""
 	for b in _over_buttons:
 		b.disabled = true
 	get_tree().create_timer(0.3).timeout.connect(func():
 		for b in _over_buttons:
 			b.disabled = false)
 	_switch(over)
+
+
+## Game over: this run among my best ones (#2..#10, or how far from the record) and the points
+## that were missing for the next world.
+func show_over_progress(score: int, record: bool, worlds: bool) -> void:
+	var place := -1
+	for i in Save.top_scores.size():
+		if int(Save.top_scores[i]["s"]) == score:
+			place = i + 1
+			break
+	if record or score <= 0:
+		_over_place.text = ""
+	elif place >= 2:
+		_over_place.text = L.t("OVER_PLACE", place)
+	else:
+		_over_place.text = L.t("OVER_FROM_BEST", maxi(0, Save.best - score))
+	_center_label(_over_place, 136, 126)
+	if worlds:
+		var nw := Stages.next_world(score)
+		_over_next.text = L.t("OVER_NEXT_WORLD", [int(nw[0]), int(nw[1])])
+	else:
+		_over_next.text = ""
+	_center_label(_over_next, 136, 137)
+
+
+## A tip about the obstacle kind that ended the run ("" = a general one), two lines under the panel.
+func show_over_tip(kind: String) -> void:
+	if _over_continue.visible or _over_continue_free.visible:
+		return   # the continue offer takes that room on short screens
+	var key := "TIP_" + (kind.to_upper() if kind != "" and L.has("TIP_" + kind.to_upper() + "_1") else "ANY")
+	_over_tip1.text = L.t(key + "_1")
+	_over_tip2.text = L.t(key + "_2")
+	var y := 24.0 + _over_panel.size.y + 6.0
+	_center_label(_over_tip1, 136, y)
+	_center_label(_over_tip2, 136, y + 11)
 
 
 func _on_over_duel() -> void:
@@ -1006,7 +1055,7 @@ func show_duel_result(dr: Dictionary) -> void:
 		elif dr["best"]:
 			_over_unlock.text = L.t("EVENT_NEW_BEST")
 		else:
-			_over_unlock.text = L.t("EVENT_HUD", dr["week"])
+			_over_unlock.text = L.t("EVENT_RESULT_BEST", dr["week"])
 			col = Color(0.55, 0.5, 0.7)
 		_over_duel_mode = "event"
 		(_over_duel.get_node("Content/Icon") as TextureRect).texture = _tex("icon_retry")
@@ -1091,7 +1140,7 @@ func _on_rank_loaded(board: String, rank: int, _score: int) -> void:
 	_over_rank.text = "  ".join(parts)
 	if _text_w(_over_rank.text) > 132:
 		_over_rank.text = parts[0]
-	_center_label(_over_rank, 136, 126)
+	_center_label(_over_rank, 136, 148)
 	if board == "GLOBAL" and _over_was_record:
 		toast(L.t("RANK_ENTER", rank), Color8(255, 226, 90))
 
@@ -1499,12 +1548,18 @@ func refresh_shop() -> void:
 		var ids: Array = MonetizationConfig.PRODUCTS.filter(func(p): return not MonetizationConfig.CONSUMABLES.has(p))
 		if not Monetization.starter_listed():
 			ids.erase("starter")
+		# the welcome offer (-50 %) takes the starter pack's place while it lasts
+		var welcome_left := Monetization.welcome_secs()
+		ids.erase("starter" if welcome_left > 0 else "starter_50")
 		for id in ids:
 			var info: Dictionary = MonetizationConfig.PRODUCT_INFO[id]
 			var owned := Save.owns(id)
 			var live := not owned and Monetization.offer_secs(id) > 0
-			_shop_row(_shop_list, y, info["icon"], L.t(info["name"]), "" if live else L.t(info["desc"]),
-				"green" if owned else ("pink" if id == "starter" or live else "yellow"),
+			var desc: String = "" if live else L.t(info["desc"])
+			if id == "starter_50":
+				desc = L.t("WELCOME_LEFT", ceili(welcome_left / 3600.0))
+			_shop_row(_shop_list, y, info["icon"], L.t(info["name"]), desc,
+				"green" if owned else ("pink" if id in ["starter", "starter_50"] or live else "yellow"),
 				L.t("OWNED") if owned else Monetization.price(id), "", online and not owned, func(): buy_pressed.emit(id))
 			if live:
 				_offer_row_clock(id, y)
@@ -2033,6 +2088,39 @@ func show_starter() -> void:
 	later.pressed.connect(hide_popup)
 
 
+## Welcome offer: the starter pack at half price for 48 h (once, after the 3rd run).
+func show_welcome() -> void:
+	Progress.ga.design("Offer:Shown:starter_50:Welcome")
+	var p := _open_popup(L.t("WELCOME_T"), "welcome", 150)
+	var off := _label(p, "-50%", 3, Color8(214, 66, 128))
+	_center_label(off, 156, 4)
+	var nm := _label(p, L.t("STARTER_PACK"), 1, INK)
+	_center_label(nm, 156, 32)
+	var l1 := _label(p, L.t("STARTER_L1"), 1, MUTED)
+	_center_label(l1, 156, 43)
+	var l2 := _label(p, L.t("PLUS_COINS", MonetizationConfig.BUNDLE_BONUS["starter_50"]["coins"]), 1, COIN_INK)
+	_center_label(l2, 156, 54)
+	# the normal price, struck through, then the button with the offer price
+	var old := _label(p, Monetization.price("starter"), 1, MUTED)
+	_center_label(old, 156, 68)
+	var strike := ColorRect.new()
+	strike.color = Color8(214, 66, 128)
+	strike.position = Vector2(old.position.x - 2, 72)
+	strike.size = Vector2(_text_w(old.text) + 4, 1)
+	strike.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(strike)
+	var buy := _button(p, "pink", Monetization.price("starter_50"), "gift", Vector2(80, 24))
+	buy.position = Vector2(38, 80)
+	buy.pressed.connect(func():
+		hide_popup()
+		buy_pressed.emit("starter_50"))
+	var hrs := _label(p, L.t("WELCOME_HOURS", MonetizationConfig.WELCOME_HOURS), 1, MUTED)
+	_center_label(hrs, 156, 108)
+	var later := _button(p, "white", L.t("LATER"), "", Vector2(60, 20))
+	later.position = Vector2(48, 122)
+	later.pressed.connect(hide_popup)
+
+
 ## Offer at the right moment (see Offers): why, what, price, later.
 func show_offer(id: String, why: String) -> void:
 	Progress.ga.design("Offer:Shown:%s:%s" % [id, why])
@@ -2157,7 +2245,7 @@ func show_event() -> void:
 	var ev := Save.event_info()
 	var st := Save.event_state()
 	var key := "EV_" + str(ev["id"]).to_upper()
-	var p := _open_popup(L.t("EVENT_WEEK"), "event", 178)
+	var p := _open_popup(L.t("EVENT_WEEK"), "event", 184)
 	var nm := _label(p, L.t(key), 1, Color8(214, 66, 128))
 	_center_label(nm, 156, 5)
 	var ds := _label(p, L.t(key + "_D"), 1, MUTED)
@@ -2177,16 +2265,18 @@ func show_event() -> void:
 		var rx := 146.0 - _text_w(rw)
 		_left_label(p, rw, Vector2(roundf(rx), y), GREEN_INK if done else COIN_INK)
 		_icon(p, "icon_coin", Vector2(roundf(rx) - 11, y))
+	var how := _label(p, L.t("EVENT_HOW"), 1, Color8(214, 66, 128))
+	_center_label(how, 156, 100)
 	var rule := _label(p, L.t("EVENT_RULE"), 1, MUTED)
-	_center_label(rule, 156, 104)
+	_center_label(rule, 156, 110)
 	var play := _button(p, "pink", L.t("PLAY"), "retry", Vector2(72, 22))
-	play.position = Vector2(4, 118)
+	play.position = Vector2(4, 124)
 	play.pressed.connect(func(): event_pressed.emit())
 	var rk := _button(p, "white", L.t("EVENT_RANK"), "trophy", Vector2(72, 22))
-	rk.position = Vector2(80, 118)
+	rk.position = Vector2(80, 124)
 	rk.pressed.connect(func(): _open_board("WEEK"))
 	var back := _button(p, "white", L.t("BACK"), "back", Vector2(76, 20))
-	back.position = Vector2(40, 146)
+	back.position = Vector2(40, 152)
 	back.pressed.connect(show_duel)
 
 
@@ -2402,17 +2492,26 @@ func _next_toast() -> void:
 	var w := _text_w(_toast.text)
 	_toast.size = Vector2(w + 6, 16)
 	var ty := roundf(sz.y * 0.5) - 8
+	var hide_tip := false
 	if over.visible:
-		# above the game over card, not on top of its coins / XP lines
-		ty = maxf(4.0 + safe_top(), _over_box.global_position.y - 28.0)
+		# above the game over card, not on top of its coins / XP lines; on short screens there is
+		# no room above it: then over the tip under the card (hidden while the message shows)
+		ty = _over_box.global_position.y - 28.0
+		if ty < 4.0 + safe_top():
+			ty = minf(sz.y - 20.0, _over_box.global_position.y + 24.0 + _over_panel.size.y + 6.0)
+			hide_tip = true
 	_toast.position = Vector2(roundf((sz.x - w - 6) * 0.5), ty)
 	_toast.visible = true
 	_toast.modulate.a = 1.0
+	_over_tip1.visible = not hide_tip
+	_over_tip2.visible = not hide_tip
 	var tw := create_tween()
 	tw.tween_interval(1.3)
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(func():
 		_toast.visible = false
+		_over_tip1.visible = true
+		_over_tip2.visible = true
 		_next_toast())
 
 

@@ -45,6 +45,11 @@ var _nova_done := false
 ## Weekly event rules (Events.LIST): only these patterns (empty = all) and a speed factor.
 var only: Array = []
 var omega_mul := 1.0
+## Weekly events escalate: full difficulty after ESCALATE_TIME s whatever the world, and the next
+## pattern comes sooner and sooner (overlapping the last one), so the same obstacle keeps
+## coming faster until the screen is full of it (every pattern still passes the fairness check).
+var escalate := false
+const ESCALATE_TIME := 80.0
 var human_check := true    # require human timing slack when committing (off only for A/B audits)
 var react_check := true    # require a reaction-time window before the first needed tap (A/B audits)
 var _attempt := 0          # attempts already tried for the pattern being placed (spread over frames)
@@ -129,6 +134,7 @@ func reset(seed_value: int, recent_avg: float) -> void:
 	world = 1
 	only = []
 	omega_mul = 1.0
+	escalate = false
 	surges = true
 	surge_rng.seed = seed_value ^ 0x5EED0
 	next_surge = surge_rng.randf_range(SURGE_FIRST.x, SURGE_FIRST.y)
@@ -156,8 +162,17 @@ static func world_cap(n: int) -> float:
 
 
 func level(t: float) -> float:
+	if escalate:
+		var e := clampf(t / ESCALATE_TIME, 0.0, 1.0)
+		return e * e * (3.0 - 2.0 * e) * 0.95 + 0.05
 	var x := clampf(eff_time(t) / LEVEL_TIME, 0.0, 1.0)
 	return minf(x * x * (3.0 - 2.0 * x), world_cap(maxi(world, stage + 1)))
+
+
+## How much of a pattern must pass before the next one may come (1 = all of it; escalating
+## events overlap them more and more).
+func _overlap(t: float) -> float:
+	return lerpf(1.0, 0.35, level(t)) if escalate else 1.0
 
 
 func omega(t: float) -> float:
@@ -250,6 +265,8 @@ func _surge_pattern() -> String:
 
 ## Pause between patterns (half as long in a shower or a comet storm).
 func _gap(t: float) -> float:
+	if escalate:
+		return lerpf(0.9, 0.0, level(t))
 	return lerpf(0.9, 0.08, level(t)) * (0.5 if surge in ["shower", "comets"] else 1.0)
 
 
@@ -321,7 +338,7 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 			_attempt = 0
 			spawned_first = true
 			committed += 1
-			next_t = t + float(res["length"]) + _gap(t)
+			next_t = t + float(res["length"]) * _overlap(t) + _gap(t)
 			out["hazards"] = hs
 			_committed(hs)
 			return out
@@ -356,7 +373,7 @@ func _finish_pending(t: float, out: Dictionary) -> Dictionary:
 		_attempt = 0
 		spawned_first = true
 		committed += 1
-		next_t = float(p["t"]) + float(p["res"]["length"]) + _gap(float(p["t"]))
+		next_t = float(p["t"]) + float(p["res"]["length"]) * _overlap(float(p["t"])) + _gap(float(p["t"]))
 		out["hazards"] = hs
 		_committed(hs)
 		return out

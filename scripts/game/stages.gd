@@ -132,6 +132,15 @@ static func number_for_score(score: int) -> int:
 	return index_for_score(score) + 1
 
 
+## [next world number, points still missing] from this score.
+static func next_world(score: int) -> Array:
+	var n := number_for_score(score)
+	var s := score + 1
+	while number_for_score(s) <= n and s < score + 1000:
+		s += 1
+	return [n + 1, s - score]
+
+
 static func world(i: int) -> Dictionary:
 	return Catalog.WORLDS[Catalog.find("worlds", LIST[i]["world"])]
 

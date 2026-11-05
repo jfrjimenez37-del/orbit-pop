@@ -258,6 +258,25 @@ func _on_restored(owned: Array) -> void:
 	store_changed.emit()
 
 
+## Welcome offer: once, after the 3rd run, if Play sells the half-price pack and no pack is owned.
+func should_offer_welcome() -> bool:
+	return not Save.welcome_shown and Save.games >= MonetizationConfig.WELCOME_AFTER_GAMES and store_available() \
+		and store.has_method("listed") and store.listed(MonetizationConfig.WELCOME_PRODUCT) and starter_listed()
+
+
+func start_welcome() -> void:
+	Save.welcome_shown = true
+	Save.welcome_until = int(unix.call()) + MonetizationConfig.WELCOME_HOURS * 3600
+	Save.save_data()
+
+
+## Seconds left on the welcome offer (0 = over, never started, or a pack is owned).
+func welcome_secs() -> int:
+	if not starter_listed():
+		return 0
+	return maxi(0, Save.welcome_until - int(unix.call()))
+
+
 func should_offer_starter() -> bool:
 	return not Save.starter_seen and Save.games >= MonetizationConfig.STARTER_AFTER_GAMES \
 		and not Save.owns("no_ads") and store_available()

@@ -4,10 +4,12 @@ Pon aquí un tema por grupo (`.ogg` o `.mp3`, instrumental, que se pueda repetir
 
 | Archivo | Mundos |
 |---|---|
-| `sky.ogg` / `sky.mp3` | 1-4 (cielo) |
-| `planets.ogg` / `planets.mp3` | 5-8 (dos y tres planetas) |
-| `space.ogg` / `space.mp3` | 9-13 (espacio) |
-| `moving.ogg` / `moving.mp3` | 14-16 (planetas que se mueven) |
+| `sky.ogg` / `sky.mp3` | 1-2 |
+| `planets.ogg` / `planets.mp3` | 3-4, 11-12 |
+| `space.ogg` / `space.mp3` | 5-6, 9-10, 13 |
+| `moving.ogg` / `moving.mp3` | 7-8, 14-16 |
+
+(1.0.20: cambia cada dos mundos; el mundo 3 llega en unos 40 s. Tabla en `Sfx.BY_STAGE`.)
 
 El cambio es con un fundido al cambiar de mundo. Si falta un archivo, ese grupo sigue con la
 canción principal (`assets/sfx/music.wav`), que también suena en el menú.

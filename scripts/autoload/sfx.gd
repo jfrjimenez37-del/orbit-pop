@@ -62,15 +62,14 @@ func set_music(on: bool) -> void:
 		_music.stop()
 
 
-## Worlds 1-4 sky, 5-8 planets, 9-13 space, 14-16 moving planets (Stages index).
+## The song changes every two worlds (world 3 is reached in about 40 s), the moving planets
+## (worlds 14-16) keep the most intense one. Stages index -> group.
+const BY_STAGE := ["sky", "sky", "planets", "planets", "space", "space", "moving", "moving",
+	"space", "space", "planets", "planets", "space", "moving", "moving", "moving"]
+
+
 static func group_for_stage(si: int) -> String:
-	if si < 4:
-		return "sky"
-	if si < 8:
-		return "planets"
-	if si < 13:
-		return "space"
-	return "moving"
+	return BY_STAGE[clampi(si, 0, BY_STAGE.size() - 1)]
 
 
 static func track_path(group: String) -> String:

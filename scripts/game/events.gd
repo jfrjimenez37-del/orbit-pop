@@ -5,13 +5,14 @@ class_name Events
 ## (its weekly view). Opened from the DUELS / challenges screen.
 
 const SALT := "orbitpop-event-v1"
-## only: the patterns allowed (Director names); omega: player speed factor; stage: play the
-## whole run on that world (Stages index), no world changes.
+## Every event is played on one world (stage, Stages index: no world changes) and escalates on
+## its own (Director.escalate): its obstacle comes more and more often, faster, overlapping, until
+## the screen is full of it. only: the patterns allowed (Director names); omega: speed factor.
 const LIST := [
-	{"id": "comets", "only": ["comet", "comet_rain"]},
-	{"id": "mines", "only": ["mine", "gate", "drift", "saw", "ufo"]},
-	{"id": "lasers", "only": ["spoke", "sweep", "cage", "beams"]},
-	{"id": "speed", "omega": 1.22},
+	{"id": "comets", "only": ["comet"], "stage": 0},
+	{"id": "mines", "only": ["mine", "gate", "drift", "saw", "ufo"], "stage": 2},
+	{"id": "lasers", "only": ["spoke", "sweep", "cage", "beams"], "stage": 1},
+	{"id": "speed", "omega": 1.22, "stage": 3},
 	{"id": "giants", "stage": 8},
 ]
 ## [score to reach in one try, coins] (each paid once a week, in order)

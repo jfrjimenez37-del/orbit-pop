@@ -8,7 +8,7 @@ extends Node
 ## Permission is asked after the 3rd run, not on launch. Off in Settings.
 
 const CHANNEL := "orbit_pop_reminders"
-const IDS := [101, 102, 103]
+const IDS := [101, 102, 103, 104, 105]
 const REMIND_AT := [18, 45]   # local hour, minute
 const ASK_AFTER_GAMES := 3
 const TEST_ID := 199
@@ -81,7 +81,22 @@ static func plan(save: Node, now: float, bias: int) -> Array:
 	var out: Array = []
 	var gift: String = l.t("NOTIF_STREAK", save.daily_day + 1) if save.daily_day >= 2 else l.t("NOTIF_GIFT")
 	out.append([IDS[0], delay_to(1, now, bias), gift])
-	out.append([IDS[1], delay_to(3, now, bias), l.t("NOTIF_MISS")])
+	# day 2: the next world is waiting (how many points to go from the record)
+	if save.best > 0:
+		var nw := Stages.next_world(save.best)
+		out.append([IDS[3], delay_to(2, now, bias), l.t("NOTIF_NEXT_WORLD", [l.t("NOTIF_WORLD_N", int(nw[0])), int(nw[1])])])
+	# day 3: this week's event ends soon and still has coins to win, or the planets miss you
+	var ev_left := Events.seconds_left(now)
+	var ev_state: Dictionary = save.event_run
+	var paid := int(ev_state.get("paid", 0)) if int(ev_state.get("week", -1)) == Events.week_key(now) else 0
+	if paid < Events.GOALS.size() and ev_left > 2 * 86400 and ev_left < 5 * 86400:
+		var ev_name: String = l.t("EV_" + str(Events.current(now)["id"]).to_upper())
+		out.append([IDS[1], delay_to(3, now, bias), l.t("NOTIF_EVENT_SOON", ev_name)])
+	else:
+		out.append([IDS[1], delay_to(3, now, bias), l.t("NOTIF_MISS")])
+	# day 5: the record
+	if save.best > 0:
+		out.append([IDS[4], delay_to(5, now, bias), l.t("NOTIF_RECORD", save.best)])
 	var cost := -1
 	var name := ""
 	for a in Upgrades.ABILITIES:

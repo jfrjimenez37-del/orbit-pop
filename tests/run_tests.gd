@@ -55,6 +55,7 @@ func _initialize() -> void:
 	await test_gestures(save)
 	await test_events(save)
 	await test_surges(save)
+	await test_v120(save)
 	print("\n%d checks, %d failed" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -773,7 +774,19 @@ func test_abilities(save) -> void:
 	ok(Notifier.delay_to(1, day0 + 10 * 3600, -5 * 3600) == 86400 + 13 * 3600 + 45 * 60, "local time zone respected (UTC-5)")
 	save.reset_all()
 	var pl := Notifier.plan(save, day0 + 10 * 3600, 0)
-	ok(pl.size() == 3 and pl[1][1] - pl[0][1] == 2 * 86400 and pl[2][1] - pl[0][1] == 6 * 86400, "reminders at day 1, 3 and 7")
+	ok(pl.size() == 3 and pl[1][1] - pl[0][1] == 2 * 86400 and pl[2][1] - pl[0][1] == 6 * 86400, "new player: reminders at day 1, 3 and 7")
+	# with a record: day 2 "world N is waiting, X points to go", day 5 "your record is N"
+	save.best = 120
+	var pl2 := Notifier.plan(save, day0 + 10 * 3600, 0)
+	var nw := Stages.next_world(120)
+	var l10n2 = get_root().get_node("L")
+	var texts: Array = pl2.map(func(n): return str(n[2]))
+	ok(pl2.size() == 5 and texts.has(l10n2.t("NOTIF_NEXT_WORLD", [l10n2.t("NOTIF_WORLD_N", int(nw[0])), int(nw[1])]))
+		and texts.has(l10n2.t("NOTIF_RECORD", 120)), "with a record: 5 reminders, next world and record ones")
+	var ids := {}
+	for n in pl2:
+		ids[n[0]] = true
+	ok(ids.size() == pl2.size(), "every reminder has its own id")
 	save.notifications = false
 	ok(Notifier.plan(save, day0, 0).is_empty(), "no reminders when turned off in Settings")
 	save.reset_all()
@@ -1748,8 +1761,12 @@ func test_events(save) -> void:
 	main.start_run()
 	ok(main.director.only.is_empty() and main.director.omega_mul == 1.0 and main._event_stage == -1, "events: a normal run after an event is normal")
 	var sfx = get_root().get_node("Sfx")
-	ok(sfx.group_for_stage(0) == "sky" and sfx.group_for_stage(8) == "space" and sfx.group_for_stage(15) == "moving"
-		and sfx.current_group() == "sky", "music: world groups (sky / planets / space / moving)")
+	var changes := 0
+	for si in range(1, 16):
+		if sfx.group_for_stage(si) != sfx.group_for_stage(si - 1):
+			changes += 1
+	ok(sfx.group_for_stage(0) == "sky" and sfx.group_for_stage(2) == "planets" and sfx.group_for_stage(15) == "moving"
+		and changes >= 7 and sfx.current_group() == "sky", "music: a new song every two worlds (%d changes)" % changes)
 	main.queue_free()
 	await process_frame
 	Orbit.reset()
@@ -1828,6 +1845,97 @@ func test_surges(save) -> void:
 		main._process(dt)
 	ok(main.director.surge_count == 0, "surges: none in a weekly event")
 	save.event_week_test = -999999
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
+	save.reset_all()
+
+
+## 1.0.20: weekly events escalate on one world, the game over says where the run stands and what
+## was missing for the next world, a tip after a bad run, the welcome offer (-50 %) after 3 runs.
+func test_v120(save) -> void:
+	save.reset_all()
+	save.tutorial_done = true; save.jump_tip_done = true
+	save.ability_tips = ["hold", "swipe"]
+	save.seen_obstacles = Director.KINDS.map(func(kd): return kd[0])
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	var dt := 1.0 / 60.0
+	# COMET STORM: one world, only comets, more and more of them at once
+	save.event_week_test = 0
+	main.start_event()
+	var d = main.director
+	ok(d.escalate and main.stage == 0 and absf(d.level(80.0) - 1.0) < 0.001 and d._overlap(80.0) < 0.4,
+		"v120: events escalate (full speed at 80 s, patterns overlap)")
+	var most := 0
+	var kinds := {}
+	var frames := 0
+	while main.state == main.S.PLAYING and frames < 60 * 90:
+		if frames % 2 == 0 and TestBot.decide(main):
+			main._flip()
+		main._grace = 0.0
+		main.shield_until = INF
+		main._process(dt)
+		if main.gt > 60.0:
+			most = maxi(most, main.hazards.size())
+		for h in main.hazards:
+			kinds[Director.kind_of(h)] = true
+		frames += 1
+	ok(most >= 3 and main.stage == 0, "v120: after a minute the comet storm has %d comets at once, still world 1" % most)
+	ok(kinds.keys().all(func(k): return k in ["comet", "meteor"]), "v120: only comets (and the first meteor) %s" % str(kinds.keys()))
+	main.state = main.S.DYING
+	main._game_over()
+	save.event_week_test = -999999
+	# game over: place among my best runs and the next world
+	ok(Stages.next_world(10) == [2, 5] and Stages.next_world(0) == [2, 15], "v120: next world and points missing")
+	save.top_scores = []
+	for sc in [200, 150, 120]:
+		save.add_top_score(sc, 5)
+	save.best = 200
+	main.duel = {}
+	main.start_run()
+	main.score = 120
+	main.state = main.S.DYING
+	main._killer_kind = "saw"
+	main._game_over()
+	var l10n = get_root().get_node("L")
+	ok(main.ui._over_place.text == l10n.t("OVER_PLACE", 3) or main.ui._over_place.text == l10n.t("OVER_PLACE", 4),
+		"v120: game over says it was my #3/#4 best run (%s)" % main.ui._over_place.text)
+	var nw := Stages.next_world(120)
+	ok(main.ui._over_next.text == l10n.t("OVER_NEXT_WORLD", [int(nw[0]), int(nw[1])]), "v120: and how much was missing for world %d" % nw[0])
+	# a bad run: a tip about what hit me (unless the continue offer is showing)
+	main.ui._over_continue.visible = false
+	main.ui._over_continue_free.visible = false
+	main.ui.show_over_tip("saw")
+	ok(main.ui._over_tip1.text == l10n.t("TIP_SAW_1") and main.ui._over_tip2.text == l10n.t("TIP_SAW_2"), "v120: tip about the saw")
+	main.ui.show_over_tip("")
+	ok(main.ui._over_tip1.text == l10n.t("TIP_ANY_1"), "v120: a general tip when the killer is unknown")
+	for kd in Director.KINDS:
+		ok(l10n.has("TIP_" + str(kd[0]).to_upper() + "_1"), "v120: a tip for %s" % kd[0])
+	# welcome offer: after the 3rd run, once, 48 h, the starter at half price in the shop
+	save.games = 3
+	save.welcome_shown = false
+	save.daily_last = save._day_string()
+	main.go_menu()
+	ok(main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome", "v120: the welcome offer shows after 3 runs")
+	var secs: int = get_root().get_node("Monetization").welcome_secs()
+	ok(secs > 47 * 3600 and secs <= 48 * 3600, "v120: for 48 hours (%d h)" % (secs / 3600))
+	main.ui.hide_popup()
+	main.go_menu()
+	ok(not (main.ui.popup.visible and main.ui.popup.get_meta("kind", "") == "welcome"), "v120: only once")
+	main.ui._shop_tab = "packs"
+	main.ui.refresh_shop()
+	var shop_txt := ""
+	for c in main.ui._shop_list.get_children():
+		if c is Label:
+			shop_txt += c.text + "|"
+	ok(shop_txt.contains(l10n.t("WELCOME_LEFT", 48)), "v120: the shop shows the -50 % starter with its hours")
+	save.grant("starter_50")
+	ok(save.owns("starter") and save.owns("no_ads") and get_root().get_node("Monetization").welcome_secs() == 0,
+		"v120: the half-price pack counts as the starter pack (no ads)")
 	main.queue_free()
 	await process_frame
 	Orbit.reset()

@@ -33,6 +33,8 @@ var daily_last := ""          # local date of the last claim (YYYY-MM-DD)
 var free_ads_date := ""
 var free_ads_used := 0
 var starter_seen := false
+var welcome_shown := false     # welcome offer (starter at -50 %) already offered
+var welcome_until := 0         # unix time its countdown ends
 var reduce_motion := false   # Settings: no ascent scroll / sway
 var sessions := 0             # app launches (no interstitial in the very first one)
 var free_continue_day := -1   # NO ADS: one free continue a day
@@ -96,6 +98,8 @@ func load_data() -> void:
 	start_world = int(cfg.get_value("player", "start_world", 1))
 	region = str(cfg.get_value("settings", "region", ""))
 	starter_seen = bool(cfg.get_value("shop", "starter_seen", false))
+	welcome_shown = bool(cfg.get_value("shop", "welcome_shown", false))
+	welcome_until = int(cfg.get_value("shop", "welcome_until", 0))
 	review_asks = int(cfg.get_value("meta", "review_asks", 0))
 	reduce_motion = bool(cfg.get_value("settings", "reduce_motion", false))
 	sessions = int(cfg.get_value("meta", "sessions", 0))
@@ -162,6 +166,8 @@ func save_data() -> void:
 	cfg.set_value("player", "start_world", start_world)
 	cfg.set_value("settings", "region", region)
 	cfg.set_value("shop", "starter_seen", starter_seen)
+	cfg.set_value("shop", "welcome_shown", welcome_shown)
+	cfg.set_value("shop", "welcome_until", welcome_until)
 	cfg.set_value("meta", "review_asks", review_asks)
 	cfg.set_value("settings", "reduce_motion", reduce_motion)
 	cfg.set_value("meta", "sessions", sessions)
@@ -265,7 +271,9 @@ func owns(product: String) -> bool:
 		return true
 	if purchases.has("supporter") and MonetizationConfig.SUPPORTER_INCLUDES.has(product):
 		return true
-	return product == "no_ads" and purchases.has("starter")
+	if product == "starter" and purchases.has("starter_50"):
+		return true   # the welcome offer is the same pack at half price
+	return product == "no_ads" and (purchases.has("starter") or purchases.has("starter_50"))
 
 
 func grant(product: String) -> void:
@@ -604,6 +612,8 @@ func reset_all() -> void:
 	level = 1; xp = 0; abilities = {}; start_world = 1; region = ""
 	daily_day = 0; daily_last = ""; free_ads_date = ""; free_ads_used = 0
 	starter_seen = false
+	welcome_shown = false
+	welcome_until = 0
 	review_asks = 0
 	review_day = -9999
 	reduce_motion = false
