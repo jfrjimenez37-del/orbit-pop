@@ -39,6 +39,7 @@ var _tut_scale := 1.0          # game speed factor of the tutorial
 var _tut_shown_at := -1.0
 var _jump_tip := false
 var _jump_tries := 0
+var _event_stage := -1         # weekly event on a single world (Stages index), -1 = normal worlds
 var _world_intro_left := 0.0   # first time in a world: a second of slow motion with its banner
 ## Gestures: the tap flips at once as always; keeping the finger still for HOLD_TIME starts the
 ## SLOW-MO, moving it SWIPE_PX within SWIPE_TIME undoes that flip and TELEPORTS that way.
@@ -118,6 +119,11 @@ func _ready() -> void:
 			Monetization.between_runs(start_daily)
 		else:
 			start_daily())
+	ui.event_pressed.connect(func():
+		if state == S.OVER:
+			Monetization.between_runs(start_event)
+		else:
+			start_event())
 	ui.daily_video_pressed.connect(func():
 		if not Monetization.show_rewarded("daily_try"):
 			ui.toast(L.t("NO_AD"), Color8(255, 150, 160)))
@@ -173,6 +179,7 @@ func _layout() -> void:
 func go_menu() -> void:
 	state = S.MENU
 	duel = {}
+	Sfx.set_group("")   # the menu keeps the main song
 	Monetization.run_active = false
 	Monetization.hide_banner()
 	stage = 0
@@ -293,9 +300,32 @@ func start_daily() -> void:
 	start_run()
 
 
+## This week's event (see Events): same run for everyone this week, unlimited tries.
+func start_event() -> void:
+	var ev := Save.event_info()
+	Progress.ga.design("Event:Start:" + str(ev["id"]), int(Save.event_state()["tries"]))
+	ui.hide_popup()
+	Save.event_started()
+	duel = {"kind": "event", "seed": Events.seed_for(Save.event_week()), "target": int(Save.event_state()["best"]),
+		"name": "", "code": "", "event": ev}
+	start_run()
+
+
 ## After a duel run: {mode: "new" | "reply", result, pay, mine, theirs, name, code (to send)}.
 ## After a daily try: {mode: "daily", best (new best today), pay, today (best), tries, video}.
 func _finish_duel() -> Dictionary:
+	if duel.get("kind", "duel") == "event":
+		var er := Save.event_finished(score)
+		var wk := int(Save.event_state()["best"])
+		Progress.games.submit_score("EVENT", wk)
+		var eout := {"mode": "event", "best": er["best"], "pay": er["pay"], "week": wk, "mine": score,
+			"paid": int(Save.event_state()["paid"])}
+		duel["last"] = eout
+		Progress.ga.design("Event:Finish:" + str(duel["event"]["id"]), score)
+		Progress.ga.resource("Source", "Coins", int(er["pay"]), "Event", str(duel["event"]["id"]))
+		if int(er["pay"]) > 0:
+			Sfx.play("record")
+		return eout
 	if duel.get("kind", "duel") == "daily":
 		var r := Save.daily_finished(score)
 		var today := int(Save.daily_state()["best"])
@@ -539,6 +569,10 @@ func start_run() -> void:
 	else:
 		director.reset(randi(), Save.recent_average())
 	director.bubble_rate = 1.0
+	var ev: Dictionary = duel.get("event", {}) if dm else {}
+	director.only = ev.get("only", [])
+	director.omega_mul = float(ev.get("omega", 1.0))
+	_event_stage = int(ev.get("stage", -1))
 	# HEADSTART: begin in a world already passed, with that world's points
 	var sw := 1 if dm else Save.chosen_start_world()
 	if sw > 1:
@@ -550,7 +584,14 @@ func start_run() -> void:
 		_apply_world(stage, false)
 		director.stage = stage
 		director.world = world_no
+	if _event_stage >= 0:
+		# the whole run on one world (no world changes, see _add_score)
+		stage = _event_stage
+		Orbit.set_shape(Stages.LIST[stage]["orbits"], true, Stages.motion(stage))
+		_apply_world(stage, false)
+		director.stage = stage
 	_layer = Stages.layer(score)
+	Sfx.set_group(Sfx.group_for_stage(stage))
 	player.reset(-PI * 0.5)
 	player.happy = false
 	player.omega = director.omega(0.0)
@@ -563,7 +604,9 @@ func start_run() -> void:
 	ui.set_teleport(teleports)
 	ui.set_slowmo(slowmo_charges)
 	ui.set_run_coins(0)
-	if dm and duel.get("kind", "duel") == "daily":
+	if dm and duel.get("kind", "duel") == "event":
+		ui.set_event_target(L.t("EV_" + str(duel["event"]["id"]).to_upper()), int(duel["target"]))
+	elif dm and duel.get("kind", "duel") == "daily":
 		ui.set_daily_target(int(duel["target"]))
 	elif dm and int(duel["target"]) >= 0:
 		ui.set_duel_target(str(duel["name"]), int(duel["target"]))
@@ -601,7 +644,9 @@ func _clear_field() -> void:
 
 ## Statistics: the run's mode and world as GameAnalytics progression levels.
 func _ga_mode() -> String:
-	return "Normal" if duel.is_empty() else ("Daily" if duel.get("kind", "duel") == "daily" else "Duel")
+	if duel.is_empty():
+		return "Normal"
+	return {"daily": "Daily", "event": "Event"}.get(duel.get("kind", "duel"), "Duel")
 
 
 func _ga_world() -> String:
@@ -1233,12 +1278,12 @@ func _add_score(n: int) -> void:
 	ui.set_world_progress(score, best_at_start)
 	Progress.event("score_now", score)
 	var target := Stages.number_for_score(score)
-	if target > world_no and _stage_pending < 0:
+	if target > world_no and _stage_pending < 0 and _event_stage < 0:
 		_stage_pending = Stages.index_for_score(score)
 		director.hold = true
 	if not duel.is_empty() and int(duel["target"]) > 0 and not duel_lead and score > int(duel["target"]):
 		duel_lead = true
-		ui.announce_duel_lead(duel.get("kind", "duel") == "daily")
+		ui.announce_duel_lead(duel.get("kind", "duel") in ["daily", "event"])
 		Sfx.play("record")
 	if not record_announced and best_at_start > 0 and score > best_at_start and (duel.is_empty() or int(duel["target"]) < 0):
 		record_announced = true
@@ -1271,6 +1316,7 @@ func _update_world(dt: float) -> void:
 			_layer = ly
 			layer_name = L.t(Stages.LAYERS[ly][1])
 		ui.world_banner(world_no, L.t("WORLD_" + str(w["id"]).to_upper()), tip, layer_name)
+		Sfx.set_group(Sfx.group_for_stage(_stage_pending))
 		Sfx.play("unlock")
 		if world_no > int(Save.stats.get("best_world", 1)):
 			Progress.ga.design("World:FirstReach:%02d" % world_no)

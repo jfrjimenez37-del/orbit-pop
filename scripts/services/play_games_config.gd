@@ -11,6 +11,7 @@ const LEADERBOARDS := {
 	"ASIA_PACIFIC": "CgkI6KO05vMIEAIQBg",
 	"AFRICA_ME": "CgkI6KO05vMIEAIQBw",
 	"DAILY": "CgkI6KO05vMIEAIQKg",   # daily challenge (its TODAY view is used)
+	"EVENT": "",                     # weekly event (its weekly view): create it in Play Console, paste the id
 }
 
 const ACHIEVEMENTS := {

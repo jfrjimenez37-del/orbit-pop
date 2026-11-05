@@ -14,11 +14,16 @@ const SALT := "orbitpop-daily-v1"
 ## Day number in US Pacific time (PST UTC-8, PDT UTC-7 from the 2nd Sunday of March 2:00
 ## to the 1st Sunday of November 2:00).
 static func day_key(unix: float) -> int:
+	return int(floor((unix + pacific_offset(unix)) / 86400.0))
+
+
+## Seconds to add to UTC for US Pacific time at that moment (-8 h, or -7 h in summer).
+static func pacific_offset(unix: float) -> int:
 	var off := -8 * 3600
 	var d := Time.get_datetime_dict_from_unix_time(int(unix) + off)
 	if _is_pdt(d):
 		off = -7 * 3600
-	return int(floor((unix + off) / 86400.0))
+	return off
 
 
 static func _is_pdt(d: Dictionary) -> bool:

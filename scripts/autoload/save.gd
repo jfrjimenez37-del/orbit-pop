@@ -39,6 +39,7 @@ var free_continue_day := -1   # NO ADS: one free continue a day
 var video_up := {}            # {"id": ability, "n": videos watched, "day": day of the last video level}
 var offers := {}              # offer id -> day it was last shown
 var offer_live := {}          # the offer whose bonus is running: {id, until (unix s), bonus}
+var event_run := {}           # weekly event: {week (Pacific), tries, best, paid (goals paid)}
 var daily_run := {}           # daily challenge: {day (Pacific), tries, video (extra tries), best, paid}
 var duels := {}               # {day, paid (rewards today), played: [codes], created: [codes I sent], wins, losses, ties}
 var notifications := true     # Settings: daily reminders
@@ -104,6 +105,7 @@ func load_data() -> void:
 	offer_live = cfg.get_value("shop", "offer_live", {})
 	duels = cfg.get_value("player", "duels", {})
 	daily_run = cfg.get_value("player", "daily_run", {})
+	event_run = cfg.get_value("player", "event_run", {})
 	notifications = bool(cfg.get_value("settings", "notifications", true))
 	share_stats = bool(cfg.get_value("settings", "share_stats", true))
 	tutorial_done = bool(cfg.get_value("meta", "tutorial_done", games > 0))
@@ -169,6 +171,7 @@ func save_data() -> void:
 	cfg.set_value("shop", "offer_live", offer_live)
 	cfg.set_value("player", "duels", duels)
 	cfg.set_value("player", "daily_run", daily_run)
+	cfg.set_value("player", "event_run", event_run)
 	cfg.set_value("settings", "notifications", notifications)
 	cfg.set_value("settings", "share_stats", share_stats)
 	cfg.set_value("meta", "tutorial_done", tutorial_done)
@@ -611,6 +614,7 @@ func reset_all() -> void:
 	offer_live = {}
 	duels = {}
 	daily_run = {}
+	event_run = {}
 	notifications = true
 	notif_asked = false
 	share_stats = true
@@ -680,6 +684,44 @@ func duel_finished(result: String) -> int:
 		coins += pay
 	save_data()
 	return pay
+
+
+# ------------------------------------------------------------------ weekly event (see Events)
+
+var event_week_test := -999999   # tests / audit: pretend it is that week
+
+
+func event_week() -> int:
+	return event_week_test if event_week_test != -999999 else Events.week_key(_now())
+
+
+func event_info() -> Dictionary:
+	return Events.for_week(event_week())
+
+
+## This week's state (a new week starts fresh).
+func event_state() -> Dictionary:
+	if int(event_run.get("week", -999999)) != event_week():
+		event_run = {"week": event_week(), "tries": 0, "best": 0, "paid": 0}
+	return event_run
+
+
+func event_started() -> void:
+	event_state()["tries"] = int(event_run["tries"]) + 1
+	save_data()
+
+
+## A try ends: {best (new best this week), pay (coins of the goals reached for the first time)}.
+func event_finished(score: int) -> Dictionary:
+	var st := event_state()
+	var out := {"best": score > int(st["best"]), "pay": 0}
+	st["best"] = maxi(int(st["best"]), score)
+	var r := Events.pay_for(score, int(st["paid"]))
+	out["pay"] = r[0]
+	st["paid"] = r[1]
+	coins += int(r[0])
+	save_data()
+	return out
 
 
 # ------------------------------------------------------------------ daily challenge (see Daily)

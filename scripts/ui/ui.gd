@@ -31,6 +31,7 @@ signal duel_new_pressed
 signal duel_accept_pressed(duel: Dictionary)
 signal duel_send_pressed
 signal daily_pressed
+signal event_pressed
 signal daily_video_pressed
 
 const FONT := preload("res://assets/font/pixel.fnt")
@@ -503,7 +504,8 @@ func refresh_menu() -> void:
 	_gift_badge.visible = Save.daily_available()
 	_mission_badge.visible = Progress.missions_left() > 0
 	_shop_badge.visible = Monetization.live_offer_id() != ""
-	_duel_badge.visible = int(Save.daily_state()["tries"]) == 0   # today's challenge not played yet
+	# today's challenge or this week's event not played yet
+	_duel_badge.visible = int(Save.daily_state()["tries"]) == 0 or int(Save.event_state()["tries"]) == 0
 
 
 ## True if some unlocked ability can be upgraded with the coins the player has.
@@ -758,14 +760,20 @@ func set_duel_target(name: String, target: int) -> void:
 	_center_label(_hud_best, 180, 34)
 
 
+func set_event_target(event_name: String, best: int) -> void:
+	_hud_best.text = L.t("EVENT_HUD", best) if best > 0 else event_name
+	_hud_best.modulate = Color8(255, 170, 230)
+	_center_label(_hud_best, 180, 34)
+
+
 func set_daily_target(best: int) -> void:
 	_hud_best.text = L.t("DAILY_HUD", best) if best > 0 else L.t("DAILY_HUD_0")
 	_hud_best.modulate = Color8(150, 220, 255)
 	_center_label(_hud_best, 180, 34)
 
 
-func announce_duel_lead(daily := false) -> void:
-	_hud_best.text = L.t("DAILY_AHEAD") if daily else L.t("DUEL_AHEAD")
+func announce_duel_lead(kind := "duel") -> void:
+	_hud_best.text = L.t({"daily": "DAILY_AHEAD", "event": "EVENT_AHEAD"}.get(kind, "DUEL_AHEAD"))
 	_hud_best.modulate = GOLD
 	_center_label(_hud_best, 180, 34)
 
@@ -891,6 +899,8 @@ func _on_over_duel() -> void:
 			daily_pressed.emit()
 		"daily_video":
 			daily_video_pressed.emit()
+		"event":
+			event_pressed.emit()
 		_:
 			duel_send_pressed.emit()
 
@@ -902,7 +912,18 @@ func show_duel_result(dr: Dictionary) -> void:
 	_over_buttons[2].visible = false
 	_over_duel.visible = true
 	var col := GREEN_INK
-	if dr["mode"] == "daily":
+	if dr["mode"] == "event":
+		if dr["pay"] > 0:
+			_over_unlock.text = L.t("EVENT_PAY", dr["pay"])
+		elif dr["best"]:
+			_over_unlock.text = L.t("EVENT_NEW_BEST")
+		else:
+			_over_unlock.text = L.t("EVENT_HUD", dr["week"])
+			col = Color(0.55, 0.5, 0.7)
+		_over_duel_mode = "event"
+		(_over_duel.get_node("Content/Icon") as TextureRect).texture = _tex("icon_retry")
+		_set_button_text(_over_duel, L.t("EVENT_AGAIN"))
+	elif dr["mode"] == "daily":
 		if dr["best"]:
 			_over_unlock.text = L.t("DAILY_NEW_BEST", dr["pay"]) if dr["pay"] > 0 else L.t("DAILY_NEW_BEST_0")
 		else:
@@ -1639,6 +1660,7 @@ func board_name(board: String) -> String:
 		"GLOBAL": return L.t("GLOBAL")
 		"FRIENDS": return L.t("FRIENDS")
 		"TODAY": return L.t("DAILY_RANK")
+		"WEEK": return L.t("EVENT_RANK")
 	return PlayGamesConfig.REGION_NAMES.get(board, board)
 
 
@@ -1673,7 +1695,7 @@ func _open_board(board: String) -> void:
 const STYLE_H := 304
 const ABILITIES_H := 314
 const AB_ROW := 28   # 8 abilities: button 20 + level pips, fits a 320 px tall screen
-const POPUP_BANNER_KINDS := ["mission", "settings", "daily", "duel"]
+const POPUP_BANNER_KINDS := ["mission", "settings", "daily", "duel", "event"]
 
 
 ## True if a box `h` px tall fits above the banner on this screen (short 16:9 phones: not
@@ -1984,15 +2006,26 @@ func _tick_offer_clock() -> void:
 
 ## CHALLENGES (swords button): today's challenge for everyone, and duels with friends.
 func show_duel() -> void:
-	var p := _open_popup(L.t("CHALLENGES"), "duel", 186)
+	var p := _open_popup(L.t("CHALLENGES"), "duel", 228)
+	# this week's event: one big button that opens its own window
+	var ev := Save.event_info()
+	var etag := _label(p, L.t("EVENT_WEEK"), 1, COIN_INK)
+	_center_label(etag, 156, 5)
+	var eb := _button(p, "pink", L.t("EV_" + str(ev["id"]).to_upper()), "star", Vector2(148, 22))
+	eb.position = Vector2(4, 15)
+	eb.pressed.connect(show_event)
+	if int(Save.event_state()["tries"]) == 0:
+		var eg := _label(eb, "!", 1, GOLD)
+		eg.position = Vector2(143, -4)
+	var y0 := 42
 	var st := Save.daily_state()
 	var dt := _label(p, L.t("DAILY_TITLE"), 1, COIN_INK)
-	_center_label(dt, 156, 6)
+	_center_label(dt, 156, 6 + y0)
 	var di := _label(p, L.t("DAILY_INFO"), 1, MUTED)
-	_center_label(di, 156, 16)
+	_center_label(di, 156, 16 + y0)
 	var left := Save.daily_tries_left()
 	var ds := _label(p, L.t("DAILY_STATE", [int(st["best"]), left]), 1, INK)
-	_center_label(ds, 156, 26)
+	_center_label(ds, 156, 26 + y0)
 	var play: Button
 	if left > 0:
 		play = _button(p, "pink", L.t("PLAY"), "retry", Vector2(72, 22))
@@ -2003,32 +2036,70 @@ func show_duel() -> void:
 	else:
 		play = _button(p, "white", L.t("DAILY_DONE"), "", Vector2(72, 22))
 		play.disabled = true
-	play.position = Vector2(4, 38)
+	play.position = Vector2(4, 38 + y0)
 	var rk := _button(p, "white", L.t("DAILY_RANK"), "trophy", Vector2(72, 22))
-	rk.position = Vector2(80, 38)
+	rk.position = Vector2(80, 38 + y0)
 	rk.pressed.connect(func(): _open_board("TODAY"))
 	var sep := ColorRect.new()
 	sep.color = Color8(220, 214, 236)
-	sep.position = Vector2(8, 68)
+	sep.position = Vector2(8, 68 + y0)
 	sep.size = Vector2(140, 1)
 	p.add_child(sep)
 	var tt := _label(p, L.t("DUEL_TITLE"), 1, COIN_INK)
-	_center_label(tt, 156, 74)
+	_center_label(tt, 156, 74 + y0)
 	var r1 := _label(p, L.t("DUEL_I1"), 1, MUTED)
-	_center_label(r1, 156, 84)
+	_center_label(r1, 156, 84 + y0)
 	var r2 := _label(p, L.t("DUEL_RULES"), 1, MUTED)
-	_center_label(r2, 156, 94)
+	_center_label(r2, 156, 94 + y0)
 	var pay := _label(p, L.t("DUEL_PAY", [Duel.REWARD_WIN, Duel.REWARD_LOSS]), 1, COIN_INK)
-	_center_label(pay, 156, 104)
+	_center_label(pay, 156, 104 + y0)
 	var nb := _button(p, "yellow", L.t("DUEL_NEW"), "duel", Vector2(72, 22))
-	nb.position = Vector2(4, 116)
+	nb.position = Vector2(4, 116 + y0)
 	nb.pressed.connect(func(): duel_new_pressed.emit())
 	var pb := _button(p, "white", L.t("DUEL_PASTE_SHORT"), "", Vector2(72, 22))
-	pb.position = Vector2(80, 116)
+	pb.position = Vector2(80, 116 + y0)
 	pb.pressed.connect(_paste_duel)
 	var sts := _label(p, L.t("DUEL_STATS", [int(Save.duels.get("wins", 0)), int(Save.duels.get("losses", 0))]), 1, MUTED)
-	_center_label(sts, 156, 144)
-	_close_button(p, 160)
+	_center_label(sts, 156, 144 + y0)
+	_close_button(p, 160 + y0)
+
+
+## This week's event: what it is, time left, the week's best, the coin goals, PLAY and its board.
+func show_event() -> void:
+	var ev := Save.event_info()
+	var st := Save.event_state()
+	var key := "EV_" + str(ev["id"]).to_upper()
+	var p := _open_popup(L.t("EVENT_WEEK"), "event", 178)
+	var nm := _label(p, L.t(key), 1, Color8(214, 66, 128))
+	_center_label(nm, 156, 5)
+	var ds := _label(p, L.t(key + "_D"), 1, MUTED)
+	_center_label(ds, 156, 15)
+	var secs := Events.seconds_left(Save._now())
+	var ends := _label(p, L.t("EVENT_ENDS", [secs / 86400, (secs % 86400) / 3600]), 1, MUTED)
+	_center_label(ends, 156, 25)
+	var best := _label(p, L.t("EVENT_HUD", int(st["best"])), 1, INK)
+	_center_label(best, 156, 38)
+	for i in Events.GOALS.size():
+		var g: Array = Events.GOALS[i]
+		var done := int(st["paid"]) > i
+		var y := 52 + i * 16
+		_icon(p, "icon_star" if done else "icon_lock", Vector2(10, y - 1))
+		_left_label(p, L.t("EVENT_GOAL", int(g[0])), Vector2(24, y), GREEN_INK if done else INK)
+		var rw := "+%d" % int(g[1])
+		var rx := 146.0 - _text_w(rw)
+		_left_label(p, rw, Vector2(roundf(rx), y), GREEN_INK if done else COIN_INK)
+		_icon(p, "icon_coin", Vector2(roundf(rx) - 11, y))
+	var rule := _label(p, L.t("EVENT_RULE"), 1, MUTED)
+	_center_label(rule, 156, 104)
+	var play := _button(p, "pink", L.t("PLAY"), "retry", Vector2(72, 22))
+	play.position = Vector2(4, 118)
+	play.pressed.connect(func(): event_pressed.emit())
+	var rk := _button(p, "white", L.t("EVENT_RANK"), "trophy", Vector2(72, 22))
+	rk.position = Vector2(80, 118)
+	rk.pressed.connect(func(): _open_board("WEEK"))
+	var back := _button(p, "white", L.t("BACK"), "back", Vector2(76, 20))
+	back.position = Vector2(40, 146)
+	back.pressed.connect(show_duel)
 
 
 func _paste_duel() -> void:

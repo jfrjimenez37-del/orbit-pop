@@ -53,6 +53,7 @@ func _initialize() -> void:
 	await test_analytics(save)
 	await test_tutorial(save)
 	await test_gestures(save)
+	await test_events(save)
 	print("\n%d checks, %d failed" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -669,9 +670,10 @@ func test_progress(save) -> void:
 	ok(not save.achievements.has("score50"), "locked achievements stay locked")
 	ok(prog.ACHIEVEMENTS.size() >= 30 and PlayGamesConfig.ACHIEVEMENTS.size() == prog.ACHIEVEMENTS.size(), "achievement list and Play Games ids match")
 	var boards: Dictionary = PlayGamesConfig.LEADERBOARDS.duplicate()
-	if boards.get("DAILY", "") == "":
-		print("  NOTE: DAILY board id not set yet (create the board in Play Console)")
-		boards.erase("DAILY")
+	for pending in ["DAILY", "EVENT"]:
+		if boards.get(pending, "") == "":
+			print("  NOTE: %s board id not set yet (create the board in Play Console)" % pending)
+			boards.erase(pending)
 	var all_ids: Array = PlayGamesConfig.ACHIEVEMENTS.values() + boards.values()
 	var uniq := {}
 	for v in all_ids:
@@ -1632,3 +1634,88 @@ func test_new_obstacles() -> void:
 		ok(dangerous >= trials * 0.8, "%s: really dangerous (%d/%d)" % [name, dangerous, trials])
 		ok(accepted >= trials * 0.3, "%s: accepted by the fairness check often enough (%d/%d)" % [name, accepted, trials])
 	Orbit.reset()
+
+
+## 1.0.18 weekly events: weeks start on Monday (Pacific), goals pay once, the run only has the
+## event's obstacles, LAND OF GIANTS stays on world 9, SPEED WEEK is faster.
+func test_events(save) -> void:
+	# 2026-11-09 is a Monday: 12:00 Pacific (20:00 UTC) on Sunday 8th and Monday 9th are different weeks
+	var sun := Time.get_unix_time_from_datetime_string("2026-11-08T20:00:00")
+	var mon := Time.get_unix_time_from_datetime_string("2026-11-09T20:00:00")
+	var tue := Time.get_unix_time_from_datetime_string("2026-11-10T20:00:00")
+	ok(Events.week_key(mon) == Events.week_key(sun) + 1 and Events.week_key(tue) == Events.week_key(mon), "events: the week starts on Monday")
+	var left := Events.seconds_left(mon)
+	ok(left > 5 * 86400 and left <= 7 * 86400, "events: time left on Monday noon ~6.5 days (%d h)" % (left / 3600))
+	ok(Events.for_week(0) != Events.for_week(1) and Events.seed_for(5) == Events.seed_for(5) and Events.seed_for(5) != Events.seed_for(6),
+		"events: a different event and run every week, the same run for everyone")
+	ok(Events.pay_for(30, 0) == [40, 1] and Events.pay_for(130, 1) == [230, 3] and Events.pay_for(500, 3) == [0, 3],
+		"events: goals pay in order and once")
+	save.reset_all()
+	save.tutorial_done = true; save.jump_tip_done = true
+	save.event_week_test = 0
+	save.coins = 0
+	save.event_started()
+	var r1: Dictionary = save.event_finished(70)
+	var r2: Dictionary = save.event_finished(70)
+	ok(r1["pay"] == 120 and r2["pay"] == 0 and save.coins == 120 and int(save.event_state()["best"]) == 70,
+		"events: 70 points pay 40 + 80 once (%d, %d)" % [r1["pay"], r2["pay"]])
+	save.event_week_test = 1
+	ok(int(save.event_state()["paid"]) == 0 and int(save.event_state()["best"]) == 0, "events: a new week starts fresh")
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	var dt := 1.0 / 60.0
+	for i in Events.LIST.size():
+		var ev: Dictionary = Events.LIST[i]
+		var w0: int = 0
+		save.event_week_test = w0 - posmod(w0, Events.LIST.size()) + i
+		main.start_event()
+		ok(main.duel.get("kind", "") == "event" and main.teleports == 0 and main.slowmo_charges == 0, "events: %s run has no abilities" % ev["id"])
+		var bad := {}
+		var seen := {}
+		var frames := 0
+		while main.state == main.S.PLAYING and frames < 60 * 40:
+			if frames % 2 == 0 and TestBot.decide(main):
+				main._flip()
+			main._grace = 0.0
+			main.shield_until = INF   # keep going: this checks the content, not the bot
+			main._process(dt)
+			for h in main.hazards:
+				var k := Director.kind_of(h)
+				seen[k] = true
+			if ev.has("stage") and frames == 600:
+				main._add_score(400)   # far past world 10's score
+			frames += 1
+		if ev.has("only"):
+			var allowed := {}
+			for pname in ev["only"]:
+				var hs: Dictionary = main.director._build(pname, 100.0, 0.0, 1, 2.5, 0.5, 0, 0)
+				for h in hs["hazards"]:
+					allowed[Director.kind_of(h)] = true
+					h.free()
+			allowed["meteor"] = true   # the very first pattern is always the slow meteor
+			for k in seen:
+				if not allowed.has(k):
+					bad[k] = true
+			ok(bad.is_empty() and seen.size() >= 2, "events: %s only has its obstacles %s (bad %s)" % [ev["id"], str(seen.keys()), str(bad.keys())])
+		if ev.has("stage"):
+			ok(main.stage == int(ev["stage"]) and main._stage_pending < 0, "events: %s stays on its world (stage %d)" % [ev["id"], main.stage])
+		if ev.has("omega"):
+			ok(absf(main.director.omega(30.0) - lerpf(2.3, 3.3, main.director.level(30.0)) * float(ev["omega"])) < 0.001,
+				"events: %s is faster" % ev["id"])
+		main.state = main.S.DYING
+		main._game_over()
+		ok(main.duel.get("last", {}).get("mode", "") == "event", "events: %s result shown" % ev["id"])
+	main.duel = {}
+	main.start_run()
+	ok(main.director.only.is_empty() and main.director.omega_mul == 1.0 and main._event_stage == -1, "events: a normal run after an event is normal")
+	var sfx = get_root().get_node("Sfx")
+	ok(sfx.group_for_stage(0) == "sky" and sfx.group_for_stage(8) == "space" and sfx.group_for_stage(15) == "moving"
+		and sfx.current_group() == "sky", "music: world groups (sky / planets / space / moving)")
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
+	save.event_week_test = -999999
+	save.reset_all()

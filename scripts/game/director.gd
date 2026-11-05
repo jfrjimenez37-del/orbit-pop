@@ -16,6 +16,9 @@ var bubble_rate := 1.0     # BUBBLE RUSH boost: 2.0 = twice as many bubbles
 var hold := false          # world change in progress: no new spawns
 var stage := 0             # current Stages index (unlocks obstacles)
 var world := 1             # world number shown to the player (keeps growing after the worlds loop)
+## Weekly event rules (Events.LIST): only these patterns (empty = all) and a speed factor.
+var only: Array = []
+var omega_mul := 1.0
 var human_check := true    # require human timing slack when committing (off only for A/B audits)
 var react_check := true    # require a reaction-time window before the first needed tap (A/B audits)
 var _attempt := 0          # attempts already tried for the pattern being placed (spread over frames)
@@ -98,6 +101,8 @@ func reset(seed_value: int, recent_avg: float) -> void:
 	hold = false
 	stage = 0
 	world = 1
+	only = []
+	omega_mul = 1.0
 
 
 func eff_time(t: float) -> float:
@@ -121,7 +126,7 @@ func level(t: float) -> float:
 
 
 func omega(t: float) -> float:
-	return lerpf(2.3, 3.3, level(t))
+	return lerpf(2.3, 3.3, level(t)) * omega_mul
 
 
 ## d omega / dt (rad/s^2), used by the fairness check for long patterns.
@@ -234,6 +239,8 @@ func _drop_pending() -> void:
 
 
 func _pick(t: float) -> String:
+	if not only.is_empty():
+		return _pick_only()
 	var te := eff_time(t)
 	var total := 0.0
 	var pool := []
@@ -264,6 +271,22 @@ func _pick(t: float) -> String:
 		if r <= 0.0:
 			return p[0]
 	return pool[-1][0]
+
+
+## Event runs: one of the allowed patterns that works on this world (meteors if none does).
+func _pick_only() -> String:
+	var ok: Array = []
+	for name in only:
+		if Orbit.moving() and name in NOT_WHILE_MOVING:
+			continue
+		if name in ["swap", "cross_rain"] and Orbit.count() < 2:
+			continue
+		if name in MULTI_PLANET and Orbit.planets().size() < 2:
+			continue
+		ok.append(name)
+	if ok.is_empty():
+		return "lead"
+	return ok[rng.randi() % ok.size()]
 
 
 var _home := 0   # orbit (planet) the pattern being built belongs to

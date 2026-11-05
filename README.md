@@ -5,6 +5,23 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.18 (código 20)
+
+- **Evento semanal** (`scripts/game/events.gd`): uno distinto cada semana (lunes a domingo, hora
+  del Pacífico como el reto diario), la misma partida para todos esa semana, sin habilidades e
+  intentos ilimitados. Se abre desde RETOS (botón DUELOS del menú).
+  - Rotación: TORMENTA DE COMETAS (solo cometas), CAMPO DE MINAS (minas, sierras, ovnis), NOCHE DE
+    LÁSERES (solo rayos), SEMANA VELOZ (todo un 22 % más rápido), TIERRA DE GIGANTES (toda la
+    partida en el mundo 9).
+  - Monedas por metas en un intento, cada una una vez por semana: 25 puntos +40, 60 puntos +80,
+    120 puntos +150.
+  - Tabla propia "EVENT" (vista semanal de Play Games). **Pendiente:** crear la tabla en Play
+    Console y poner su id en `scripts/services/play_games_config.gd` (`"EVENT"`); hasta entonces el
+    botón SEMANA avisa de que no está disponible y las puntuaciones no se envían.
+- **Música por grupo de mundos** (`Sfx.set_group`): cielo 1-4, planetas 5-8, espacio 9-13,
+  planetas en movimiento 14-16, con fundido. Faltan los temas: ver `assets/music/README.md`.
+  Mientras tanto todo sigue con la canción de siempre.
+
 ## 1.0.17 (código 19)
 
 - **Un obstáculo nuevo por mundo desde el 9** (`scripts/game/hazards/`), con su peso ×2,5 en su

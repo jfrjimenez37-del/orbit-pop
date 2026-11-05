@@ -132,6 +132,19 @@ func _audit_all(lang: String) -> void:
 	sv.daily_run = {"day": sv.daily_today(), "tries": 2, "video": 1, "best": 99999, "paid": true}
 	ui.show_duel()
 	await _check(lang, "challenges")
+	# every weekly event: its window (best 99999, two goals paid) and the challenges row
+	for wk in Events.LIST.size():
+		var w0: int = sv.event_week()
+		var week: int = w0 - posmod(w0, Events.LIST.size()) + wk
+		sv.event_run = {"week": week, "tries": 3, "best": 99999, "paid": 2}
+		sv.event_week_test = week
+		ui.show_event()
+		await _check(lang, "event " + str(Events.for_week(week)["id"]))
+		ui.show_duel()
+		await _check(lang, "challenges " + str(Events.for_week(week)["id"]))
+		ui.set_event_target(L.t("EV_" + str(Events.for_week(week)["id"]).to_upper()), 0)
+		await _check(lang, "hud event name " + str(Events.for_week(week)["id"]))
+	sv.event_week_test = -999999
 	ui.show_duel_accept(Duel.decode(Duel.encode(12345, 9999, DUEL_NAME)))
 	await _check(lang, "duel accept")
 	ui.hide_popup()
@@ -187,6 +200,8 @@ func _audit_all(lang: String) -> void:
 	await _check(lang, "hud duel")
 	ui.set_daily_target(99999)
 	await _check(lang, "hud daily")
+	ui.set_event_target("X", 99999)
+	await _check(lang, "hud event")
 	ui.show_pause()
 	await _check(lang, "pause")
 	ui.show_game_over(99999, 99999, true, [Catalog.find("skins", "crystal")], true, false)
@@ -195,7 +210,9 @@ func _audit_all(lang: String) -> void:
 			{"mode": "reply", "mine": 9999, "theirs": 9998, "name": DUEL_NAME, "pay": 50, "result": "win", "code": "X"},
 			{"mode": "reply", "mine": 1, "theirs": 9999, "name": DUEL_NAME, "pay": 10, "result": "loss", "code": "X"},
 			{"mode": "reply", "mine": 9999, "theirs": 9999, "name": DUEL_NAME, "pay": 25, "result": "tie", "code": "X"},
-			{"mode": "daily", "best": true, "pay": 30, "today": 99999, "mine": 99999, "tries": 2, "video": 1}]:
+			{"mode": "daily", "best": true, "pay": 30, "today": 99999, "mine": 99999, "tries": 2, "video": 1},
+			{"mode": "event", "best": true, "pay": 270, "week": 99999, "mine": 99999, "paid": 3},
+			{"mode": "event", "best": false, "pay": 0, "week": 99999, "mine": 5, "paid": 3}]:
 		ui.show_game_over(dr["mine"], 99999, false, [], false, false)
 		ui.show_duel_result(dr)
 		await _check(lang, "result " + str(dr["mode"]) + " " + str(dr.get("result", "")))
