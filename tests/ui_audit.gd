@@ -103,6 +103,23 @@ func _audit_all(lang: String) -> void:
 		await _check(lang, "weekly %d" % w)
 	ui.show_settings()
 	await _check(lang, "settings")
+	for cat in ["skins", "trails"]:
+		var longest := 0
+		for i in Catalog.items(cat).size():
+			if str(Catalog.items(cat)[i]["name"]).length() > str(Catalog.items(cat)[longest]["name"]).length():
+				longest = i
+		ui.show_reveal(cat, longest)
+		await _check(lang, "reveal " + cat)
+	ui.hide_popup()
+	var before: Array = P.missions() + [P.weekly()]
+	var after: Array = []
+	for m in before:
+		var m2: Dictionary = m.duplicate()
+		m2["progress"] = int(m2["goal"]) - 1
+		after.append(m2)
+	after[1]["done"] = true
+	ui.show_mission_progress(before, after)
+	await _check(lang, "mission card")
 	ui.show_daily()
 	await _check(lang, "daily gift")
 	ui.show_starter()
@@ -195,6 +212,15 @@ func _check(lang: String, name: String) -> void:
 	_collect(ui, items)
 	if ui.menu.visible and ui._menu_logo.is_visible_in_tree() and not ui.popup.visible:
 		items.append(["icon", ui._menu_logo.get_global_rect(), null, ui._menu_logo])
+		# the logo must not sit under a menu button either
+		var lr: Rect2 = ui._menu_logo.get_global_rect()
+		for b in ui.menu.find_children("*", "Button", true, false):
+			if (b as Button).is_visible_in_tree():
+				var ir: Rect2 = lr.intersection((b as Button).get_global_rect())
+				if ir.size.x > 0.5 and ir.size.y > 0.5:
+					var key := "%s | a menu button covers the logo  (x %.0f-%.0f, y %.0f-%.0f)" % [screen, ir.position.x, ir.end.x, ir.position.y, ir.end.y]
+					if not problems.has(key):
+						problems.append(key)
 	var popup_open: bool = ui.popup.visible
 	for it in items:
 		if it[0] != "label" or (popup_open and not ui.popup.is_ancestor_of(it[3])):

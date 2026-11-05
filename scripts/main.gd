@@ -39,6 +39,9 @@ var _tut_scale := 1.0          # game speed factor of the tutorial
 var _tut_shown_at := -1.0
 var _jump_tip := false
 var _jump_tries := 0
+var _world_intro_left := 0.0   # first time in a world: a second of slow motion with its banner
+var _missions_before: Array = []   # missions + weekly at the start of the run (menu card after it)
+var _mission_card_pending := false
 var _perf_slow := 0          # frames over 33 ms
 var duel_lead := false
 var record_announced := false
@@ -179,6 +182,15 @@ func go_menu() -> void:
 	_layout()
 	bg.reset_climb()
 	ui.show_menu()
+	if _mission_card_pending:
+		_mission_card_pending = false
+		var now := Progress.missions() + [Progress.weekly()]
+		var moved := false
+		for k in mini(now.size(), _missions_before.size()):
+			if int(now[k]["progress"]) != int(_missions_before[k]["progress"]) or bool(now[k]["done"]) != bool(_missions_before[k]["done"]):
+				moved = true
+		if moved and now.size() == _missions_before.size():
+			ui.show_mission_progress(_missions_before, now)
 	if _pending_link != "":
 		_show_pending_link.call_deferred()
 	elif Save.daily_available():
@@ -556,6 +568,8 @@ func start_run() -> void:
 	_tut_step = 1 if duel.is_empty() and Save.games == 0 and not Save.tutorial_done else 0
 	_tut_meteor = null
 	_tut_scale = 1.0
+	_world_intro_left = 0.0
+	_missions_before = Progress.missions() + [Progress.weekly()]
 	_tut_shown_at = -1.0
 	_jump_tip = false
 	ui.hide_tip()
@@ -637,6 +651,13 @@ func _game_over() -> void:
 	var last: Dictionary = duel.get("last", {})
 	var happy := Reviewer.happy(res["record"] and score > 0, score, int(Save.stats.get("best_world", 1)) > world_at_start,
 		last.get("result", "") == "win", bool(last.get("best", false)) and score >= Reviewer.MIN_SCORE)
+	_mission_card_pending = true
+	if not res["unlocked"].is_empty():
+		var idx: int = res["unlocked"][-1]
+		get_tree().create_timer(0.8).timeout.connect(func():
+			if state == S.OVER and not ui.popup.visible:
+				ui.show_reveal("skins", idx))
+		return   # the new skin is the moment: no rating request or offer on top of it
 	var asked := Progress.reviewer.maybe_ask(Save, happy)
 	if not duel.is_empty():
 		return   # the duel / daily result is the moment: no permission request or offer on top of it
@@ -720,6 +741,9 @@ func _tutorial(delta: float) -> void:
 				Progress.ga.design("Tutorial:Jump:Skipped")
 		if _jump_tip:
 			target = JUMP_TIP_SCALE
+	if _world_intro_left > 0.0:
+		_world_intro_left -= delta
+		target = minf(target, 0.35)
 	_tut_scale = move_toward(_tut_scale, target, delta * 5.0)
 
 
@@ -1111,6 +1135,8 @@ func _update_world(dt: float) -> void:
 		Sfx.play("unlock")
 		if world_no > int(Save.stats.get("best_world", 1)):
 			Progress.ga.design("World:FirstReach:%02d" % world_no)
+			if not Save.reduce_motion:
+				_world_intro_left = 1.2
 		Progress.ga.progression("Complete", _ga_mode(), "World%02d" % (world_no - 1), "", score)
 		Progress.event("world", world_no)
 	if _morph_t >= 0.0:

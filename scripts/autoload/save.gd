@@ -559,6 +559,7 @@ func claim_daily(multiplier := 1) -> Dictionary:
 		return {}
 	var g := daily_preview()
 	coins += int(g["coins"]) * multiplier
+	stats["gift_last"] = int(g["coins"]) * multiplier
 	daily_day = int(g["day"])
 	daily_last = _day_string()
 	save_data()

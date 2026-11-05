@@ -82,6 +82,8 @@ var _ab_box: Control
 var _ab_list: Control
 var _run_coins_box: Control
 var _menu_logo: TextureRect
+var _menu_top_right: Control
+var _mission_card: Control
 var _menu_best_box: Control
 var _alt_lbl: Label
 var _style_box: Control
@@ -447,28 +449,41 @@ func _build_menu() -> void:
 	_place(rk, 1.0, -64, 26, 28)
 	rk.offset_left += 60; rk.offset_right += 60
 	rk.pressed.connect(func(): ranking_pressed.emit())
-	# bottom row (kept off the top corners: rounded screens and camera notches cut them)
-	var row := [["mission", "white", show_mission], ["skins", "white", func(): skins_pressed.emit()],
-		["duel", "yellow", show_duel], ["cart", "pink", func(): shop_pressed.emit()], ["gift", "pink", show_daily],
-		["gear", "white", show_settings]]
+	# top right: shop and daily gift (inset from the corner: rounded screens and notches)
+	_menu_top_right = _container(menu)
+	_menu_top_right.anchor_left = 1.0; _menu_top_right.anchor_right = 1.0
+	_menu_top_right.offset_left = -58; _menu_top_right.offset_top = 3
+	for k in 2:
+		var tb := _button(_menu_top_right, "pink", "", ["cart", "gift"][k], Vector2(24, 20))
+		tb.position = Vector2(k * 27, 0)
+		tb.pressed.connect([func(): shop_pressed.emit(), show_daily][k])
+		var badge := _label(tb, "!", 1, GOLD)
+		badge.position = Vector2(19, -4)
+		if k == 0:
+			_shop_badge = badge
+		else:
+			_gift_badge = badge
+	# bottom row: missions, styles, the big DUELS button (duels, daily challenge, events), settings
+	var row := [["mission", "white", show_mission, 26], ["skins", "white", func(): skins_pressed.emit(), 26],
+		["duel", "yellow", show_duel, 62], ["gear", "white", show_settings, 26]]
+	var total := 0.0
+	for r in row:
+		total += float(r[3]) + 3.0
+	var x0 := -(total - 3.0) * 0.5
 	for i in row.size():
-		var b := _button(menu, row[i][1], "", row[i][0], Vector2(26, 22))
-		_place(b, 1.0, -31, 26, 22)
-		var dx := roundf((i - (row.size() - 1) * 0.5) * 28)
+		var w: float = row[i][3]
+		var b := _button(menu, row[i][1], L.t("MENU_DUELS") if row[i][0] == "duel" else "", row[i][0], Vector2(w, 22))
+		_place(b, 1.0, -31, w, 22)
+		var dx := roundf(x0 + w * 0.5)
+		x0 += w + 3.0
 		b.offset_left += dx; b.offset_right += dx
 		b.pressed.connect(row[i][2])
 		if row[i][0] == "mission":
 			_mission_badge = _label(b, "!", 1, GOLD)
 			_mission_badge.position = Vector2(21, -4)
-		elif row[i][0] == "gift":
-			_gift_badge = _label(b, "!", 1, GOLD)
-			_gift_badge.position = Vector2(21, -4)
-		elif row[i][0] == "cart":
-			_shop_badge = _label(b, "!", 1, GOLD)
-			_shop_badge.position = Vector2(21, -4)
 		elif row[i][0] == "duel":
 			_duel_badge = _label(b, "!", 1, GOLD)
-			_duel_badge.position = Vector2(21, -4)
+			_duel_badge.position = Vector2(w - 5, -4)
 
 
 func refresh_menu() -> void:
@@ -502,11 +517,12 @@ func upgrade_affordable() -> bool:
 func show_menu() -> void:
 	var st := safe_top()
 	_menu_coin_box.position.y = 4 + st
+	_menu_top_right.offset_top = 3 + st
 	# the logo and the best/level/name lines move down with the notch, so the coins at the top
 	# left never run into the logo
-	_menu_logo.offset_top = 14 + st
+	_menu_logo.offset_top = 26 + st   # below the coins (left) and the shop / gift buttons (right)
 	_menu_logo.offset_bottom = _menu_logo.offset_top + _menu_logo.texture.get_height()
-	_menu_best_box.offset_top = _menu_logo.texture.get_height() + 16 + st
+	_menu_best_box.offset_top = _menu_logo.texture.get_height() + 28 + st
 	_menu_best_box.offset_bottom = _menu_best_box.offset_top + 10
 	refresh_menu()
 	_switch(menu)
@@ -693,7 +709,7 @@ func world_banner(n: int, name: String, tip := "", layer := "") -> void:
 	_banner.modulate.a = 0.0
 	var tw := create_tween()
 	tw.tween_property(_banner, "modulate:a", 1.0, 0.25)
-	tw.tween_interval(1.8 if tip == "" and layer == "" else 2.8)
+	tw.tween_interval(3.2 if tip == "" and layer == "" else 4.2)
 	tw.tween_property(_banner, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(func(): _banner.visible = false)
 
@@ -1123,8 +1139,7 @@ func _on_style_action() -> void:
 			Progress.ga.resource("Sink", "Coins", int(need[1]), "Style", str(Catalog.items(_style_tab)[i]["id"]))
 			Save.select(_style_tab, i)
 			style_changed.emit()
-			Sfx.play("unlock")
-			toast(L.t("UNLOCKED", Catalog.items(_style_tab)[i]["name"]), Color8(120, 255, 200))
+			show_reveal(_style_tab, i)
 		else:
 			Sfx.play("deny")
 			toast(L.t("NOT_ENOUGH"), Color8(255, 150, 160))
@@ -1165,7 +1180,7 @@ func _refresh_style() -> void:
 		(_style_action.get_node("Content/Icon") as TextureRect).visible = coin_item
 		_style_button(_style_action, "yellow" if coin_item else "pink")
 		_set_button_text(_style_action, str(need[1]) if coin_item else L.t("SHOP"))
-		(_style_action.get_node("Content/Text") as Label).modulate = INK if coin_item else Color.WHITE
+		(_style_action.get_node("Content/Text") as Label).modulate = (SHORT if Save.coins < int(need[1]) else INK) if coin_item else Color.WHITE
 	for s in 9:
 		var d: Dictionary = _style_cards[s]
 		var i := _style_page * 9 + s
@@ -1196,7 +1211,7 @@ func _refresh_style() -> void:
 			d["bar"].color = Catalog.RARITY_COLORS[r2]
 		var cap: Label = d["cap"]
 		cap.text = list[i]["name"] if unl else (str(n[1]) if need_icon != "" else _need_text(_style_tab, i))
-		cap.modulate = INK if unl else (Color8(214, 66, 128) if n[0] == "shop" else (COIN_INK if n[0] == "coins" else MUTED))
+		cap.modulate = INK if unl else (Color8(214, 66, 128) if n[0] == "shop" else ((SHORT if Save.coins < int(n[1]) else COIN_INK) if n[0] == "coins" else MUTED))
 		_center_label(cap, 48, 40)
 		if d["coin"].visible:
 			var iw: float = d["coin"].texture.get_width()
@@ -1289,6 +1304,8 @@ func refresh_abilities() -> void:
 				Sfx.play("deny")
 				toast(L.t("NOT_ENOUGH"), Color8(255, 150, 160))
 			refresh_abilities(), AB_BTN_W)
+		if open and cost >= 0 and Save.coins < cost:
+			(b.get_node("Content/Text") as Label).modulate = SHORT
 		if open:  # level pips under the button
 			var mx := int(a["max"])
 			var px := 158 - AB_BTN_W + roundi((AB_BTN_W - (mx * 5 - 2)) * 0.5)
@@ -1645,6 +1662,7 @@ func _open_popup(title: String, kind := "", h := 136) -> NinePatchRect:
 	if kind in POPUP_BANNER_KINDS and menu.visible:
 		Monetization.show_banner()
 	_menu_best_box.visible = false
+	_menu_coin_box.visible = false
 	return p
 
 
@@ -1656,7 +1674,8 @@ func _close_button(p: Control, y: int) -> void:
 
 func hide_popup() -> void:
 	popup.visible = false
-	_menu_best_box.visible = true
+	_menu_best_box.visible = _mission_card == null
+	_menu_coin_box.visible = true
 	if menu.visible:
 		Monetization.hide_banner()
 		refresh_menu()
@@ -1664,24 +1683,12 @@ func hide_popup() -> void:
 
 func show_daily() -> void:
 	if not Save.daily_available():
-		toast(L.t("TOMORROW"), GOLD)
+		_show_daily_taken()
 		return
 	var g := Save.daily_preview()
 	var p := _open_popup(L.t("DAILY_GIFT"), "daily")
 	var day: int = g["day"]
-	for i in 7:
-		var r: Dictionary = MonetizationConfig.DAILY_REWARDS[i]
-		var cell := NinePatchRect.new()
-		cell.texture = _tex("card_sel" if i + 1 == day else "card")
-		cell.patch_margin_left = 3; cell.patch_margin_right = 3; cell.patch_margin_top = 3; cell.patch_margin_bottom = 3
-		cell.position = Vector2(6 + i * 21, 8)
-		cell.size = Vector2(20, 26)
-		cell.modulate = Color(1, 1, 1, 0.5) if i + 1 < day else Color.WHITE
-		p.add_child(cell)
-		var dl := _label(cell, "D%d" % (i + 1), 1, MUTED)
-		_center_label(dl, 20, 3)
-		var cl := _label(cell, str(r["coins"]), 1, COIN_INK)
-		_center_label(cl, 20, 14)
+	_gift_calendar(p, day, false)
 	var big := _container(p)
 	_icon(big, "icon_coin", Vector2(0, 2), 2)
 	var amount := _label(big, "+%d" % g["coins"], 3, COIN_INK)
@@ -1697,6 +1704,142 @@ func show_daily() -> void:
 	dbl.position = Vector2(82, 92)
 	dbl.disabled = not Monetization.rewarded_ready()
 	dbl.pressed.connect(func(): daily_claim.emit(true))
+
+
+## The 7 days of the streak: past days dimmed with a green bar, `day` highlighted.
+func _gift_calendar(p: Control, day: int, taken: bool) -> void:
+	for i in 7:
+		var r: Dictionary = MonetizationConfig.DAILY_REWARDS[i]
+		var cell := NinePatchRect.new()
+		cell.texture = _tex("card_sel" if i + 1 == day else "card")
+		cell.patch_margin_left = 3; cell.patch_margin_right = 3; cell.patch_margin_top = 3; cell.patch_margin_bottom = 3
+		cell.position = Vector2(6 + i * 21, 8)
+		cell.size = Vector2(20, 26)
+		var done := i + 1 < day or (taken and i + 1 == day)
+		cell.modulate = Color(1, 1, 1, 0.55) if done and i + 1 != day else Color.WHITE
+		p.add_child(cell)
+		var dl := _label(cell, "D%d" % (i + 1), 1, MUTED)
+		_center_label(dl, 20, 3)
+		var cl := _label(cell, str(r["coins"]), 1, COIN_INK)
+		_center_label(cl, 20, 14)
+		if done:
+			var ok := ColorRect.new()
+			ok.color = Color8(124, 226, 104)
+			ok.position = Vector2(3, 22)
+			ok.size = Vector2(14, 2)
+			cell.add_child(ok)
+
+
+## Today's gift already taken: what it was, what tomorrow brings, and the streak rule.
+## Something new unlocked: the skin or trail big, its name and rarity, USE or LATER.
+func show_reveal(cat: String, i: int) -> void:
+	var it: Dictionary = Catalog.items(cat)[i]
+	var p := _open_popup(L.t("NEW_SKIN_T" if cat == "skins" else "NEW_TRAIL_T"), "reveal", 150)
+	var glow := ColorRect.new()
+	var rar: String = it.get("rarity", "common")
+	glow.color = Catalog.RARITY_COLORS.get(rar, Color.WHITE) * Color(1, 1, 1, 0.25)
+	glow.position = Vector2(46, 8)
+	glow.size = Vector2(64, 64)
+	p.add_child(glow)
+	var t := _item_tex(cat, i)
+	var at := AtlasTexture.new()
+	at.atlas = t["atlas"]
+	at.region = t["region"]
+	var pic := TextureRect.new()
+	pic.texture = at
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pic.scale = Vector2(4, 4)
+	pic.position = Vector2(46, 8)
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(pic)
+	var tw := pic.create_tween().set_loops()
+	tw.tween_property(pic, "position:y", 4.0, 0.5).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(pic, "position:y", 10.0, 0.5).set_trans(Tween.TRANS_SINE)
+	var nm := _label(p, str(it["name"]), 2, INK)
+	_center_label(nm, 156, 78)
+	var rl := _label(p, L.t("R_" + rar.to_upper()), 1, Catalog.RARITY_COLORS.get(rar, MUTED))
+	_center_label(rl, 156, 98)
+	var use := _button(p, "yellow", L.t("USE"), "", Vector2(64, 24))
+	use.position = Vector2(10, 116)
+	use.pressed.connect(func():
+		Save.select(cat, i)
+		Save.save_data()
+		style_changed.emit()
+		hide_popup())
+	var later := _button(p, "white", L.t("LATER"), "", Vector2(64, 24))
+	later.position = Vector2(82, 116)
+	later.pressed.connect(hide_popup)
+	Sfx.play("unlock")
+
+
+## After a run, in the menu: the 3 missions and the weekly challenge, bars filling from where they
+## were to where they are now; completed ones in green with their coins. Hides by itself.
+func show_mission_progress(before: Array, after: Array) -> void:
+	if _mission_card != null:
+		_mission_card.queue_free()
+	var card := _container(menu)
+	_mission_card = card
+	_menu_best_box.visible = false   # short screens: the card would run into the name / best lines
+	var rows := after.size()
+	var h := 12 + rows * 17
+	_place(card, 1.0, -72 - h, 160, h)
+	var bgp := _panel(card, Vector2.ZERO, Vector2(160, h))
+	bgp.modulate = Color(1, 1, 1, 0.95)
+	var tl := _label(card, L.t("MISSIONS"), 1, MUTED)
+	_center_label(tl, 160, 2)
+	for k in rows:
+		var a: Dictionary = after[k]
+		var b: Dictionary = before[k] if k < before.size() else a
+		var y := 12 + k * 17
+		var txt := _left_label(card, str(a["text"]), Vector2(6, y), GREEN_INK if a["done"] else INK)
+		while txt.text.length() > 4 and _text_w(txt.text) > 148:
+			txt.text = txt.text.substr(0, txt.text.length() - 2) + "."
+		var pr := "+%d" % a["reward"] if a["done"] else "%d/%d" % [a["progress"], a["goal"]]
+		var pl := _left_label(card, pr, Vector2(154 - _text_w(pr), y + 8), COIN_INK if a["done"] else MUTED)
+		var bw := pl.position.x - 10
+		var bar := ColorRect.new()
+		bar.color = Color8(220, 226, 240)
+		bar.position = Vector2(6, y + 10)
+		bar.size = Vector2(bw, 4)
+		card.add_child(bar)
+		var fill := ColorRect.new()
+		fill.color = Color8(124, 226, 104) if a["done"] else GOLD
+		fill.position = bar.position
+		var f0 := float(b["progress"]) / float(b["goal"])
+		var f1 := float(a["progress"]) / float(a["goal"])
+		fill.size = Vector2(roundf(bw * f0), 4)
+		card.add_child(fill)
+		card.create_tween().tween_property(fill, "size:x", roundf(bw * f1), 0.7).set_delay(0.3).set_trans(Tween.TRANS_QUAD)
+	card.modulate.a = 0.0
+	var tw := card.create_tween()
+	tw.tween_property(card, "modulate:a", 1.0, 0.2)
+	tw.tween_interval(4.5)
+	tw.tween_property(card, "modulate:a", 0.0, 0.4)
+	tw.tween_callback(func():
+		card.queue_free()
+		if _mission_card == card:
+			_mission_card = null
+			_menu_best_box.visible = not popup.visible)
+
+
+func _show_daily_taken() -> void:
+	var p := _open_popup(L.t("DAILY_GIFT"), "daily")
+	var day := Save.daily_day
+	_gift_calendar(p, day, true)
+	var got := _label(p, L.t("GIFT_GOT"), 1, MUTED)
+	_center_label(got, 156, 40)
+	var big := _container(p)
+	_icon(big, "icon_coin", Vector2(0, 2), 2)
+	var amount := _label(big, "+%d" % int(Save.stats.get("gift_last", MonetizationConfig.DAILY_REWARDS[maxi(0, day - 1)]["coins"])), 3, COIN_INK)
+	amount.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	amount.position = Vector2(24, 0)
+	big.position = Vector2(roundf((156 - 24 - _text_w(amount.text) * 3) * 0.5), 52)
+	var nxt: int = MonetizationConfig.DAILY_REWARDS[day % 7]["coins"]
+	var tm := _label(p, L.t("GIFT_TOMORROW", nxt), 1, COIN_INK)
+	_center_label(tm, 156, 84)
+	var rule := _label(p, L.t("GIFT_RULE"), 1, MUTED)
+	_center_label(rule, 156, 96)
+	_close_button(p, 110)
 
 
 func show_starter() -> void:
@@ -1900,6 +2043,7 @@ func _mission_row(p: Control, m: Dictionary, y: int) -> void:
 
 
 const ROW := 20   # settings row spacing
+const SHORT := Color8(220, 40, 60)   # a coin price the player cannot pay yet
 
 
 func show_settings() -> void:
@@ -2000,7 +2144,9 @@ func show_diag() -> void:
 	lab.clip_text = true
 	var shown: Array = txt.split("\n")
 	# the pixel font only has capitals and a few symbols
-	lab.text = "\n".join(shown.slice(maxi(0, shown.size() - 18))).to_upper().replace("=", ":").replace("_", "-")
+	var newest := shown.slice(maxi(1, shown.size() - 18))
+	newest.reverse()
+	lab.text = (shown[0] + "\n" + "\n".join(newest)).to_upper().replace("=", ":").replace("_", "-")
 	p.add_child(lab)
 	var c := _left_label(p, L.t("COPIED"), Vector2(4, 206), GREEN_INK)
 	c.scale = Vector2.ONE
