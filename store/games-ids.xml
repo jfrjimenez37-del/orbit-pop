@@ -87,4 +87,6 @@
   <string name="leaderboard_asiapacfico" translatable="false">CgkI6KO05vMIEAIQBg</string>
   <!--leaderboard África y Oriente Medio-->
   <string name="leaderboard_frica_y_oriente_medio" translatable="false">CgkI6KO05vMIEAIQBw</string>
+  <!--leaderboard Weekly Event (added by hand, 1.0.18)-->
+  <string name="leaderboard_weekly_event" translatable="false">CgkI6KO05vMIEAIQKw</string>
 </resources>

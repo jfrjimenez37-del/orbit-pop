@@ -15,12 +15,10 @@ revienta burbujas y supera tu récord.
     partida en el mundo 9).
   - Monedas por metas en un intento, cada una una vez por semana: 25 puntos +40, 60 puntos +80,
     120 puntos +150.
-  - Tabla propia "EVENT" (vista semanal de Play Games). **Pendiente:** crear la tabla en Play
-    Console y poner su id en `scripts/services/play_games_config.gd` (`"EVENT"`); hasta entonces el
-    botón SEMANA avisa de que no está disponible y las puntuaciones no se envían.
+  - Tabla propia "Weekly Event" (`CgkI6KO05vMIEAIQKw`, vista semanal de Play Games).
 - **Música por grupo de mundos** (`Sfx.set_group`): cielo 1-4, planetas 5-8, espacio 9-13,
-  planetas en movimiento 14-16, con fundido. Faltan los temas: ver `assets/music/README.md`.
-  Mientras tanto todo sigue con la canción de siempre.
+  planetas en movimiento 14-16, con fundido; el menú sigue con la canción de siempre. Temas de
+  Gemini recortados en bucle: ver `assets/music/README.md`.
 
 ## 1.0.17 (código 19)
 
