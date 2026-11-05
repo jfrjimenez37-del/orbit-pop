@@ -18,6 +18,11 @@ func _initialize() -> void:
 	var save = get_root().get_node("Save")
 	save.path = "user://test_save.cfg"
 	save.reset_all()
+	if "--only=obstacles" in OS.get_cmdline_user_args():
+		test_new_obstacles()
+		print("\n%d checks, %d failed" % [checks, fails])
+		quit(1 if fails > 0 else 0)
+		return
 	print("== geometry: danger() matches real distances")
 	test_geometry()
 	print("== survival checker")
@@ -38,6 +43,8 @@ func _initialize() -> void:
 	test_orbits()
 	print("== missions, achievements, cloud, l10n")
 	test_progress(save)
+	print("== new obstacles (worlds 9-16)")
+	test_new_obstacles()
 	print("== fairness on every world shape")
 	await test_duels(save)
 	await test_worlds(save)
@@ -1517,6 +1524,20 @@ func test_gestures(save) -> void:
 		ok(main.player.orbit == 1 and main.teleports == 0, "gestures: swipe toward the other planet lands on its orbit")
 	else:
 		ok(true, "gestures: (the tap itself was a planet jump here)")
+	# NEW OBSTACLE intro: first boomerang -> tip + seen; the second one says nothing
+	save.seen_obstacles = ["meteor"]
+	main.ui.hide_tip()
+	var bm := Boomerang.new().setup(Orbit.pos(0, main.player.angle + 2.0), 0.0, main.gt + 5.0, 0.5, 2.0, 0)
+	main._new_obstacle(bm)
+	ok(save.seen_obstacles.has("boomerang") and main.ui.tip_showing(), "obstacles: first boomerang shows NEW: BOOMERANG")
+	main.ui.hide_tip()
+	main._new_obstacle(bm)
+	ok(not main.ui.tip_showing(), "obstacles: only the first time")
+	bm.free()
+	var saw := Spiky.new().setup(0.0, 0.0, 0.5, 1.0, 1.0, 0, "saw")
+	ok(Director.kind_of(saw) == "saw" and Director.kind_of(Beam.new()) == "beams" and Director.kind_of(Barrier.new()) == "spoke",
+		"obstacles: saw / beams / spoke kinds")
+	saw.free()
 	# BUBBLES ability: +1 per level on every bubble
 	var s0: int = main.score
 	var b := Bubble.new().setup(main.player.angle, main.gt, 5.0, main.player.orbit)
@@ -1542,3 +1563,72 @@ func test_gestures(save) -> void:
 	await process_frame
 	Orbit.reset()
 	save.reset_all()
+
+
+## 1.0.17 obstacles: each one is dangerous, only inside its danger window, and the fairness
+## check accepts it often enough to be seen in its world.
+func test_new_obstacles() -> void:
+	var list: Array = Director.STAGE_PATTERNS.duplicate()
+	if "--compare" in OS.get_cmdline_user_args():
+		# reference: older patterns in the same worlds (cost only)
+		list = [["sweep", 14], ["sweep", 9], ["cage", 12], ["comet_rain", 8], ["link_cage", 10], ["drift", 15], ["rain", 13]]
+	for sp in list:
+		var si: int = sp[1]
+		if si < 8:
+			continue
+		var name: String = sp[0]
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
+		var dr := Director.new()
+		dr.reset(900 + si, 20.0)
+		dr.stage = si
+		dr.world = si + 1
+		dr.spawned_first = true
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 31 + si
+		var trials := 30
+		var accepted := 0
+		var dangerous := 0
+		var leaks := 0
+		var kinds := {}
+		var worst_ms := 0.0
+		for i in trials:
+			var t := 100.0 + i * 7.3
+			Orbit.set_time(t)
+			var k := rng.randi_range(0, Orbit.count() - 1)
+			var a := rng.randf_range(-PI, PI)
+			var d := 1 if rng.randf() < 0.5 else -1
+			var w := dr.omega(t)
+			var res: Dictionary = dr._build(name, t, a, d, w, dr.level(t), 0, k)
+			var hs: Array = res["hazards"]
+			var hit := false
+			for h in hs:
+				kinds[h.get_script().get_global_name()] = true
+				ok(Director.kind_of(h) != "", "%s: %s has an obstacle kind" % [name, h.get_script().get_global_name()])
+				var ts: float = h.t_spawn
+				while ts <= h.t_end + 0.5:
+					Orbit.set_time(ts)
+					for kk in Orbit.count():
+						var iv: Array = []
+						h.danger(ts, iv, kk)
+						if not iv.is_empty():
+							if ts < h.t_danger_start - 0.001 or ts > h.t_danger_end + 0.001:
+								leaks += 1
+							else:
+								hit = true
+					ts += 0.02
+				ok(h.t_end >= h.t_danger_end and h.t_danger_start >= h.t_spawn - 0.001, "%s: time window in order" % name)
+			Orbit.set_time(t)
+			if hit:
+				dangerous += 1
+			var us0 := Time.get_ticks_usec()
+			if Survival.can_survive(hs, t, a, d, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP,
+					Survival.HUMAN_REACT, dr.omega_rate(t), {}, 0):
+				accepted += 1
+			worst_ms = maxf(worst_ms, (Time.get_ticks_usec() - us0) / 1000.0)
+			for h in hs:
+				h.free()
+		print("  %s (world %d): %d/%d fair, %d/%d dangerous, check %.1f ms worst, %s" % [name, si + 1, accepted, trials, dangerous, trials, worst_ms, ",".join(kinds.keys())])
+		ok(leaks == 0, "%s: no danger outside its window (%d)" % [name, leaks])
+		ok(dangerous >= trials * 0.8, "%s: really dangerous (%d/%d)" % [name, dangerous, trials])
+		ok(accepted >= trials * 0.3, "%s: accepted by the fairness check often enough (%d/%d)" % [name, accepted, trials])
+	Orbit.reset()

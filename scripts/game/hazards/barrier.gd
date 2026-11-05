@@ -36,7 +36,11 @@ func label_angle(time: float) -> float:
 func danger(time: float, out: Array, k := 0) -> void:
 	if time < t_danger_start or time > t_danger_end:
 		return
-	var a := theta_at(time)
+	ray_danger(theta_at(time), out, k)
+
+
+## Danger on orbit k of one beam from the home planet at angle a.
+func ray_danger(a: float, out: Array, k: int) -> void:
 	var hc := home_now()
 	if Orbit.center(k).distance_to(hc) < 1.0:
 		out.append(Vector2(wrapf(a, -PI, PI), asin((Orbit.PLAYER_R + BEAM_HALF) / Orbit.radius(k, a))))

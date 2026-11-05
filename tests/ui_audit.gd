@@ -153,6 +153,14 @@ func _audit_all(lang: String) -> void:
 		ui._rank_tab = tab
 		ui.refresh_ranking()
 		await _check(lang, tab)
+	# obstacle collection: every kind seen (longest texts), then all locked but the meteor
+	ui._rank_tab = "obstacles"
+	for half in [["meteor"], Director.KINDS.map(func(kd): return kd[0])]:
+		sv.seen_obstacles = half
+		for page in 2:
+			ui._rank_page = page
+			ui.refresh_ranking()
+			await _check(lang, "obstacles %d p%d" % [half.size(), page])
 	# in a run
 	main.duel = {}
 	main.start_run()
@@ -170,6 +178,10 @@ func _audit_all(lang: String) -> void:
 	for tip in [["TAP_HINT", "TUT_TAP_SUB"], ["TUT_NICE", "TUT_NICE_SUB"], ["TUT_JUMP", "TUT_JUMP_SUB"], ["TUT_NICE", "TUT_JUMP_DONE"], ["TIP_HOLD", "TIP_HOLD_SUB"], ["TIP_SWIPE", "TIP_SWIPE_SUB"]]:
 		ui.show_tip(L.t(tip[0]), L.t(tip[1]))
 		await _check(lang, "tip " + tip[1])
+	for kd in Director.KINDS:
+		var key: String = "OB_" + str(kd[0]).to_upper()
+		ui.show_tip(L.t("NEW_OB_T", L.t(key)), L.t(key + "_D"))
+		await _check(lang, "tip new " + str(kd[0]))
 	ui.hide_tip()
 	ui.set_duel_target(DUEL_NAME, 9999)
 	await _check(lang, "hud duel")

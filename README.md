@@ -5,6 +5,34 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.17 (código 19)
+
+- **Un obstáculo nuevo por mundo desde el 9** (`scripts/game/hazards/`), con su peso ×2,5 en su
+  propio mundo para que se note, y todos pasan por la misma comprobación de justicia
+  (`Survival`):
+
+  | Mundo | Obstáculo | Clase | Cómo se esquiva |
+  |---|---|---|---|
+  | 9 GIGANTES | Bumerán | `Boomerang` | pasa dos veces por el mismo punto (ida y vuelta) |
+  | 10 DEFORMADOS | Satélite | `Satellite` | órbita elíptica que corta la tuya al entrar y al salir |
+  | 11 LUNAS | Llamarada | `Flare` | cuña de fuego desde el planeta, por todas las órbitas |
+  | 12 GIGANTE | Ovni | `Ufo` | suelta 3-4 minas; se ve dónde caerá cada una |
+  | 13 CADENA | Cinturón de asteroides | `Belt` | fila de rocas que avanza: da la vuelta o salta |
+  | 14 BAILE | Meteorito doble | `Splitter` | se parte en dos antes de la órbita |
+  | 15 PÉNDULO | Rayos púlsar | `Beam` | dos rayos que giran y se apagan: pasa cuando se apagan |
+  | 16 PÚLSAR | Mezcla | — | uno de los anteriores (+ un meteorito cada vez más a menudo) |
+
+- **"NUEVO: …"**: la primera vez que aparece un tipo de obstáculo sale su nombre y cómo
+  esquivarlo, con 1 s de cámara lenta (no en duelos ni en el desafío diario, que deben ser la
+  misma partida para todos). Los jugadores de antes no ven el aviso de los obstáculos de los
+  mundos a los que ya llegaron.
+- **Colección de obstáculos**: pestaña OBSTÁCULOS en la pantalla del trofeo (ranking / logros /
+  obstáculos); los no vistos salen en sombra con "LLEGA AL MUNDO N".
+- `tests/obstacle_shots.gd` saca capturas de cada obstáculo en su mundo;
+  `tests/run_tests.gd -- --only=obstacles` comprueba que cada uno es peligroso, solo dentro de su
+  ventana de tiempo, justo, y cuánto tarda la comprobación (`--compare`: los de antes).
+- Arreglado: `jump_tip_done` leía las estadísticas antes de cargarlas.
+
 ## 1.0.16 (código 18)
 
 - **Habilidades sin botones** (los botones del HUD solo muestran las cargas):

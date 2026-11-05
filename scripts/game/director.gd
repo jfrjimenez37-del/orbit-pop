@@ -41,10 +41,23 @@ const PATTERNS := [
 ## time: with the worlds close together, a new world must not mean a wall of new obstacles).
 const STAGE_PATTERNS := [["pulse", 1, 2.2, 14.0], ["saw", 2, 2.0, 24.0], ["swap", 4, 2.6, 30.0],
 	["cross_rain", 4, 1.6, 40.0], ["link", 5, 2.4, 34.0], ["comet", 5, 2.4, 34.0], ["comet_rain", 7, 1.8, 48.0],
-	["link_cage", 7, 1.6, 52.0]]
+	["link_cage", 7, 1.6, 52.0],
+	# 1.0.17: one signature obstacle per world from world 9 on (see SIGNATURE)
+	["boomerang", 8, 2.2, 24.0], ["satellite", 9, 2.0, 26.0], ["flare", 10, 2.0, 28.0], ["ufo", 11, 2.0, 30.0],
+	["belt", 12, 2.0, 30.0], ["split", 13, 2.2, 32.0], ["beams", 14, 2.0, 32.0], ["mix", 15, 2.4, 34.0]]
 const MULTI_PLANET := ["link", "comet_rain", "link_cage"]
 ## Too costly to check against moving geometry: left out of the moving worlds.
-const NOT_WHILE_MOVING := ["pulse", "link", "link_cage"]
+const NOT_WHILE_MOVING := ["pulse", "link", "link_cage", "flare"]
+## The world's own obstacle shows up more often there (it is what makes the world feel new).
+const SIGNATURE_BOOST := 2.5
+## What "mix" (world 16) picks from: the new obstacles of worlds 9-15.
+const MIX := ["boomerang", "satellite", "flare", "ufo", "belt", "split", "beams"]
+## Obstacle kinds by first world, for the NEW OBSTACLE intro and the collection screen
+## (id, class name of the hazard, world where it first appears).
+const KINDS := [["meteor", "Meteor", 1], ["mine", "Spiky", 1], ["spoke", "Barrier", 1], ["pulse", "Pulse", 2],
+	["saw", "Spiky", 3], ["link", "Link", 6], ["comet", "Comet", 6], ["boomerang", "Boomerang", 9],
+	["satellite", "Satellite", 10], ["flare", "Flare", 11], ["ufo", "Ufo", 12], ["belt", "Belt", 13],
+	["split", "Splitter", 14], ["beams", "Beam", 15]]
 ## In-run coins (pickups, never hazards): an arc of COIN_ARC coins every COIN_ARC_EVERY s
 ## and a big coin (5) every COIN_BIG_EVERY s, each lasting COIN_LIFE s.
 const COIN_ARC := 3
@@ -53,6 +66,21 @@ const COIN_BIG_EVERY := Vector2(38.0, 52.0)
 const COIN_LIFE := 6.0
 const ATTEMPTS := 5             # candidate patterns tried before waiting a bit
 const ATTEMPTS_PER_FRAME := 1   # a failed candidate only delays the spawn by one frame
+
+
+## Obstacle kind (Director.KINDS id) of a hazard, "" if it is not one of them.
+static func kind_of(h: Object) -> String:
+	if h == null or h.get_script() == null:
+		return ""
+	var cls: String = h.get_script().get_global_name()
+	if cls == "Spiky":
+		return "saw" if h.style == "saw" else "mine"
+	if cls == "Barrier":
+		return "spoke"
+	for kd in KINDS:
+		if kd[1] == cls:
+			return kd[0]
+	return ""
 
 
 func reset(seed_value: int, recent_avg: float) -> void:
@@ -227,8 +255,9 @@ func _pick(t: float) -> String:
 		if te < float(sp[3]):
 			continue
 		if stage >= sp[1] and (not needs_two or Orbit.count() >= 2) and (not needs_planets or Orbit.planets().size() >= 2):
-			pool.append([sp[0], sp[2]])
-			total += sp[2]
+			var wt: float = sp[2] * (SIGNATURE_BOOST if int(sp[1]) == stage and int(sp[1]) >= 8 else 1.0)
+			pool.append([sp[0], wt])
+			total += wt
 	var r := rng.randf() * total
 	for p in pool:
 		r -= p[1]
@@ -387,6 +416,58 @@ func _build(name: String, t: float, a: float, d: int, w: float, x: float, attemp
 				var target2 := Orbit.pos(kk, rng.randf_range(-PI, PI)) if kk != k else Orbit.pos(k, a + d * w * (tt2 + i * 0.55))
 				hs.append(Comet.new().setup(target2, rng.randf_range(-PI, PI), ti, lerpf(0.5, 0.3, x), lerpf(140.0, 190.0, x)))
 			length = 1.9
+		"boomerang":
+			var fl := lerpf(2.3, 1.8, x)
+			var pre := lerpf(0.75, 0.45, x)
+			var tp := pre + Boomerang.first_pass(fl)
+			var target3 := Orbit.pos(k, a + d * w * tp * rng.randf_range(0.6, 1.0) + j)
+			var heading := (Orbit.center(k) - target3).angle() + rng.randf_range(-0.8, 0.8)
+			hs.append(Boomerang.new().setup(target3, heading, t, pre, fl, k))
+			length = pre + fl * 0.6
+		"satellite":
+			var sgn := 1.0 if rng.randf() < 0.5 else -1.0
+			var act5 := lerpf(2.4, 3.0, x)
+			hs.append(Satellite.new().setup(a + d * rng.randf_range(0.6, 1.6), t, warn + 0.15, act5, sgn * lerpf(1.5, 2.1, x), k))
+			length = warn + act5 * 0.6
+		"flare":
+			var fh := lerpf(0.32, 0.42, x)
+			hs.append(Flare.new().setup(a + d * w * (warn + 0.1) * rng.randf_range(0.0, 0.7), t, warn + 0.1, fh, k))
+			var oth := _other_planets(k)
+			if x > 0.5 and not oth.is_empty() and rng.randf() < 0.5:
+				var o3: int = oth[rng.randi() % oth.size()]
+				hs.append(Flare.new().setup(rng.randf_range(-PI, PI), t, warn + 0.5, fh, o3))
+			length = warn + 0.9
+		"ufo":
+			var nm := 3 + (1 if x > 0.5 else 0)
+			var gp := lerpf(0.45, 0.35, x)
+			hs.append(Ufo.new().setup(a + d * rng.randf_range(1.6, 2.4), -d * lerpf(1.2, 1.6, x), t, warn, nm, gp,
+				lerpf(1.4, 1.8, x), k))
+			length = warn + nm * gp + 0.6
+		"belt":
+			var act6 := lerpf(2.2, 2.8, x)
+			hs.append(Belt.new().setup(k, a + d * rng.randf_range(1.3, 2.0), 4 + int(x * 2.0), 0.34, -d * lerpf(0.35, 0.6, x),
+				t, warn, act6, rng.randi()))
+			length = warn + 1.6
+		"split":
+			var pre2 := lerpf(0.55, 0.3, x)
+			var spd2 := lerpf(85.0, 150.0, x)
+			var t_hit := pre2 + (Splitter.R0 - Orbit.radius(k, a)) / spd2
+			hs.append(Splitter.new().setup(a + d * w * t_hit + j, t, pre2, spd2, lerpf(0.45, 0.6, x), k))
+			length = t_hit * 0.8
+		"beams":
+			var act7 := lerpf(2.8, 3.4, x)
+			var sgn2 := 1.0 if rng.randf() < 0.5 else -1.0
+			hs.append(Beam.new().setup(rng.randf_range(-PI, PI), t, warn + 0.2, act7, sgn2 * lerpf(0.5, 0.8, x), k))
+			length = warn + act7 * 0.7
+		"mix":
+			# world 16: one of the new obstacles and, more and more often, a meteor with it
+			var pool: Array = MIX.filter(func(m): return not (Orbit.moving() and m in NOT_WHILE_MOVING))
+			var sub: Dictionary = _build(pool[rng.randi() % pool.size()], t, a, d, w, x * 0.85, 0, k)
+			hs = sub["hazards"]
+			length = float(sub["length"])
+			if rng.randf() < 0.3 + x * 0.4:
+				hs.append(_meteor(a + d * w * th + j, t + 0.4, x))
+				length = maxf(length, th * 0.8)
 	# every part of a pattern shows from the moment it appears (the fairness check assumes the
 	# player sees the whole pattern after their reaction time): later meteors and comets wait
 	# with their warning on screen and still launch at the same moment

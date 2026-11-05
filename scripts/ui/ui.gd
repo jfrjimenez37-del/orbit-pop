@@ -143,6 +143,7 @@ var _shop_list: Control
 var _shop_box: Control
 var _rank_tab := "ranking"
 var _rank_tabs := {}
+var _rank_tab_box: Control
 var _rank_list: Control
 var _rank_page := 0
 var _popup_box: Control
@@ -1449,10 +1450,7 @@ func _build_ranking() -> void:
 	var box := _container(ranking)
 	_rank_box = box
 	_place(box, 0.5, -140, 164, 280)
-	_tabs(box, ["ranking", "achievements"], [L.t("RANKING"), L.t("ACHIEVEMENTS")], ["trophy", "star"], _rank_tabs, func(id):
-		_rank_tab = id
-		_rank_page = 0
-		refresh_ranking())
+	_rank_tab_box = _container(box)
 	var panel := _panel(box, Vector2(0, 21), Vector2(164, 232))
 	_rank_list = _container(panel)
 	var back := _button(box, "white", L.t("BACK"), "back", Vector2(76, 22))
@@ -1460,11 +1458,37 @@ func _build_ranking() -> void:
 	back.pressed.connect(func(): menu_pressed.emit())
 
 
+const RANK_TABS := [["ranking", "RANKING", "trophy"], ["achievements", "ACHIEVEMENTS", "star"], ["obstacles", "OBSTACLES", "meteor"]]
+
+
+## Three tabs: the open one is wide with its name, the others only show their icon.
+func _layout_rank_tabs() -> void:
+	_clear(_rank_tab_box)
+	_rank_tabs.clear()
+	var narrow := 30
+	var wide := 164 - 2 * narrow - 8
+	var x := 0
+	for tb in RANK_TABS:
+		var id: String = tb[0]
+		var sel := id == _rank_tab
+		var w := wide if sel else narrow
+		var b := _button(_rank_tab_box, "yellow" if sel else "white", L.t(tb[1]) if sel else "", tb[2], Vector2(w, 18))
+		b.position = Vector2(x, 0)
+		x += w + 4
+		b.pressed.connect(func():
+			_rank_tab = id
+			_rank_page = 0
+			refresh_ranking())
+		_rank_tabs[id] = b
+
+
 func refresh_ranking() -> void:
 	_clear(_rank_list)
-	for id in _rank_tabs:
-		_style_button(_rank_tabs[id], "yellow" if id == _rank_tab else "white")
+	_layout_rank_tabs()
 	var pg = Progress.games
+	if _rank_tab == "obstacles":
+		_obstacle_list()
+		return
 	if _rank_tab == "ranking":
 		var region := Progress.region()
 		if _rank_board == "":
@@ -1519,6 +1543,41 @@ func refresh_ranking() -> void:
 		open.position = Vector2(17, 206)
 		open.disabled = not pg.signed_in
 		open.pressed.connect(func(): pg.show_achievements())
+
+
+## Collection of obstacle kinds: the ones met with their tip, the others locked until their world.
+func _obstacle_list() -> void:
+	var kinds: Array = Director.KINDS
+	var per := 7
+	var pages := ceili(kinds.size() / float(per))
+	_rank_page = clampi(_rank_page, 0, pages - 1)
+	var seen := 0
+	for kd in kinds:
+		if Save.seen_obstacles.has(kd[0]):
+			seen += 1
+	var hdr := _label(_rank_list, L.t("OB_SEEN", [seen, kinds.size()]), 1, MUTED)
+	_center_label(hdr, 164, 6)
+	for i in per:
+		var idx := _rank_page * per + i
+		if idx >= kinds.size():
+			break
+		var kd: Array = kinds[idx]
+		var got: bool = Save.seen_obstacles.has(kd[0])
+		var y := 19 + i * 23
+		var ic := ObstacleIcon.new(kd[0], not got)
+		ic.position = Vector2(8, y)
+		_rank_list.add_child(ic)
+		var key := "OB_" + str(kd[0]).to_upper()
+		_left_label(_rank_list, L.t(key) if got else "???", Vector2(32, y + 1), INK if got else MUTED)
+		_left_label(_rank_list, L.t(key + "_D") if got else L.t("OB_LOCKED", int(kd[2])), Vector2(32, y + 10), MUTED)
+	for k in 2:
+		var ar := _button(_rank_list, "white", "", "left" if k == 0 else "right", Vector2(26, 16))
+		ar.position = Vector2(8 if k == 0 else 130, 184)
+		ar.pressed.connect(func():
+			_rank_page = (_rank_page + (-1 if k == 0 else 1) + pages) % pages
+			refresh_ranking())
+	var pl := _label(_rank_list, "%d/%d" % [_rank_page + 1, pages], 1, MUTED)
+	_center_label(pl, 164, 188)
 
 
 func _my_runs() -> void:

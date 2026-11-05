@@ -914,6 +914,7 @@ func _sim(dt: float) -> void:
 			h.impacted.connect(_on_meteor_impact)
 		if h.t_danger_start - gt < 2.0:
 			Sfx.play("warn", 1.0, -6.0)
+		_new_obstacle(h)
 	for b in spawn["bubbles"]:
 		bubbles.append(b)
 		hazards_root.add_child(b)
@@ -963,6 +964,22 @@ func _sim(dt: float) -> void:
 		if take:
 			_collect(b)
 	bg.speed_mul = 1.0 + director.level(gt) * 1.5
+
+
+## The first time an obstacle kind shows up: its name and how to beat it, with a moment of
+## slow motion to read it (not in the tutorial; once per kind, see the collection screen).
+func _new_obstacle(h: Hazard) -> void:
+	var kind := Director.kind_of(h)
+	if kind == "" or Save.seen_obstacles.has(kind) or _tut_step == 1:
+		return
+	Save.seen_obstacles.append(kind)
+	Save.save_data()
+	var key := "OB_" + kind.to_upper()
+	ui.show_tip(L.t("NEW_OB_T", L.t(key)), L.t(key + "_D"), 2.6)
+	Sfx.play("unlock", 1.25, -4.0)
+	if not Save.reduce_motion and duel.is_empty():   # duels / daily: the same run for everyone
+		_world_intro_left = maxf(_world_intro_left, 1.0)
+	Progress.ga.design("Obstacle:New:" + kind)
 
 
 ## Death report (Settings > tap the version 5 times): from the moment the newest hazard could
@@ -1257,7 +1274,7 @@ func _update_world(dt: float) -> void:
 		Sfx.play("unlock")
 		if world_no > int(Save.stats.get("best_world", 1)):
 			Progress.ga.design("World:FirstReach:%02d" % world_no)
-			if not Save.reduce_motion:
+			if not Save.reduce_motion and duel.is_empty():
 				_world_intro_left = 1.2
 		Progress.ga.progression("Complete", _ga_mode(), "World%02d" % (world_no - 1), "", score)
 		Progress.event("world", world_no)
