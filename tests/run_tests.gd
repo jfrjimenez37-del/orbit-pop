@@ -1708,6 +1708,22 @@ func test_events(save) -> void:
 		main.state = main.S.DYING
 		main._game_over()
 		ok(main.duel.get("last", {}).get("mode", "") == "event", "events: %s result shown" % ev["id"])
+	# overtaking the week's best in an event / today's best in the daily: the right HUD message
+	var l10n = get_root().get_node("L")
+	for kind in ["event", "daily", "duel"]:
+		save.event_run = {"week": save.event_week(), "tries": 1, "best": 10, "paid": 0}
+		if kind == "event":
+			main.start_event()
+		elif kind == "daily":
+			main.start_daily()
+		else:
+			main.start_duel({"seed": 77, "score": 10, "name": "MAYA", "code": "X"})
+		main.duel["target"] = 10
+		main._add_score(11)
+		var want: String = {"event": "EVENT_AHEAD", "daily": "DAILY_AHEAD", "duel": "DUEL_AHEAD"}[kind]
+		ok(main.duel_lead and main.ui._hud_best.text == l10n.t(want), "events: overtaking in a %s run says %s" % [kind, want])
+		main.state = main.S.DYING
+		main._game_over()
 	main.duel = {}
 	main.start_run()
 	ok(main.director.only.is_empty() and main.director.omega_mul == 1.0 and main._event_stage == -1, "events: a normal run after an event is normal")

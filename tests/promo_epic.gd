@@ -147,6 +147,7 @@ func _initialize() -> void:
 		"jumps": _tl_jumps()
 		"moving": _tl_moving()
 		"daily": _tl_daily()
+		"ad": _tl_ad()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
 
@@ -220,6 +221,23 @@ func _end_card(n: float) -> void:
 func _beats(from: int, to: int, amp: float) -> void:
 	for k in range(from, to):
 		_at(bt(k), func(): _punch(amp))
+
+
+## Game footage for the live-action commercial (store/ad/): six segments in seconds, no captions
+## (they are added in the edit with the actors' shots):
+##   A 0-3 near miss in slow motion (4 planets) · B 3-7 a duel (goes on the green phone screen)
+##   C 7-10 the same duel, overtaking the friend's score · D 10-12.5 the real duel result
+##   E 12.5-15.5 moving planets with pulsar beams · F 15.5-18.5 the logo.
+func _tl_ad() -> void:
+	end_t = 18.5
+	_at(0.0, func(): _shot_near(Vector2(0.8, 2.4), 1.6, 10, 28.0); _cam(1.7, true))
+	_at(3.0, func(): _shot_duel(); _cam(1.0, false); _flash(0.6))
+	_at(9.4, func():
+		if main.state == main.S.PLAYING and not main.duel_lead:
+			_duel_win())
+	_at(10.0, func(): _shot_over(main.score); _flash(0.5))
+	_at(12.5, func(): _shot_play("ad_e", 14, 30.0, 6.0, 131); _cam(1.0, false); _flash(0.8); _punch(0.2))
+	_at(15.5, func(): _shot_end(); _flash(1.0); _punch(0.2))
 
 
 ## Short: "can you beat my score?" with a real duel code for the comments.

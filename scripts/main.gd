@@ -1283,7 +1283,7 @@ func _add_score(n: int) -> void:
 		director.hold = true
 	if not duel.is_empty() and int(duel["target"]) > 0 and not duel_lead and score > int(duel["target"]):
 		duel_lead = true
-		ui.announce_duel_lead(duel.get("kind", "duel") in ["daily", "event"])
+		ui.announce_duel_lead(str(duel.get("kind", "duel")))
 		Sfx.play("record")
 	if not record_announced and best_at_start > 0 and score > best_at_start and (duel.is_empty() or int(duel["target"]) < 0):
 		record_announced = true
