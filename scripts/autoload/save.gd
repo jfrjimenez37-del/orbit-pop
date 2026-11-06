@@ -73,8 +73,26 @@ var _snapshot := {}
 
 func _ready() -> void:
 	load_data()
+	if OS.has_feature("unlock_all"):
+		unlock_all()
 	sessions += 1
 	save_data()
+
+
+## Tester builds only (export feature tag "unlock_all"): every skin, trail and ability, top
+## level, plenty of coins. Those builds never upload a cloud save or analytics.
+func unlock_all() -> void:
+	level = Upgrades.MAX_LEVEL
+	coins = maxi(coins, 99999)
+	tutorial_done = true
+	jump_tip_done = true
+	for a in Upgrades.ABILITIES:
+		abilities[a["id"]] = int(a["max"])
+	for cat in ["skins", "trails"]:
+		for it in Catalog.items(cat):
+			var key: String = cat + ":" + str(it["id"])
+			if not owned_items.has(key):
+				owned_items.append(key)
 
 
 func load_data() -> void:

@@ -53,7 +53,7 @@ func start(save: Node) -> void:
 		_save.analytics_id = uuid()
 		_save.save_data()
 	user_id = _save.analytics_id
-	opted_out = not bool(_save.share_stats)
+	opted_out = not bool(_save.share_stats) or OS.has_feature("unlock_all")
 	build = str(ProjectSettings.get_setting("application/config/version", ""))
 	_load_queue()
 	_http = HTTPRequest.new()

@@ -714,6 +714,16 @@ func test_progress(save) -> void:
 		and str(save.top_scores[0]["s"]) == "189" and save.top_scores[1]["s"] == 120,
 		"cloud merge: best runs stay whole numbers, each run once (no 189 + 189.0)")
 	ok(save.clean_tops([{"s": 189}, {"s": 189.0}, {"s": 50, "w": 2, "d": "x"}]).size() == 2, "old saves: duplicated best runs cleaned on load")
+	# tester builds ("unlock_all" feature): everything unlocked
+	save.reset_all()
+	save.unlock_all()
+	var all_owned := true
+	for cat in ["skins", "trails"]:
+		for i in Catalog.items(cat).size():
+			all_owned = all_owned and save.unlocked(cat, i)
+	ok(all_owned and save.level == Upgrades.MAX_LEVEL and save.ability("teleport") == 3 and save.ability("secondlife") == 1 and save.coins >= 99999,
+		"unlock_all: every skin, trail and ability, top level, coins")
+	save.reset_all()
 	# regions
 	ok(PlayGamesConfig.region("es_MX") == "CENTRAL_AMERICA" and PlayGamesConfig.region("es_DO") == "CENTRAL_AMERICA" \
 		and PlayGamesConfig.region("pt_BR") == "SOUTH_AMERICA" and PlayGamesConfig.region("es_AR") == "SOUTH_AMERICA" \

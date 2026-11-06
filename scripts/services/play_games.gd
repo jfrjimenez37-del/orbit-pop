@@ -178,7 +178,7 @@ func _on_game_loaded(snapshot) -> void:
 
 
 func save_cloud(data: Dictionary) -> void:
-	if not signed_in:
+	if not signed_in or OS.has_feature("unlock_all"):
 		return
 	var bytes := JSON.stringify(data).to_utf8_buffer()
 	_snap.call("save_game", PlayGamesConfig.CLOUD_SLOT, "ORBIT POP", bytes, 0, int(data.get("best", 0)))
