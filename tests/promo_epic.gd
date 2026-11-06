@@ -148,6 +148,7 @@ func _initialize() -> void:
 		"moving": _tl_moving()
 		"daily": _tl_daily()
 		"ad": _tl_ad()
+		"fila": _tl_fila()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
 
@@ -221,6 +222,20 @@ func _end_card(n: float) -> void:
 func _beats(from: int, to: int, amp: float) -> void:
 	for k in range(from, to):
 		_at(bt(k), func(): _punch(amp))
+
+
+## Game footage for "One Game While We Wait" (store/ad/fila): no captions. 0-1.4 the challenges
+## screen (DUEL A FRIEND) · 1.4-4.6 a duel, overtaking MAYA at 3.6 · 4.6-6.6 the duel result ·
+## 6.6-9.6 the logo end card.
+func _tl_fila() -> void:
+	end_t = 9.6
+	_at(0.0, func(): _shot_challenges())
+	_at(1.4, func(): _shot_duel(); _cam(1.0, false); _flash(0.6); _punch(0.2))
+	_at(3.6, func():
+		if main.state == main.S.PLAYING and not main.duel_lead:
+			_duel_win())
+	_at(4.6, func(): _shot_over(main.score); _flash(0.5))
+	_at(6.6, func(): _shot_end(); _flash(1.0); _punch(0.2))
 
 
 ## Game footage for the live-action commercial (store/ad/): six segments in seconds, no captions

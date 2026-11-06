@@ -29,3 +29,13 @@ Rebuild (Flow takes are not in the repository):
     # the same at 1080x2220 for the phone screen: frames 180-479 (game 3-8 s) -> phone_en.mov
     python3 tools/make_ad.py <takes_dir> game_en.mov <end_card.mp4> assets/music/planets.ogg en out.mp4 phone_en.mov
     ffmpeg -i out.mp4 -c:v copy -af loudnorm=I=-14:TP=-1.5:LRA=11 -c:a aac -b:a 192k store/ad/OrbitPop_ad_15s_en.mp4
+
+## "One Game While We Wait" (Flow takes + the real game)
+
+Game footage: `_tl_fila` in `tests/promo_epic.gd` (9.6 s, no captions): challenges screen with
+DUEL A FRIEND (0-1.4), a duel overtaking MAYA (1.4-4.6), the duel result YOU WIN! +50 (4.6-6.6),
+logo end card (6.6-9.6). Render it like the `ad` variant, with `fila` instead of `ad`.
+Edit: Q01 (GTA VI for social, NEW CONSOLE for ads) · tap on NEW DUEL · duel · result · Q02 the
+shutter opens · Q03 "Best two out of three?" + record scratch · Q04 SOLD OUT · end card WHO ARE
+YOU CHALLENGING? / JOIN THE BETA / LINK IN BIO. Music Spin Bonk Repeat, ducked under the voices.
+Cuts of 24-26 s and 15-17 s, -14 LUFS. The Flow takes and the edits are not in the repository.
