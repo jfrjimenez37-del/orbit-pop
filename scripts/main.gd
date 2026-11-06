@@ -42,11 +42,20 @@ var _jump_tries := 0
 var _event_stage := -1         # weekly event on a single world (Stages index), -1 = normal worlds
 var _world_intro_left := 0.0   # first time in a world: a second of slow motion with its banner
 ## Gestures: the tap flips at once as always; keeping the finger still for HOLD_TIME starts the
-## SLOW-MO, moving it SWIPE_PX within SWIPE_TIME undoes that flip and TELEPORTS that way.
+## SLOW-MO; moving it SWIPE_PX within SWIPE_TIME undoes that flip and starts AIMING the TELEPORT:
+## the game slows to AIM_SCALE, the finger drags the aim (AIM_GAIN x its move, from the player) to
+## the nearest orbit point of any planet, and letting go warps there. Back on the player = cancel
+## (no charge spent); after AIM_MAX real seconds it warps on its own.
 const HOLD_TIME := 0.5
 const HOLD_SHOW := 0.15        # the charging ring appears after this
 const SWIPE_PX := 14.0
 const SWIPE_TIME := 0.35
+const AIM_SCALE := 0.15
+const AIM_MAX := 1.6
+const AIM_GAIN := 1.6
+const AIM_CANCEL_PX := 7.0     # aim closer than this to the player: letting go cancels
+var _aim := {}                 # {origin (finger at the swipe), pos (finger now), t (real s), k, a, cancel}
+var aim_view: AimPreview
 var _touch := {}               # {pos, t (real s), dir, orbit, done}
 var _near_streak := 0          # combo: near misses in a row (a normal pass breaks it)
 var best_combo := 0            # longest combo of this run (share card, stats)
@@ -106,6 +115,10 @@ var _tween: Tween
 
 func _ready() -> void:
 	randomize()
+	aim_view = AimPreview.new()
+	aim_view.z_index = 5
+	aim_view.visible = false
+	world.add_child(aim_view)
 	player.set_skin(Save.skin)
 	apply_style()
 	player.reset()
@@ -643,6 +656,7 @@ func start_run() -> void:
 	_tut_scale = 1.0
 	_world_intro_left = 0.0
 	_touch = {}
+	_aim_stop()
 	player.hold = 0.0
 	_near_streak = 0
 	best_combo = 0
@@ -927,6 +941,11 @@ func _process(delta: float) -> void:
 				if slowmo_left <= 0.0:
 					player.slowmo = false
 					bg.speed_mul = 1.0
+			if not _aim.is_empty():
+				left *= AIM_SCALE
+				_aim_update(_aim["pos"])   # planets move: keep the aim on an orbit
+				if Time.get_ticks_msec() / 1000.0 - float(_aim["t"]) > AIM_MAX:
+					_aim_finish()
 			var t0 := Time.get_ticks_usec()
 			while left > 0.0 and state == S.PLAYING:
 				var step := minf(SUBSTEP, left)
@@ -1150,18 +1169,28 @@ func _collect(b: Bubble) -> void:
 	Sfx.play("pop")
 
 
-## Finger moving / lifted after a tap: a quick swipe becomes a TELEPORT, lifting ends the hold.
+## Finger moving / lifted after a tap: a quick swipe starts aiming the TELEPORT (lifting warps),
+## lifting ends the hold.
 func _gesture(event: InputEvent) -> void:
-	if _touch.is_empty() or state != S.PLAYING:
+	if state != S.PLAYING:
 		return
 	var released: bool = (event is InputEventScreenTouch and not event.pressed) \
 		or (event is InputEventMouseButton and not event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+	var moved: bool = event is InputEventScreenDrag or (event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT
+		and event.device != InputEvent.DEVICE_ID_EMULATION)
+	if not _aim.is_empty():
+		if released:
+			_touch = {}
+			_aim_finish()
+		elif moved:
+			_aim_update(event.position)
+		return
+	if _touch.is_empty():
+		return
 	if released:
 		_touch = {}
 		player.hold = 0.0
 		return
-	var moved: bool = event is InputEventScreenDrag or (event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT
-		and event.device != InputEvent.DEVICE_ID_EMULATION)
 	if not moved or _touch["done"]:
 		return
 	var v: Vector2 = event.position - _touch["pos"]
@@ -1173,7 +1202,43 @@ func _gesture(event: InputEvent) -> void:
 		return   # too slow, no charges, or the tap was a planet jump: keep it
 	if player.dir != int(_touch["dir"]):
 		player.flip()   # the swipe's own tap flipped: undo it, the swipe decides
-	use_teleport(v)
+	_aim = {"origin": _touch["pos"], "pos": event.position, "t": Time.get_ticks_msec() / 1000.0,
+		"k": player.orbit, "a": player.angle, "cancel": true}
+	_aim_update(event.position)
+
+
+## The aim point = the player + AIM_GAIN x the finger's move since the swipe, snapped to the
+## nearest point of any orbit.
+func _aim_update(finger: Vector2) -> void:
+	_aim["pos"] = finger
+	var drag: Vector2 = (finger - _aim["origin"]) * AIM_GAIN
+	var p := player.position + drag
+	_aim["cancel"] = drag.length() < AIM_CANCEL_PX
+	var best_d := INF
+	for j in Orbit.count():
+		var aj := Orbit.nearest_angle(j, p)
+		var d := Orbit.pos(j, aj).distance_to(p)
+		if d < best_d:
+			best_d = d
+			_aim["k"] = j
+			_aim["a"] = aj
+	aim_view.show_aim(player.position, Orbit.pos(int(_aim["k"]), float(_aim["a"])), _aim["cancel"])
+
+
+func _aim_finish() -> void:
+	if _aim.is_empty():
+		return
+	var dest := [int(_aim["k"]), float(_aim["a"])]
+	var cancel: bool = _aim["cancel"]
+	_aim_stop()
+	if not cancel:
+		_warp(_safe_spot(dest))
+
+
+func _aim_stop() -> void:
+	_aim = {}
+	if aim_view != null:
+		aim_view.hide_aim()
 
 
 ## Finger kept still after a tap: the ring fills, then the SLOW-MO starts.
@@ -1237,6 +1302,11 @@ func _teleport_target(swipe: Vector2) -> Array:
 	var dest := [k, a + (1.0 if along >= 0.0 else -1.0) * Upgrades.TELEPORT_ARC]
 	if int(best[0]) >= 0 and float(best[2]) > 0.6 and float(best[2]) > absf(along):
 		dest = [best[0], best[1]]
+	return _safe_spot(dest)
+
+
+## The nearest spot around [orbit, angle] where the player can survive.
+func _safe_spot(dest: Array) -> Array:
 	var rate: float = director.omega_rate(gt)
 	for off in [0.0, 0.12, -0.12, 0.24, -0.24, 0.36, -0.36, 0.5, -0.5]:
 		var cand: float = float(dest[1]) + off
@@ -1245,12 +1315,18 @@ func _teleport_target(swipe: Vector2) -> Array:
 	return dest
 
 
+## TELEPORT button / keyboard T / tests: the way the swipe points (opposite side without one).
 func use_teleport(swipe := Vector2.ZERO) -> void:
+	if teleports <= 0 or state != S.PLAYING:
+		return
+	_warp(_teleport_target(swipe))
+
+
+func _warp(dest: Array) -> void:
 	if teleports <= 0 or state != S.PLAYING:
 		return
 	teleports -= 1
 	var from := player.position
-	var dest := _teleport_target(swipe)
 	player.teleport_to(int(dest[0]), float(dest[1]))
 	shield_until = maxf(shield_until, gt + 0.5)
 	fx.burst(from, 12, [Color8(200, 140, 255), Color.WHITE], 60.0, 0.35, 2.0)

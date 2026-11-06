@@ -704,6 +704,16 @@ func test_progress(save) -> void:
 	older["coins"] = 5; older["saved_at"] = 1; older["best"] = 10
 	save.merge(older)
 	ok(save.coins == 777 and save.best == 99, "older cloud copy never lowers progress")
+	# best runs from the cloud come back as JSON floats: no duplicates, shown as whole numbers
+	save.top_scores = [{"s": 189, "w": 7, "d": "2026-11-05"}, {"s": 116, "w": 5, "d": "2026-11-06"}]
+	var js: Dictionary = JSON.parse_string(JSON.stringify(save.export_data()))
+	js["top_scores"].append({"s": 120.0, "w": 5.0, "d": "2026-11-04"})
+	save.merge(js)
+	save.merge(js)
+	ok(save.top_scores.size() == 3 and save.top_scores.all(func(e): return e["s"] is int and e["w"] is int)
+		and str(save.top_scores[0]["s"]) == "189" and save.top_scores[1]["s"] == 120,
+		"cloud merge: best runs stay whole numbers, each run once (no 189 + 189.0)")
+	ok(save.clean_tops([{"s": 189}, {"s": 189.0}, {"s": 50, "w": 2, "d": "x"}]).size() == 2, "old saves: duplicated best runs cleaned on load")
 	# regions
 	ok(PlayGamesConfig.region("es_MX") == "CENTRAL_AMERICA" and PlayGamesConfig.region("es_DO") == "CENTRAL_AMERICA" \
 		and PlayGamesConfig.region("pt_BR") == "SOUTH_AMERICA" and PlayGamesConfig.region("es_AR") == "SOUTH_AMERICA" \
@@ -1517,40 +1527,72 @@ func test_gestures(save) -> void:
 	main._touch = {}
 	main.slowmo_left = 0.0
 	main.player.slowmo = false
-	# swipe along the orbit (one planet): jump TELEPORT_ARC that way, the tap's flip undone
+	# swipe: the tap's flip is undone and the TELEPORT aim starts (slow game, nothing spent yet)
 	var d0: int = main.player.dir
 	main._flip()   # the swipe's own tap
-	main._touch = {"pos": Vector2(90, 200), "t": Time.get_ticks_msec() / 1000.0, "dir": d0, "orbit": 0, "done": false, "pointer": true}
+	var org := Vector2(90, 200)
+	main._touch = {"pos": org, "t": Time.get_ticks_msec() / 1000.0, "dir": d0, "orbit": 0, "done": false, "pointer": true}
 	var a0: float = main.player.angle
 	var tangent: Vector2 = (Orbit.pos(0, a0 + 0.02) - Orbit.pos(0, a0 - 0.02)).normalized()
 	var ev := InputEventScreenDrag.new()
-	ev.position = Vector2(90, 200) + tangent * 30.0
+	ev.position = org + tangent * 20.0
 	main._gesture(ev)
-	var moved := wrapf(main.player.angle - a0, -PI, PI)
-	ok(main.teleports == 1 and main.player.dir == d0 and absf(moved - Upgrades.TELEPORT_ARC) < 0.55,
-		"gestures: swipe along the orbit teleports forward %.2f rad, direction kept" % moved)
-	# swipe toward the other planet: onto its orbit
+	ok(not main._aim.is_empty() and main.teleports == 2 and main.player.dir == d0 and main.aim_view.visible,
+		"teleport aim: a swipe starts aiming (flip undone, no charge spent yet)")
+	var gt0: float = main.gt
+	main._process(0.1)
+	ok(main.gt - gt0 < 0.1 * main.AIM_SCALE + 0.01, "teleport aim: the game runs at %.2fx while aiming" % main.AIM_SCALE)
+	# drag the aim along the orbit, let go: warp there
+	var goal: Vector2 = Orbit.pos(0, a0 + 1.0)
+	ev.position = org + (goal - main.player.position) / main.AIM_GAIN
+	main._gesture(ev)
+	ok(main._aim["k"] == 0 and absf(Orbit.ang_diff(main._aim["a"], a0 + 1.0)) < 0.2, "teleport aim: the aim snaps to the orbit under the drag")
+	var up := InputEventScreenTouch.new()
+	up.pressed = false
+	main._gesture(up)
+	var moved := Orbit.ang_diff(main.player.angle, a0 + 1.0)
+	ok(main._aim.is_empty() and main.teleports == 1 and absf(moved) < 0.55 and not main.aim_view.visible,
+		"teleport aim: letting go warps to the aim (%.2f rad off, safe spot)" % moved)
+	# back on the player: cancel, no charge spent
+	main._touch = {"pos": org, "t": Time.get_ticks_msec() / 1000.0, "dir": main.player.dir, "orbit": main.player.orbit, "done": false, "pointer": true}
+	var a1: float = main.player.angle
+	ev.position = org + Vector2(20, 0)
+	main._gesture(ev)
+	ev.position = org + Vector2(2, 1)
+	main._gesture(ev)
+	main._gesture(up)
+	ok(main.teleports == 1 and absf(Orbit.ang_diff(main.player.angle, a1)) < 0.1, "teleport aim: dragged back onto the player = cancelled, charge kept")
+	# aim at the other planet's orbit
 	main._touch = {}
 	Orbit.set_shape(Stages.LIST[5]["orbits"], true)
 	main.player.teleport_to(0, 0.0)
-	var p0: Vector2 = Orbit.pos(0, 0.0)
-	var other := Vector2.ZERO
-	var dmin := INF
-	for s in 72:
-		var q: Vector2 = Orbit.pos(1, -PI + TAU * s / 72.0)
-		if q.distance_to(p0) < dmin:
-			dmin = q.distance_to(p0)
-			other = q
-	var d1: int = main.player.dir
-	main._flip()
-	main._touch = {"pos": Vector2(90, 200), "t": Time.get_ticks_msec() / 1000.0, "dir": d1, "orbit": 0, "done": false, "pointer": true}
-	var ev2 := InputEventScreenDrag.new()
-	ev2.position = Vector2(90, 200) + (other - p0).normalized() * 30.0
-	if main.player.orbit == 0:
-		main._gesture(ev2)
-		ok(main.player.orbit == 1 and main.teleports == 0, "gestures: swipe toward the other planet lands on its orbit")
-	else:
-		ok(true, "gestures: (the tap itself was a planet jump here)")
+	var aim_far := Vector2.ZERO
+	var dfar := -1.0
+	for st in 72:
+		var q: Vector2 = Orbit.pos(1, -PI + TAU * st / 72.0)
+		var dd: float = Orbit.pos(0, Orbit.nearest_angle(0, q)).distance_to(q)
+		if dd > dfar:
+			dfar = dd
+			aim_far = q
+	main._touch = {"pos": org, "t": Time.get_ticks_msec() / 1000.0, "dir": main.player.dir, "orbit": 0, "done": false, "pointer": true}
+	ev.position = org + Vector2(0, 20)
+	main._gesture(ev)
+	ev.position = org + (aim_far - main.player.position) / main.AIM_GAIN
+	main._gesture(ev)
+	main._gesture(up)
+	ok(main.player.orbit == 1 and main.teleports == 0, "teleport aim: aiming at another planet's orbit warps onto it")
+	# no charges left: a swipe does not aim
+	main._touch = {"pos": org, "t": Time.get_ticks_msec() / 1000.0, "dir": main.player.dir, "orbit": main.player.orbit, "done": false, "pointer": true}
+	ev.position = org + Vector2(20, 0)
+	main._gesture(ev)
+	ok(main._aim.is_empty(), "teleport aim: no charges, no aim")
+	# AIM_MAX: the aim warps on its own
+	main.teleports = 1
+	main._touch = {"pos": org, "t": Time.get_ticks_msec() / 1000.0, "dir": main.player.dir, "orbit": main.player.orbit, "done": false, "pointer": true}
+	main._gesture(ev)
+	main._aim["t"] = Time.get_ticks_msec() / 1000.0 - main.AIM_MAX - 0.1
+	main._process(0.016)
+	ok(main._aim.is_empty() and main.teleports == 0, "teleport aim: after %.1f s it warps by itself" % main.AIM_MAX)
 	# NEW OBSTACLE intro: first boomerang -> tip + seen; the second one says nothing
 	save.seen_obstacles = ["meteor"]
 	main.ui.hide_tip()

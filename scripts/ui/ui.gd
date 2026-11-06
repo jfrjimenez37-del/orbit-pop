@@ -1670,7 +1670,7 @@ func refresh_ranking() -> void:
 			_my_runs()
 		else:
 			_board_view(pg)
-		var boards := [["GLOBAL", "globe"], [region, ""], ["FRIENDS", ""], ["TODAY", ""]]
+		var boards := [["GLOBAL", "globe"], [region, ""], ["FRIENDS", ""], ["DAY", ""]]
 		for k in boards.size():
 			var bd: String = boards[k][0]
 			var bt := _button(_rank_list, "yellow" if _rank_board == bd else "white", board_name(bd), boards[k][1], Vector2(72, 18))
@@ -1819,7 +1819,7 @@ func _my_runs() -> void:
 func _board_view(pg) -> void:
 	var me: int = pg.ranks.get(_rank_board, -1)
 	var head := board_name(_rank_board)
-	if me > 0:
+	if me > 0 and _text_w(head + "  " + L.t("YOU_RANK", me)) <= 128:   # clear of the "?" button
 		head += "  " + L.t("YOU_RANK", me)
 	var t := _label(_rank_list, head, 1, MUTED)
 	_center_label(t, 164, 6)
@@ -1860,7 +1860,8 @@ func board_name(board: String) -> String:
 	match board:
 		"GLOBAL": return L.t("GLOBAL")
 		"FRIENDS": return L.t("FRIENDS")
-		"TODAY": return L.t("DAILY_RANK")
+		"DAY": return L.t("DAILY_RANK")
+		"TODAY": return L.t("DAILY_TITLE")
 		"WEEK": return L.t("EVENT_RANK")
 	return PlayGamesConfig.REGION_NAMES.get(board, board)
 

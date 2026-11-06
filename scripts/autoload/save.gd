@@ -34,6 +34,7 @@ var free_ads_date := ""
 var free_ads_used := 0
 var starter_seen := false
 var unlock_rules := 2         # 1 = before 1.0.21 (see _keep_old_unlocks)
+var best_sent := 0             # best score already sent to the Play Games boards (sign-in sync)
 var welcome_shown := false     # (1.0.20) welcome offer already offered once
 var welcome_count := 0         # times the welcome offer (starter at -50 %) was offered
 var welcome_until := 0         # unix time its countdown ends
@@ -142,7 +143,8 @@ func load_data() -> void:
 	if int(cfg.get_value("meta", "unlock_rules", 1)) < 2:
 		_keep_old_unlocks()
 	achievements = cfg.get_value("progress", "achievements", [])
-	top_scores = cfg.get_value("progress", "top_scores", [])
+	best_sent = int(cfg.get_value("meta", "best_sent", 0))
+	top_scores = clean_tops(cfg.get_value("progress", "top_scores", []))
 	missions = cfg.get_value("progress", "missions", {"day": -1, "list": [], "week": -1, "weekly": {}})
 	saved_at = int(cfg.get_value("meta", "saved_at", 0))
 	if skin < 0 or skin >= SKINS.size() or not is_unlocked(skin):
@@ -174,6 +176,7 @@ func save_data() -> void:
 	cfg.set_value("shop", "welcome_shown", welcome_shown)
 	cfg.set_value("shop", "welcome_count", welcome_count)
 	cfg.set_value("meta", "unlock_rules", unlock_rules)
+	cfg.set_value("meta", "best_sent", best_sent)
 	cfg.set_value("shop", "welcome_until", welcome_until)
 	cfg.set_value("meta", "review_asks", review_asks)
 	cfg.set_value("settings", "reduce_motion", reduce_motion)
@@ -550,6 +553,7 @@ func export_data() -> Dictionary:
 ## Merges a cloud snapshot: records, level and unlocks are combined, the wallet follows the newer save.
 ## Returns true if anything changed.
 func merge(d: Dictionary) -> bool:
+	d = _whole(d)   # the cloud snapshot is JSON: 189 comes back as 189.0
 	var before := JSON.stringify(export_data())
 	var newer := int(d.get("saved_at", 0)) > saved_at
 	best = maxi(best, int(d.get("best", 0)))
@@ -571,12 +575,7 @@ func merge(d: Dictionary) -> bool:
 	var st: Dictionary = d.get("stats", {})
 	for k in st:
 		stats[k] = maxi(int(stats.get(k, 0)), int(st[k]))
-	for e in d.get("top_scores", []):
-		if not top_scores.has(e):
-			top_scores.append(e)
-	top_scores.sort_custom(func(a, b): return int(a["s"]) > int(b["s"]))
-	if top_scores.size() > 10:
-		top_scores.resize(10)
+	top_scores = clean_tops(top_scores + Array(d.get("top_scores", [])))
 	if newer:
 		coins = int(d.get("coins", coins))
 		daily_day = int(d.get("daily_day", daily_day))
@@ -589,6 +588,40 @@ func merge(d: Dictionary) -> bool:
 	var changed_any := JSON.stringify(export_data()) != before
 	save_data()
 	return changed_any
+
+
+## Whole-number floats back to int, in nested dictionaries and arrays.
+static func _whole(v: Variant) -> Variant:
+	if v is float and v == floorf(v) and absf(v) < 1e15:
+		return int(v)
+	if v is Dictionary:
+		var o := {}
+		for k in v:
+			o[k] = _whole(v[k])
+		return o
+	if v is Array:
+		return v.map(_whole)
+	return v
+
+
+## Best runs: int scores, one entry per run (score, world, day), best 10 first. Saves from 1.0.22
+## and older could hold the same cloud run twice (189 and 189.0).
+static func clean_tops(list: Array) -> Array:
+	var out: Array = []
+	var seen := {}
+	for e in list:
+		if not e is Dictionary or not e.has("s"):
+			continue
+		var r := {"s": int(e["s"]), "w": int(e.get("w", 1)), "d": str(e.get("d", ""))}
+		var key := "%d|%d|%s" % [r["s"], r["w"], r["d"]]
+		if seen.has(key):
+			continue
+		seen[key] = true
+		out.append(r)
+	out.sort_custom(func(a, b): return int(a["s"]) > int(b["s"]))
+	if out.size() > 10:
+		out.resize(10)
+	return out
 
 
 func daily_available() -> bool:
@@ -642,6 +675,7 @@ func reset_all() -> void:
 	welcome_count = 0
 	welcome_until = 0
 	unlock_rules = 2
+	best_sent = 0
 	review_asks = 0
 	review_day = -9999
 	reduce_motion = false

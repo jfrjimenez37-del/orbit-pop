@@ -224,6 +224,21 @@ static func angle_of(k: int, p: Vector2) -> float:
 
 
 ## Planet radius of orbit k's planet.
+## Angle of the point of orbit k nearest to p (the direction of p, refined nearby).
+static func nearest_angle(k: int, p: Vector2) -> float:
+	var best := angle_of(k, p)
+	var best_d := pos(k, best).distance_squared_to(p)
+	for step in [0.12, 0.04, 0.015]:
+		var base := best
+		for s in [-2, -1, 1, 2]:
+			var a: float = base + s * step
+			var d := pos(k, a).distance_squared_to(p)
+			if d < best_d:
+				best_d = d
+				best = a
+	return wrapf(best, -PI, PI)
+
+
 static func planet_r(k: int) -> float:
 	var r_new: float = _def(defs, k).get("pr", PLANET_R)
 	if blend >= 1.0:

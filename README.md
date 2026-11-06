@@ -5,6 +5,22 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.23 (código 25)
+
+- **Teletransporte apuntado**: al deslizar, el juego va a cámara lenta (`AIM_SCALE` 0,15) y el
+  dedo arrastra la mira (línea de puntos + fantasma) hasta el punto más cercano de cualquier
+  órbita; al soltar, salta ahí (al sitio seguro más cercano). Volver al jugador cancela sin gastar
+  la carga; a los `AIM_MAX` 1,6 s salta solo. `AimPreview`, `Orbit.nearest_angle`.
+- **Ranking HOY** = las partidas normales de hoy (tabla global, periodo diario). El ranking del
+  reto diario sigue en RETOS › HOY y se titula RETO DIARIO. Cada partida envía su puntuación
+  (Play Games guarda la mejor de cada jugador); el récord solo se reenvía al iniciar sesión si
+  nunca llegó (`Save.best_sent`), para no meter un récord viejo en la tabla de hoy.
+- **Mis mejores partidas**: sin duplicados "189 / 189.0" (la copia en la nube vuelve como JSON;
+  `Save._whole`, `Save.clean_tops`, también limpia las partidas guardadas).
+- **Analytics**: los eventos guardados antes de cerrar el juego ya no se rechazan (400): los
+  números vuelven a enteros al leer la cola. Play Games: si responde "puesto 0" justo después de
+  enviar, se conserva el último puesto; el evento semanal se consulta en su periodo semanal.
+
 ## 1.0.22 (código 24)
 
 - Eventos semanales de un solo obstáculo de verdad: cada evento dice qué tipos pueden salir

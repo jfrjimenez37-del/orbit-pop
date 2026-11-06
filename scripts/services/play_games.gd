@@ -19,9 +19,10 @@ const PUBLIC := 0     # PlayGamesLeaderboardVariant.Collection.COLLECTION_PUBLIC
 const FRIENDS := 3    # PlayGamesLeaderboardVariant.Collection.COLLECTION_FRIENDS
 const TOP_ROWS := 25  # Play Games returns at most 25 scores per request
 ## Views that are not a board of their own: FRIENDS = the global board among friends,
-## TODAY = the daily challenge board, today only. [board id key, time span, collection]
-const VIEWS := {"FRIENDS": ["GLOBAL", ALL_TIME, FRIENDS], "TODAY": ["DAILY", DAILY_SPAN, PUBLIC],
-	"WEEK": ["EVENT", WEEKLY_SPAN, PUBLIC]}
+## DAY = the global board, today's runs only, TODAY = the daily challenge board, today only.
+## [board id key, time span, collection]
+const VIEWS := {"FRIENDS": ["GLOBAL", ALL_TIME, FRIENDS], "DAY": ["GLOBAL", DAILY_SPAN, PUBLIC],
+	"TODAY": ["DAILY", DAILY_SPAN, PUBLIC], "WEEK": ["EVENT", WEEKLY_SPAN, PUBLIC]}
 
 var available := false
 var signed_in := false

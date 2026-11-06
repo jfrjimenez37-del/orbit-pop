@@ -256,9 +256,13 @@ func run_finished(score: int, world_no: int, time_s := 0.0) -> void:
 	_mission_feed("time_run", int(time_s))
 	Save.add_top_score(score, world_no)
 	_check_achievements()
+	# this run's score (Play Games keeps each player's best; the TODAY view = today's best run)
+	if score > 0:
+		games.submit_score("GLOBAL", score)
+		games.submit_score(region(), score)
+		if score >= Save.best:
+			Save.best_sent = Save.best
 	Save.save_data()
-	games.submit_score("GLOBAL", Save.best)
-	games.submit_score(region(), Save.best)
 	games.save_cloud(Save.export_data())
 
 
@@ -308,8 +312,13 @@ func _check_achievements() -> void:
 func _sync_all() -> void:
 	for id in Save.achievements:
 		games.unlock(id)
-	games.submit_score("GLOBAL", Save.best)
-	games.submit_score(region(), Save.best)
+	# the best only if it never reached the boards (offline record, restored save): sending it at
+	# every sign-in would put an old record on today's board
+	if Save.best > Save.best_sent and games.signed_in:
+		games.submit_score("GLOBAL", Save.best)
+		games.submit_score(region(), Save.best)
+		Save.best_sent = Save.best
+		Save.save_data()
 
 
 func _on_cloud(data: Dictionary) -> void:
