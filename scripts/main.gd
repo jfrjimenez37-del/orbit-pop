@@ -590,6 +590,7 @@ func start_run() -> void:
 	director.bubble_rate = 1.0
 	var ev: Dictionary = duel.get("event", {}) if dm else {}
 	director.only = ev.get("only", [])
+	director.only_kinds = ev.get("kinds", [])
 	director.omega_mul = float(ev.get("omega", 1.0))
 	director.surges = ev.is_empty()   # a weekly event already has its own theme
 	director.escalate = not ev.is_empty()

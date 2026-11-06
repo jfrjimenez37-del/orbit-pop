@@ -1723,17 +1723,10 @@ func test_events(save) -> void:
 				main._add_score(400)   # far past world 10's score
 			frames += 1
 		if ev.has("only"):
-			var allowed := {}
-			for pname in ev["only"]:
-				var hs: Dictionary = main.director._build(pname, 100.0, 0.0, 1, 2.5, 0.5, 0, 0)
-				for h in hs["hazards"]:
-					allowed[Director.kind_of(h)] = true
-					h.free()
-			allowed["meteor"] = true   # the very first pattern is always the slow meteor
 			for k in seen:
-				if not allowed.has(k):
-					bad[k] = true
-			ok(bad.is_empty() and seen.size() >= 2, "events: %s only has its obstacles %s (bad %s)" % [ev["id"], str(seen.keys()), str(bad.keys())])
+				if not k in ev["kinds"]:
+					bad[k] = true   # nothing else, not even the first slow meteor
+			ok(bad.is_empty() and seen.size() >= 1, "events: %s only has its obstacles %s (bad %s)" % [ev["id"], str(seen.keys()), str(bad.keys())])
 		if ev.has("stage"):
 			ok(main.stage == int(ev["stage"]) and main._stage_pending < 0, "events: %s stays on its world (stage %d)" % [ev["id"], main.stage])
 		if ev.has("omega"):
@@ -1886,7 +1879,7 @@ func test_v120(save) -> void:
 			kinds[Director.kind_of(h)] = true
 		frames += 1
 	ok(most >= 3 and main.stage == 0, "v120: after a minute the comet storm has %d comets at once, still world 1" % most)
-	ok(kinds.keys().all(func(k): return k in ["comet", "meteor"]), "v120: only comets (and the first meteor) %s" % str(kinds.keys()))
+	ok(kinds.keys() == ["comet"], "v120: only comets, not even the first meteor %s" % str(kinds.keys()))
 	main.state = main.S.DYING
 	main._game_over()
 	save.event_week_test = -999999

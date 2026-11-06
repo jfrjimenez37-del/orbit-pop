@@ -5,6 +5,13 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.22 (código 24)
+
+- Eventos semanales de un solo obstáculo de verdad: cada evento dice qué tipos pueden salir
+  (`kinds` en `Events.LIST`) y se quita todo lo demás, también el meteorito que algunos patrones
+  traen consigo (la "puerta" de minas, la "deriva", la jaula de rayos) y el primer meteorito lento
+  de una partida normal. CAMPO DE MINAS: minas y ovnis (sin sierras).
+
 ## 1.0.21 (código 23)
 
 - **Skins y estelas valen más**: ya no se ganan por mundo alcanzado sino por **puntos** (récord o

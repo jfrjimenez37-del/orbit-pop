@@ -44,6 +44,7 @@ var _nova_done := false
 
 ## Weekly event rules (Events.LIST): only these patterns (empty = all) and a speed factor.
 var only: Array = []
+var only_kinds: Array = []   # event: hazards of any other kind are dropped from its patterns
 var omega_mul := 1.0
 ## Weekly events escalate: full difficulty after ESCALATE_TIME s whatever the world, and the next
 ## pattern comes sooner and sooner (overlapping the last one), so the same obstacle keeps
@@ -133,6 +134,7 @@ func reset(seed_value: int, recent_avg: float) -> void:
 	stage = 0
 	world = 1
 	only = []
+	only_kinds = []
 	omega_mul = 1.0
 	escalate = false
 	surges = true
@@ -315,11 +317,24 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 	# at most ATTEMPTS_PER_FRAME candidates per frame (phones): the search goes on next frame
 	var last := mini(_attempt + ATTEMPTS_PER_FRAME, ATTEMPTS)
 	for attempt in range(_attempt, last):
-		var name: String = "lead" if not spawned_first else _surge_pattern()
+		var name: String = "lead" if not spawned_first and only.is_empty() else _surge_pattern()
 		if name == "":
 			name = _pick(t)
 		var res := _build(name, t, angle, dir, w, level(t), attempt, k)
 		var hs: Array = res["hazards"]
+		if not only_kinds.is_empty():
+			# an event of one obstacle: no meteor tagging along with its patterns
+			var keep: Array = []
+			for h in hs:
+				if Director.kind_of(h) in only_kinds:
+					keep.append(h)
+				else:
+					h.free()
+			hs = keep
+			res["hazards"] = hs
+			if hs.is_empty():
+				rejected += 1
+				continue
 		if surge == "nova" and name == "pulse":
 			for h in hs:
 				h.nova = true
