@@ -108,7 +108,9 @@ func _board_key(leaderboard_id: String) -> String:
 func _on_submitted(ok: bool, leaderboard_id: String) -> void:
 	Diag.log("playgames: score %s on %s" % ["accepted" if ok else "REJECTED", _board_key(leaderboard_id)])
 	if ok:
-		_lb.call("load_player_score", leaderboard_id, ALL_TIME, PUBLIC)
+		# the weekly event board ranks this week's scores
+		var span := WEEKLY_SPAN if _board_key(leaderboard_id) == "EVENT" else ALL_TIME
+		_lb.call("load_player_score", leaderboard_id, span, PUBLIC)
 
 
 func _on_score_loaded(leaderboard_id: String, score) -> void:
@@ -118,6 +120,9 @@ func _on_score_loaded(leaderboard_id: String, score) -> void:
 		return
 	var rank := int(score.get("rank"))
 	Diag.log("playgames: %s rank %d (%d pts)" % [board, rank, int(score.get("raw_score"))])
+	if rank <= 0:
+		# Play Games has not placed the new score yet (it answers rank 0, 0 pts): keep the last one
+		return
 	ranks[board] = rank
 	rank_loaded.emit(board, rank, int(score.get("raw_score")))
 

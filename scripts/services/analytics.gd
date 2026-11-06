@@ -290,4 +290,16 @@ func _load_queue() -> void:
 	if f:
 		var data = JSON.parse_string(f.get_as_text())
 		if data is Array:
-			queue = data
+			queue = data.map(_ints)
+
+
+## JSON reads every number back as a float (21 -> 21.0), and GameAnalytics refuses a batch
+## with "client_ts": 1793926084.0 or "length": 21.0 (400). Whole numbers go back to int.
+static func _ints(ev) -> Variant:
+	if not ev is Dictionary:
+		return ev
+	var out := {}
+	for k in ev:
+		var v = ev[k]
+		out[k] = int(v) if v is float and v == floorf(v) and absf(v) < 1e15 else v
+	return out

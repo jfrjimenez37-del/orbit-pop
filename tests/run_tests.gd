@@ -1398,7 +1398,8 @@ func test_analytics(save) -> void:
 	var ends := a.queue.filter(func(q): return q["category"] == "session_end")
 	ok(a.session_id != sid and ends.size() == 1 and ends[0]["length"] == 5 and a.queue[-1]["category"] == "user",
 		"analytics: 60 s in the background: session_end (length 5 s) and a new session")
-	# a session left open (app killed) is closed on the next start
+	# a session left open (app killed) is closed on the next start; the queue saved on disk is sent then
+	a._save_queue()
 	var b := Analytics.new()
 	b.clock = func() -> float: return now[0] + 1000.0
 	b.sender = func(_u, _h, _b) -> void: pass
@@ -1406,6 +1407,14 @@ func test_analytics(save) -> void:
 	b.start(save)
 	var closing := b.queue.filter(func(q): return q["category"] == "session_end")
 	ok(closing.size() >= 1 and closing[-1]["session_id"] == a.session_id, "analytics: a session left open is closed on the next launch")
+	var b_body := [""]
+	b.sender = func(_u, _h, body: String) -> void: b_body[0] = body
+	b.game_key = "gk"; b.secret_key = "sk"; b.force_send = true
+	b.flush()
+	ok(b.queue.size() > 2 and b.queue.all(func(q): return q["client_ts"] is int and q["session_num"] is int)
+		and b_body[0] != "" and not ".0," in b_body[0] and not ".0}" in b_body[0],
+		"analytics: events saved before a restart are sent with whole numbers (not 21.0: GameAnalytics 400)")
+	b._on_response(200, "")
 	b.set_opt_out(true)
 	b.design("Nope")
 	ok(b.queue.is_empty(), "analytics: SHARE STATS off: nothing is queued or kept")
