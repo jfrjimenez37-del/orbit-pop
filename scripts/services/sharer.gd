@@ -10,7 +10,8 @@ func start() -> void:
 		if c["class"] == "Share":
 			_share = load(c["path"]).new()
 			add_child(_share)
-			return
+			break
+	Diag.log("share: plugin %s" % ("yes" if _share != null else "NO"))
 
 
 func available() -> bool:
