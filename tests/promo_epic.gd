@@ -99,6 +99,11 @@ func _initialize() -> void:
 	sv.daily_last = sv._day_string()
 	sv.starter_seen = true
 	sv.tutorial_done = true; sv.jump_tip_done = true   # no tutorial in recordings and bots
+	sv.welcome_shown = true; sv.welcome_count = 99      # no welcome offer over the footage
+	sv.seen_obstacles = []
+	for kd in Director.KINDS:
+		sv.seen_obstacles.append(kd[0])               # no NEW OBSTACLE tips
+	sv.ability_tips = ["hold", "swipe"]
 	sv.music = false
 	sv.skin = Catalog.find("skins", "cosmo")
 	sv.trail = "galaxy"
@@ -150,6 +155,7 @@ func _initialize() -> void:
 		"ad": _tl_ad()
 		"fila": _tl_fila()
 		"stills16": _tl_stills16()
+		"phone": _tl_phone()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
 
@@ -484,6 +490,14 @@ func _tl_stills() -> void:
 		var e: Array = list[i]
 		_at(0.6 * i, func(): _shot_play("st%d" % i, e[0], e[1], 6.0, e[2]); _cam(1.0, false); main.ui.visible = false)
 		_at(0.6 * i + 0.4, func(): get_root().get_texture().get_image().save_png("/tmp/epic/stills/%d.png" % i))
+
+
+## 10 s of play with no captions, for a green-screen phone (render it at the phone's shape,
+## e.g. 1080x2220): world 8 (3 planets) then world 13 (moving planets).
+func _tl_phone() -> void:
+	end_t = 10.0
+	_at(0.0, func(): _shot_play("ph1", 7, 24.0, 6.0, 401); _cam(1.0, false))
+	_at(5.5, func(): _shot_play("ph2", 12, 26.0, 6.0, 402); _cam(1.0, false); _flash(0.5))
 
 
 ## One clean still per world (no UI), saved as <caps dir>/w01.png .. w16.png, for social images.
