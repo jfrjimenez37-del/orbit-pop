@@ -149,6 +149,7 @@ func _initialize() -> void:
 		"daily": _tl_daily()
 		"ad": _tl_ad()
 		"fila": _tl_fila()
+		"stills16": _tl_stills16()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
 
@@ -483,6 +484,14 @@ func _tl_stills() -> void:
 		var e: Array = list[i]
 		_at(0.6 * i, func(): _shot_play("st%d" % i, e[0], e[1], 6.0, e[2]); _cam(1.0, false); main.ui.visible = false)
 		_at(0.6 * i + 0.4, func(): get_root().get_texture().get_image().save_png("/tmp/epic/stills/%d.png" % i))
+
+
+## One clean still per world (no UI), saved as <caps dir>/w01.png .. w16.png, for social images.
+func _tl_stills16() -> void:
+	end_t = 16 * 0.7 + 0.5
+	for i in 16:
+		_at(0.7 * i, func(): _shot_play("s16_%d" % i, i, 22.0, 6.0, 300 + i); _cam(1.0, false); main.ui.visible = false)
+		_at(0.7 * i + 0.5, func(): get_root().get_texture().get_image().save_png(caps_dir + "w%02d.png" % (i + 1)))
 
 
 ## Short: one point short of the record, a slow-motion death, "one more try?".
