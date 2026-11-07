@@ -73,6 +73,7 @@ var bot_jumps := true
 var _last_switch := -9.0
 var _bot_gt := -9.0
 var _near_seen := 0
+var bot_off := false          # the bot stops tapping (the run goes on: the player gets hit)
 var slowmo := Vector2(-1, -1) # real-time window of the slow motion
 
 
@@ -156,6 +157,7 @@ func _initialize() -> void:
 		"fila": _tl_fila()
 		"stills16": _tl_stills16()
 		"phone": _tl_phone()
+		"hard": _tl_hard()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
 
@@ -498,6 +500,16 @@ func _tl_phone() -> void:
 	end_t = 10.0
 	_at(0.0, func(): _shot_play("ph1", 7, 24.0, 6.0, 401); _cam(1.0, false))
 	_at(5.5, func(): _shot_play("ph2", 12, 26.0, 6.0, 402); _cam(1.0, false); _flash(0.5))
+
+
+## Hard gameplay, no captions (7.5 s): world 16 at full speed (0-2.2), a slow-motion near miss in
+## world 15 (2.2-4.4), world 14 until the bot stops tapping at 5.4 and gets hit (death, game over).
+func _tl_hard() -> void:
+	end_t = 9.0
+	_at(0.0, func(): _shot_play("hd1", 15, 34.0, 6.0, 501); _cam(1.0, false); _punch(0.2))
+	_at(2.2, func(): _shot_near(Vector2(2.7, 3.9), 3.3, 14, 30.0); _cam(1.0, true); _zoom_to(1.8, 0.4); _flash(0.6))
+	_at(4.4, func(): _shot_play("hd3", 13, 30.0, 6.0, 503); _cam(1.0, false); _flash(0.6))
+	_at(5.4, func(): bot_off = true)
 
 
 ## One clean still per world (no UI), saved as <caps dir>/w01.png .. w16.png, for social images.
@@ -956,7 +968,8 @@ func _process(_dt: float) -> bool:
 			main._grace = 0.0
 			if main.gt - _bot_gt >= 1.0 / 30.0 - 0.0001:
 				_bot_gt = main.gt
-				_bot()
+				if not bot_off:
+					_bot()
 		elif main.state in [main.S.DYING, main.S.OVER]:
 			print("DIED in shot %s at %.2f s" % [shot, t])
 	if main.near_count != _near_seen:
