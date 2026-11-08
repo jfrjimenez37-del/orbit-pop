@@ -158,6 +158,7 @@ func _initialize() -> void:
 		"stills16": _tl_stills16()
 		"phone": _tl_phone()
 		"hard": _tl_hard()
+		"surges": _tl_surges()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
 
@@ -510,6 +511,23 @@ func _tl_hard() -> void:
 	_at(2.2, func(): _shot_near(Vector2(2.7, 3.9), 3.3, 14, 30.0); _cam(1.0, true); _zoom_to(1.8, 0.4); _flash(0.6))
 	_at(4.4, func(): _shot_play("hd3", 13, 30.0, 6.0, 503); _cam(1.0, false); _flash(0.6))
 	_at(5.4, func(): bot_off = true)
+
+
+## Epic gameplay, no captions (13 s): a meteor shower (world 12), a supernova (world 11), a
+## slow-motion near miss (world 15), a comet storm in world 16 and a real death with the game over.
+func _tl_surges() -> void:
+	end_t = 13.2
+	_at(0.0, func(): _shot_play("sg1", 11, 26.0, 6.0, 601); _surge_soon("shower"); _cam(1.0, false); _punch(0.25))
+	_at(3.0, func(): _shot_play("sg2", 10, 24.0, 6.0, 602); _surge_soon("nova"); _cam(1.0, false); _flash(0.7); _punch(0.25))
+	_at(6.0, func(): _shot_near(Vector2(6.5, 7.7), 7.1, 14, 30.0); _cam(1.0, true); _zoom_to(1.8, 0.4); _flash(0.6))
+	_at(8.2, func(): _shot_play("sg4", 15, 34.0, 6.0, 604); _surge_soon("comets"); _cam(1.0, false); _flash(0.7); _punch(0.25))
+	_at(10.2, func(): bot_off = true)
+
+
+func _surge_soon(kind: String) -> void:
+	main.director.surges = true
+	main.director.surge_test = kind
+	main.director.next_surge = main.gt + 0.25
 
 
 ## One clean still per world (no UI), saved as <caps dir>/w01.png .. w16.png, for social images.
