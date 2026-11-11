@@ -23,14 +23,14 @@ func _initialize() -> void:
 	sv.reset_all()
 	sv.best = 214; sv.games = 120; sv.total = 9800; sv.coins = 4250
 	sv.level = 18; sv.xp = 600
-	sv.abilities = {"coins": 3, "shield": 2, "magnet": 3, "slowmo": 2, "teleport": 2, "bubbles": 2, "headstart": 1, "secondlife": 1}
+	sv.abilities = {"coins": 3, "shield": 2, "magnet": 3, "turbo": 2, "teleport": 2, "bubbles": 2, "explorer": 1, "secondlife": 1}
 	sv.stats = {"best_world": 15, "near_total": 640}
 	sv.best = 712
 	sv.level = 28
 	# no tutorial, gesture tips or NEW OBSTACLE banners over the pictures
 	sv.tutorial_done = true
 	sv.jump_tip_done = true
-	sv.ability_tips = ["hold", "swipe"]
+	sv.ability_tips = ["turbo", "swipe"]
 	sv.seen_obstacles = Director.KINDS.map(func(kd): return kd[0])
 	sv.owned_items = ["skins:cookie", "skins:ninja", "skins:drake", "trails:fire", "trails:notes"]
 	sv.purchases = ["no_ads"]   # no test banner in the store pictures

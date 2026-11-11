@@ -16,7 +16,7 @@ signal buy_pressed(product_id: String)
 signal restore_pressed
 signal style_changed
 signal abilities_pressed
-signal slowmo_pressed
+signal turbo_pressed
 signal daily_claim(doubled: bool)
 signal free_coins_pressed
 signal teleport_pressed
@@ -101,9 +101,9 @@ var _over_box: Control
 var _run_coins_lbl: Label
 var _menu_level: Label
 var _menu_xp: ColorRect
-var _slowmo_btn: Button
+var _turbo_btn: Button
 var _teleport_count: Label
-var _slowmo_count: Label
+var _turbo_count: Label
 var _wp_bg: ColorRect
 var _wp_fill: ColorRect
 var _wp_best: ColorRect
@@ -592,15 +592,15 @@ func _build_hud() -> void:
 	_teleport_btn.visible = false
 	_teleport_count = _label(_teleport_btn, "", 1, Color.WHITE)
 	_teleport_count.position = Vector2(19, -4)
-	_slowmo_btn = _button(hud, "white", "", "slowmo", Vector2(28, 28))
-	_slowmo_btn.anchor_top = 1.0; _slowmo_btn.anchor_bottom = 1.0
-	_slowmo_btn.offset_left = 6; _slowmo_btn.offset_right = 34
-	_slowmo_btn.offset_top = -40; _slowmo_btn.offset_bottom = -12
-	_slowmo_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE   # HOLD to slow time (see main)
-	_slowmo_btn.modulate.a = 0.8
-	_slowmo_btn.visible = false
-	_slowmo_count = _label(_slowmo_btn, "", 1, INK)
-	_slowmo_count.position = Vector2(19, -4)
+	_turbo_btn = _button(hud, "white", "", "bolt", Vector2(28, 28))
+	_turbo_btn.anchor_top = 1.0; _turbo_btn.anchor_bottom = 1.0
+	_turbo_btn.offset_left = 6; _turbo_btn.offset_right = 34
+	_turbo_btn.offset_top = -40; _turbo_btn.offset_bottom = -12
+	_turbo_btn.mouse_filter = Control.MOUSE_FILTER_IGNORE   # HOLD for TURBO (see main)
+	_turbo_btn.modulate.a = 0.8
+	_turbo_btn.visible = false
+	_turbo_count = _label(_turbo_btn, "", 1, INK)
+	_turbo_count.position = Vector2(19, -4)
 	# progress towards the next world, with a tick at the player's record
 	_wp_bg = ColorRect.new()
 	_wp_bg.color = Color(0.1, 0.08, 0.25, 0.45)
@@ -764,9 +764,11 @@ func set_teleport(charges: int) -> void:
 	_teleport_count.text = "x%d" % charges if charges > 1 else ""
 
 
-func set_slowmo(charges: int) -> void:
-	_slowmo_btn.visible = charges > 0
-	_slowmo_count.text = "x%d" % charges if charges > 1 else ""
+## TURBO charges left; `on` while it runs (the button stays, lit, with the points multiplier).
+func set_turbo(charges: int, on := false) -> void:
+	_turbo_btn.visible = charges > 0 or on
+	_turbo_btn.modulate = Color(1.0, 0.8, 0.35, 1.0) if on else Color(1, 1, 1, 0.8)
+	_turbo_count.text = "X%d" % Upgrades.TURBO_POINTS if on else ("x%d" % charges if charges > 1 else "")
 
 
 func set_world_progress(score: int, best: int) -> void:
@@ -1426,14 +1428,14 @@ static func ability_desc(id: String, lv: int) -> String:
 			return L.t(["AB_SHIELD_D1", "AB_SHIELD_D2", "AB_SHIELD_D3"][mini(lv, 3) - 1])
 		"magnet":
 			return L.t("AB_MAGNET_D")
-		"slowmo":
-			return L.t("AB_SLOWMO_D", [lv, Upgrades.SLOWMO_TIMES[mini(lv, 3)]])
+		"turbo":
+			return L.t("AB_TURBO_D", [lv, Upgrades.TURBO_POINTS])
 		"teleport":
 			return L.t("AB_CHARGES_D", lv)
 		"bubbles":
 			return L.t("AB_BUBBLES_D", 2 + lv * Upgrades.BUBBLE_BONUS)
-		"headstart":
-			return L.t("AB_HEADSTART_D", Upgrades.HEADSTART_WORLD[mini(lv, 3)])
+		"explorer":
+			return L.t("AB_EXPLORER_D", Upgrades.EXPLORER_COINS[mini(lv, 3)])
 	return L.t("AB_SECONDLIFE_D")
 
 
@@ -1455,8 +1457,6 @@ func refresh_abilities() -> void:
 		var open := Save.ability_unlocked(id)
 		var name := L.t("AB_" + id.to_upper())
 		var desc := ability_desc(id, cur)
-		if id == "headstart" and cur > 0:
-			desc = L.t("AB_START", Save.chosen_start_world())
 		var cost := Upgrades.price(id, cur)
 		var style := "yellow"
 		var text := str(cost)
@@ -1490,14 +1490,6 @@ func refresh_abilities() -> void:
 		if not open:
 			b.modulate = Color(1, 1, 1, 0.6)
 			_icon(_ab_list, "icon_lock", Vector2(5, y + 3)).modulate = Color(1, 1, 1, 0.9)
-		if id == "headstart" and cur > 0 and Save.headstart_max() > 1:
-			var sw := _button(_ab_list, "white", "", "right", Vector2(14, 14))
-			sw.position = Vector2(mini(21 + roundi(_text_w(desc)), 156 - AB_BTN_W - 14), y + 7)
-			sw.pressed.connect(func():
-				Save.start_world = Save.chosen_start_world() % Save.headstart_max() + 1
-				Save.save_data()
-				Sfx.play("select")
-				refresh_abilities())
 		y += AB_ROW
 	# free level by watching videos (levels 1 -> 2 and 2 -> 3, one a day)
 	var vid := Save.video_target()

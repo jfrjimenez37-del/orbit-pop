@@ -19,7 +19,7 @@ var happy := false
 var shield := 0.0   # seconds of continue-shield left (blinking bubble)
 var shield_boost := false  # SHIELD ability: steady bubble until it absorbs a hit
 var shield_layers := 1     # 2 = SHIELD level 3 (absorbs two hits)
-var slowmo := false        # SLOW-MO active: blue time ripple
+var turbo := false         # TURBO active: orange speed rings and sparks
 var hold := 0.0            # 0..1 while the finger is held down (SLOW-MO charging ring)
 var trail_style := "classic"   # Catalog.TRAILS id
 const RAINBOW := [Color8(255, 90, 90), Color8(255, 170, 60), Color8(255, 230, 70), Color8(110, 220, 110), Color8(90, 170, 255), Color8(170, 110, 255)]
@@ -147,10 +147,13 @@ func _draw() -> void:
 		draw_arc(Vector2(0, -1), 10.0 + roundf(sin(_t * 6.0)), 0.0, TAU, 20, Color(0.55, 0.9, 1.0, 0.95), 1.0)
 		if shield_layers > 1:
 			draw_arc(Vector2(0, -1), 12.0 + roundf(sin(_t * 6.0)), 0.0, TAU, 20, Color(0.55, 0.9, 1.0, 0.6), 1.0)
-	if slowmo and alive:
-		draw_arc(Vector2(0, -1), 14.0 + fmod(_t * 20.0, 6.0), 0.0, TAU, 24, Color(0.6, 0.75, 1.0, 0.5), 1.0)
+	if turbo and alive:
+		var k := fmod(_t * 3.0, 1.0)
+		draw_arc(Vector2(0, -1), 16.0 - 6.0 * k, 0.0, TAU, 24, Color(1.0, 0.75, 0.25, 0.25 + 0.6 * k), 1.0)
+		draw_arc(Vector2(0, -1), 11.0, _t * 9.0, _t * 9.0 + 1.6, 8, Color(1.0, 0.9, 0.45, 0.95), 2.0)
+		draw_arc(Vector2(0, -1), 11.0, _t * 9.0 + PI, _t * 9.0 + PI + 1.6, 8, Color(1.0, 0.55, 0.2, 0.95), 2.0)
 	if hold > 0.0 and alive:
-		draw_arc(Vector2(0, -1), 13.0, -PI * 0.5, -PI * 0.5 + TAU * hold, 24, Color(0.65, 0.8, 1.0, 0.95), 2.0)
+		draw_arc(Vector2(0, -1), 13.0, -PI * 0.5, -PI * 0.5 + TAU * hold, 24, Color(1.0, 0.8, 0.3, 0.95), 2.0)
 	if shield > 0.0 and alive:
 		if shield > 0.6 or fmod(shield, 0.2) < 0.1:
 			draw_arc(Vector2(0, -1), 10.0, 0.0, TAU, 20, Color(0.7, 0.95, 1.0, 0.9), 1.0)

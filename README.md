@@ -11,6 +11,13 @@ revienta burbujas y supera tu récord.
   dedo arrastra la mira (línea de puntos + fantasma) hasta el punto más cercano de cualquier
   órbita; al soltar, salta ahí (al sitio seguro más cercano). Volver al jugador cancela sin gastar
   la carga; a los `AIM_MAX` 1,6 s salta solo. `AimPreview`, `Orbit.nearest_angle`.
+- **TURBO en vez de CÁMARA LENTA** y **EXPLORADOR en vez de empezar en un mundo adelantado**: las
+  dos habilidades antiguas hacían el ranking menos justo (una frena el juego, la otra regala
+  puntos). TURBO: mantener pulsado 0,5 s da 4 s a 1,5× de velocidad con todos los puntos ×2
+  (`Upgrades.TURBO_*`); los patrones son los mismos, solo hay menos tiempo para reaccionar.
+  EXPLORADOR: monedas al llegar a cada mundo nuevo (`EXPLORER_COINS`), sin tocar la puntuación.
+  Todas las partidas empiezan en el mundo 1 con 0 puntos. El nivel comprado se conserva
+  (`Upgrades.RENAMED`, `Save._rename_abilities`, también en copias de la nube antiguas).
 - **Ranking HOY** = las partidas normales de hoy (tabla global, periodo diario). El ranking del
   reto diario sigue en RETOS › HOY y se titula RETO DIARIO. Cada partida envía su puntuación
   (Play Games guarda la mejor de cada jugador); el récord solo se reenvía al iniciar sesión si
@@ -350,9 +357,9 @@ de jugador y luego se mejora con monedas (300, 1200, 4000, 12000). Nada se gasta
 | MONEDAS+ | 2 | 5 | +10 % monedas por nivel |
 | ESCUDO | 3 | 3 | escudo al empezar; nv2 se recarga a los 60 s; nv3 aguanta 2 golpes |
 | IMÁN | 5 | 5 | monedas y burbujas a menos de 22/30/38/46/56 px (cualquier órbita) vuelan hacia ti |
-| CÁMARA LENTA | 8 | 3 | botón en partida: 2 s a media velocidad, 1 carga por nivel |
-| TELEPORT | 10 | 3 | botón en partida: salta al lado opuesto, 1 carga por nivel |
-| SALTO INICIAL | 12 | 3 | empezar en el mundo 3/5/8 (con sus puntos), sin pasar de tu mejor mundo −1 |
+| TURBO (1.0.23, antes CÁMARA LENTA) | 8 | 3 | mantener pulsado: 4 s a 1,5× con todos los puntos ×2, 1 carga por nivel |
+| TELEPORT | 10 | 3 | deslizar y apuntar: salta adonde sueltes, 1 carga por nivel |
+| EXPLORADOR (1.0.23, antes SALTO INICIAL) | 12 | 3 | +5/+10/+15 monedas por cada mundo nuevo alcanzado en la partida |
 | SEGUNDA VIDA | 15 | 1 | revive 1 vez por partida (se compra: 10000) |
 
 Simulación anterior (1.0.9): un jugador medio (25 min/día) desbloquea todas en ~5 días, las mejora

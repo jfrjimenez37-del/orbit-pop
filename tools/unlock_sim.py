@@ -21,11 +21,11 @@ SKINS, TRAILS = items("SKINS"), items("TRAILS")
 TH = [int(x) for x in re.findall(r'"score": (\d+)', stg[:stg.index("const LOOP_FROM")])]
 
 PRICES = [0, 300, 1200, 4000, 12000]
-ABIL = {"coins": 5, "shield": 3, "magnet": 5, "slowmo": 3, "teleport": 3, "headstart": 3, "secondlife": 1}
-UNLOCK = {"coins": 2, "shield": 3, "magnet": 5, "slowmo": 8, "teleport": 10, "headstart": 12, "secondlife": 15}
-NAMES = {"coins": "COINS+", "shield": "SHIELD", "magnet": "MAGNET", "slowmo": "SLOW-MO", "teleport": "TELEPORT",
-         "headstart": "HEADSTART", "secondlife": "2ND LIFE"}
-HEAD = [1, 3, 5, 8]
+ABIL = {"coins": 5, "shield": 3, "magnet": 5, "turbo": 3, "teleport": 3, "explorer": 3, "secondlife": 1}
+UNLOCK = {"coins": 2, "shield": 3, "magnet": 5, "turbo": 8, "teleport": 10, "explorer": 12, "secondlife": 15}
+NAMES = {"coins": "COINS+", "shield": "SHIELD", "magnet": "MAGNET", "turbo": "TURBO", "teleport": "TELEPORT",
+         "explorer": "EXPLORER", "secondlife": "2ND LIFE"}
+EXPLORER = [0, 5, 10, 15]   # coins per new world reached in a run
 DAILY = [30, 40, 70, 60, 80, 140, 300]
 def xp_next(L): return int(40 + 10 * L ** 1.8)
 def world_of(s): return max(i for i, t in enumerate(TH) if s >= t) + 1
@@ -58,14 +58,14 @@ def sim(p, seed, days=365):
             secs = 600
             while secs > 0:
                 skill = min(p["cap"], p["a"] + p["b"] * math.log(1 + runs / 15))
-                skill *= 1 + 0.04 * own["shield"] + 0.25 * own["secondlife"] + 0.03 * (own["slowmo"] + own["teleport"])
+                skill *= 1 + 0.04 * own["shield"] + 0.25 * own["secondlife"] + 0.03 * (own["turbo"] + own["teleport"])
                 gained = rnd.gammavariate(2.0, skill / 2.0)
-                start_w = min(HEAD[own["headstart"]], max(1, best_w - 1)) if own["headstart"] else 1
-                score = TH[start_w - 1] + gained
+                score = gained
                 t = gained / 1.05 + 12; secs -= t; minutes += t / 60; runs += 1
                 best = max(best, score); best_w = max(best_w, world_of(score)); total += gained
                 pick = 0.35 + 0.09 * own["magnet"]
-                coins += (gained / 10 + (t - 12) / 6.75 * 0.5 + (t - 12) * (3 / 8 + 5 / 45) * pick) * (1 + 0.1 * own["coins"])
+                coins += (gained / 10 + (t - 12) / 6.75 * 0.5 + (t - 12) * (3 / 8 + 5 / 45) * pick
+                          + EXPLORER[own["explorer"]] * (world_of(score) - 1)) * (1 + 0.1 * own["coins"])
                 xp += gained + 15
                 while lv < 50 and xp >= xp_next(lv):
                     xp -= xp_next(lv); lv += 1; coins += 20 * lv

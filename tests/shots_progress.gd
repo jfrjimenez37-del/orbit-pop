@@ -21,7 +21,7 @@ func _initialize() -> void:
 	sv.reset_all()
 	sv.best = 186; sv.games = 60; sv.total = 4200; sv.coins = 3200
 	sv.level = 12; sv.xp = 900
-	sv.abilities = {"coins": 3, "shield": 0, "magnet": 1, "slowmo": 1, "teleport": 1, "headstart": 1}
+	sv.abilities = {"coins": 3, "shield": 0, "magnet": 1, "turbo": 1, "teleport": 1, "explorer": 1}
 	sv.stats = {"best_world": 6, "near_total": 140}
 	sv.daily_last = sv._day_string()
 	get_root().get_node("L").set_lang(args[1] if args.size() > 1 else "es")

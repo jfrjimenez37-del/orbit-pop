@@ -14,16 +14,16 @@ coin skin/trail (keeping 1000 coins). Pack items (shop) are only bought with rea
 | 4 | 60 | day 2 | day 1 | day 1 |
 | 5 | 90 | day 3 | day 1 | day 1 |
 | 6 | 125 | day 8 | day 2 | day 1 |
-| 7 | 165 | day 8 | day 3 | day 1 |
-| 8 | 210 | day 9 | day 4 | day 2 |
-| 9 | 260 | day 10 | day 4 | day 2 |
-| 10 | 315 | day 11 | day 4 | day 3 |
-| 11 | 375 | day 16 | day 5 | day 3 |
-| 12 | 440 | day 33 | day 8 | day 3 |
-| 13 | 510 | day 72 | day 12 | day 4 |
-| 14 | 585 | day 127 | day 24 | day 6 |
-| 15 | 665 | day 200 | day 39 | day 8 |
-| 16 | 750 | 41% in 1 year | day 51 | day 13 |
+| 7 | 165 | day 12 | day 3 | day 1 |
+| 8 | 210 | day 24 | day 5 | day 2 |
+| 9 | 260 | day 51 | day 9 | day 3 |
+| 10 | 315 | day 72 | day 13 | day 4 |
+| 11 | 375 | day 107 | day 23 | day 5 |
+| 12 | 440 | day 179 | day 31 | day 7 |
+| 13 | 510 | day 234 | day 41 | day 11 |
+| 14 | 585 | 22% in 1 year | day 60 | day 14 |
+| 15 | 665 | 7% in 1 year | day 92 | day 18 |
+| 16 | 750 | - | day 149 | day 24 |
 
 ## Abilities (level 1 free at the player level, then coins or videos)
 
@@ -32,86 +32,86 @@ coin skin/trail (keeping 1000 coins). Pack items (shop) are only bought with rea
 | COINS+ | 1 | day 1 | day 1 | day 1 |
 | COINS+ | 2 | day 1 | day 1 | day 1 |
 | COINS+ | 3 | day 4 | day 2 | day 1 |
-| COINS+ | 4 | day 39 | day 13 | day 6 |
-| COINS+ | 5 | day 142 | day 54 | day 26 |
+| COINS+ | 4 | day 26 | day 8 | day 4 |
+| COINS+ | 5 | day 92 | day 36 | day 13 |
 | SHIELD | 1 | day 1 | day 1 | day 1 |
 | SHIELD | 2 | day 2 | day 1 | day 1 |
-| SHIELD | 3 | day 12 | day 4 | day 3 |
+| SHIELD | 3 | day 10 | day 4 | day 3 |
 | MAGNET | 1 | day 1 | day 1 | day 1 |
 | MAGNET | 2 | day 1 | day 1 | day 1 |
-| MAGNET | 3 | day 10 | day 4 | day 2 |
-| MAGNET | 4 | day 47 | day 17 | day 7 |
-| MAGNET | 5 | day 164 | day 64 | day 29 |
-| SLOW-MO | 1 | day 2 | day 1 | day 1 |
-| SLOW-MO | 2 | day 2 | day 1 | day 1 |
-| SLOW-MO | 3 | day 15 | day 4 | day 3 |
+| MAGNET | 3 | day 9 | day 4 | day 2 |
+| MAGNET | 4 | day 32 | day 10 | day 5 |
+| MAGNET | 5 | day 103 | day 41 | day 17 |
+| TURBO | 1 | day 2 | day 1 | day 1 |
+| TURBO | 2 | day 2 | day 1 | day 1 |
+| TURBO | 3 | day 12 | day 4 | day 3 |
 | TELEPORT | 1 | day 4 | day 2 | day 1 |
 | TELEPORT | 2 | day 4 | day 2 | day 1 |
-| TELEPORT | 3 | day 17 | day 5 | day 3 |
-| HEADSTART | 1 | day 5 | day 3 | day 2 |
-| HEADSTART | 2 | day 5 | day 3 | day 2 |
-| HEADSTART | 3 | day 8 | day 3 | day 2 |
-| 2ND LIFE | 1 | day 103 | day 39 | day 16 |
+| TELEPORT | 3 | day 11 | day 4 | day 3 |
+| EXPLORER | 1 | day 5 | day 3 | day 2 |
+| EXPLORER | 2 | day 5 | day 3 | day 2 |
+| EXPLORER | 3 | day 8 | day 3 | day 2 |
+| 2ND LIFE | 1 | day 58 | day 24 | day 11 |
 
 ## Skins
 
 | Skin | Rarity | Needs | casual | average | dedicated |
 |---|---|---|---|---|---|
 | POPPY | common | record 0 | start | start | start |
-| MINTY | common | record 15 | day 1 | day 1 | day 1 |
-| BERRY | common | record 40 | day 1 | day 1 | day 1 |
-| COOKIE | common | 600 coins | day 19 | day 6 | day 4 |
-| MELONY | common | 900 coins | day 24 | day 8 | day 4 |
-| FROSTY | rare | world 3 | day 1 | day 1 | day 1 |
-| EMBER | rare | world 4 | day 2 | day 1 | day 1 |
-| VOLT | rare | world 5 | day 3 | day 1 | day 1 |
-| PIXEL | rare | 2500 total points | day 8 | day 3 | day 2 |
-| BUBBLY | rare | 1500 coins | day 26 | day 9 | day 5 |
-| ROBO | rare | 2200 coins | day 33 | day 11 | day 9 |
+| MINTY | common | record 30 | day 1 | day 1 | day 1 |
+| BERRY | common | record 70 | day 2 | day 1 | day 1 |
+| COOKIE | common | 600 coins | day 16 | day 5 | day 3 |
+| MELONY | common | 900 coins | day 17 | day 6 | day 5 |
+| FROSTY | rare | record 110 | day 5 | day 2 | day 1 |
+| EMBER | rare | record 150 | day 11 | day 3 | day 1 |
+| VOLT | rare | record 200 | day 22 | day 5 | day 2 |
+| PIXEL | rare | 6000 total points | day 16 | day 6 | day 3 |
+| BUBBLY | rare | 1500 coins | day 19 | day 9 | day 6 |
+| ROBO | rare | 2200 coins | day 24 | day 12 | day 6 |
 | PANDA | rare | pack (star_pack) | pack | pack | pack |
-| GHOSTY | epic | world 6 | day 8 | day 2 | day 1 |
-| ALIEN | epic | world 7 | day 8 | day 3 | day 1 |
-| CRYSTAL | epic | world 8 | day 9 | day 4 | day 2 |
-| LUNA | epic | world 11 | day 16 | day 5 | day 3 |
-| COSMO | epic | record 250 | day 9 | day 4 | day 2 |
-| NINJA | epic | 4000 coins | day 61 | day 23 | day 11 |
-| DRAKE | epic | 5500 coins | day 72 | day 26 | day 13 |
+| GHOSTY | epic | record 260 | day 51 | day 9 | day 3 |
+| ALIEN | epic | record 320 | day 73 | day 15 | day 4 |
+| CRYSTAL | epic | record 380 | day 114 | day 24 | day 5 |
+| LUNA | epic | record 450 | day 190 | day 32 | day 8 |
+| COSMO | epic | record 520 | day 233 | day 43 | day 12 |
+| NINJA | epic | 4000 coins | day 40 | day 16 | day 8 |
+| DRAKE | epic | 5500 coins | day 47 | day 18 | day 9 |
 | NEON | epic | pack (star_pack) | pack | pack | pack |
-| MAGMA | legendary | world 9 | day 10 | day 4 | day 2 |
-| ROYAL | legendary | world 10 | day 11 | day 4 | day 3 |
-| TITAN | legendary | world 13 | day 72 | day 12 | day 4 |
-| SKULLY | legendary | 9000 coins | day 122 | day 47 | day 22 |
-| PRISM | legendary | 15000 coins | day 191 | day 74 | day 34 |
+| MAGMA | legendary | record 600 | 20% in 1 year | day 64 | day 14 |
+| ROYAL | legendary | record 700 | 3% in 1 year | day 114 | day 21 |
+| TITAN | legendary | record 820 | - | day 192 | day 30 |
+| SKULLY | legendary | 9000 coins | day 79 | day 31 | day 19 |
+| PRISM | legendary | 15000 coins | day 121 | day 48 | day 22 |
 | GOLDIE | legendary | pack (star_pack) | pack | pack | pack |
-| NOVA | mythic | record 500 | day 66 | day 11 | day 4 |
-| OMEGA | mythic | record 1000 | - | day 178 | day 28 |
-| QUASAR | mythic | world 16 | 41% in 1 year | day 51 | day 13 |
+| NOVA | mythic | record 1000 | - | 35% in 1 year | day 63 |
+| OMEGA | mythic | record 1500 | - | - | day 220 |
+| QUASAR | mythic | 50000 total points | day 120 | day 46 | day 19 |
 
 ## Trails
 
 | Trail | Rarity | Needs | casual | average | dedicated |
 |---|---|---|---|---|---|
 | CLASSIC | common | record 0 | start | start | start |
-| DOTS | common | level 3 | day 1 | day 1 | day 1 |
-| DASH | common | 300 coins | day 19 | day 5 | day 4 |
-| SPARKLE | rare | 800 coins | day 22 | day 6 | day 4 |
-| BUBBLES | rare | world 3 | day 1 | day 1 | day 1 |
-| LEAVES | rare | level 5 | day 1 | day 1 | day 1 |
-| PIXEL | rare | 1500 coins | day 30 | day 10 | day 8 |
+| DOTS | common | level 6 | day 1 | day 1 | day 1 |
+| DASH | common | 300 coins | day 15 | day 5 | day 3 |
+| SPARKLE | rare | 800 coins | day 17 | day 5 | day 3 |
+| BUBBLES | rare | record 120 | day 5 | day 2 | day 1 |
+| LEAVES | rare | level 10 | day 4 | day 2 | day 1 |
+| PIXEL | rare | 1500 coins | day 22 | day 11 | day 6 |
 | HEARTS | rare | pack (trail_pack) | pack | pack | pack |
-| SMOKE | rare | level 10 | day 4 | day 2 | day 1 |
-| FIRE | epic | world 5 | day 3 | day 1 | day 1 |
-| ICE | epic | world 6 | day 8 | day 2 | day 1 |
-| BOLT | epic | level 15 | day 12 | day 5 | day 3 |
-| NOTES | epic | 3000 coins | day 54 | day 19 | day 10 |
+| SMOKE | rare | level 16 | day 15 | day 6 | day 3 |
+| FIRE | epic | record 230 | day 32 | day 6 | day 2 |
+| ICE | epic | record 300 | day 67 | day 11 | day 4 |
+| BOLT | epic | level 24 | day 46 | day 19 | day 9 |
+| NOTES | epic | 3000 coins | day 37 | day 13 | day 7 |
 | STARS | epic | pack (trail_pack) | pack | pack | pack |
-| HALO | epic | world 12 | day 33 | day 8 | day 3 |
-| NEON | epic | level 20 | day 26 | day 12 | day 6 |
+| HALO | epic | record 560 | 30% in 1 year | day 51 | day 13 |
+| NEON | epic | level 32 | day 102 | day 43 | day 19 |
 | RAINBOW | legendary | pack (trail_pack) | pack | pack | pack |
-| GALAXY | legendary | world 8 | day 9 | day 4 | day 2 |
-| COMET | legendary | level 30 | day 86 | day 36 | day 16 |
-| PLASMA | legendary | world 15 | day 200 | day 39 | day 8 |
-| GOLD | legendary | 8000 coins | day 87 | day 33 | day 19 |
+| GALAXY | legendary | record 480 | day 208 | day 38 | day 10 |
+| COMET | legendary | level 42 | day 218 | day 89 | day 38 |
+| PLASMA | legendary | record 900 | - | day 240 | day 39 |
+| GOLD | legendary | 8000 coins | day 67 | day 24 | day 15 |
 | AURORA | mythic | level 50 | day 352 | day 144 | day 61 |
 
 ## Player level
@@ -127,6 +127,6 @@ coin skin/trail (keeping 1000 coins). Pack items (shop) are only bought with rea
 
 ## Longest stretches without a new unlock (median player)
 
-- casual: 152 days (day 200 to 352), 26 days (day 164 to 190), 22 days (day 142 to 164)
-- average: 66 days (day 78 to 144), 34 days (day 144 to 178), 10 days (day 64 to 74)
-- dedicated: 27 days (day 34 to 61), 5 days (day 29 to 34), 4 days (day 22 to 26)
+- casual: 118 days (day 234 to 352), 58 days (day 121 to 179), 18 days (day 190 to 208)
+- average: 48 days (day 192 to 240), 43 days (day 149 to 192), 30 days (day 114 to 144)
+- dedicated: 157 days (day 63 to 220), 22 days (day 39 to 61), 6 days (day 24 to 30)

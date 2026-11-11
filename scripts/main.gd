@@ -89,10 +89,9 @@ var coins_doubled := false
 var shield_hits := 0          # SHIELD ability: hits left this run
 var shield_recharge_at := -1.0
 var teleports := 0            # TELEPORT ability charges left in this run
-var slowmo_charges := 0       # SLOW-MO ability charges left in this run
-var slowmo_left := 0.0        # real seconds of slow motion still running
+var turbo_charges := 0        # TURBO ability charges left in this run
+var turbo_left := 0.0         # real seconds of TURBO still running (faster game, points x2)
 var second_life := false      # SECOND LIFE ability unused in this run
-var start_score := 0          # HEADSTART: points granted by the start world
 var _layer := 0               # altitude layer (Stages.LAYERS) the run is in
 var xp_awarded := 0           # XP already paid out for this run (continue-safe)
 var stage := 0                # current world (Stages index)
@@ -165,7 +164,7 @@ func _ready() -> void:
 		if not Monetization.show_rewarded("double_coins"):
 			ui.toast(L.t("NO_AD"), Color8(255, 150, 160)))
 	ui.teleport_pressed.connect(use_teleport)
-	ui.slowmo_pressed.connect(use_slowmo)
+	ui.turbo_pressed.connect(use_turbo)
 	ui.share_pressed.connect(_share)
 	ui.ability_video_pressed.connect(func():
 		if not Monetization.show_rewarded("ability_video"):
@@ -580,13 +579,12 @@ func start_run() -> void:
 	player.shield_boost = shield_hits > 0
 	player.shield_layers = shield_hits
 	teleports = 0 if dm else Save.ability("teleport")
-	slowmo_charges = 0 if dm else Save.ability("slowmo")
-	slowmo_left = 0.0
-	player.slowmo = false
+	turbo_charges = 0 if dm else Save.ability("turbo")
+	turbo_left = 0.0
+	player.turbo = false
 	second_life = not dm and Save.ability("secondlife") > 0
 	duel_lead = false
 	xp_awarded = 0
-	start_score = 0
 	stage = 0
 	world_no = 1
 	_stage_pending = -1
@@ -608,17 +606,6 @@ func start_run() -> void:
 	director.surges = ev.is_empty()   # a weekly event already has its own theme
 	director.escalate = not ev.is_empty()
 	_event_stage = int(ev.get("stage", -1))
-	# HEADSTART: begin in a world already passed, with that world's points
-	var sw := 1 if dm else Save.chosen_start_world()
-	if sw > 1:
-		stage = sw - 1
-		world_no = sw
-		start_score = int(Stages.LIST[stage]["score"])
-		score = start_score
-		Orbit.set_shape(Stages.LIST[stage]["orbits"], true, Stages.motion(stage))
-		_apply_world(stage, false)
-		director.stage = stage
-		director.world = world_no
 	if _event_stage >= 0:
 		# the whole run on one world (no world changes, see _add_score)
 		stage = _event_stage
@@ -637,7 +624,7 @@ func start_run() -> void:
 	ui.set_score(score)
 	ui.set_world_progress(score, best_at_start)
 	ui.set_teleport(teleports)
-	ui.set_slowmo(slowmo_charges)
+	ui.set_turbo(turbo_charges)
 	ui.set_run_coins(0)
 	if dm and duel.get("kind", "duel") == "event":
 		ui.set_event_target(L.t("EV_" + str(duel["event"]["id"]).to_upper()), int(duel["target"]))
@@ -791,7 +778,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		use_teleport()
 		return
 	if event is InputEventKey and event.pressed and event.keycode == KEY_S and state == S.PLAYING:
-		use_slowmo()
+		use_turbo()
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode in [KEY_ESCAPE, KEY_P]:
 		if state == S.PLAYING:
@@ -935,12 +922,11 @@ func _process(delta: float) -> void:
 			if _freeze > 0.0:   # PERFECT hit-stop: nothing moves for a moment (fair: the hazards stop too)
 				_freeze -= delta
 				left = 0.0
-			if slowmo_left > 0.0:
-				slowmo_left -= delta
-				left *= Upgrades.SLOWMO_SCALE
-				if slowmo_left <= 0.0:
-					player.slowmo = false
-					bg.speed_mul = 1.0
+			if turbo_left > 0.0:
+				turbo_left -= delta
+				left *= Upgrades.TURBO_SCALE
+				if turbo_left <= 0.0:
+					_turbo_end()
 			if not _aim.is_empty():
 				left *= AIM_SCALE
 				_aim_update(_aim["pos"])   # planets move: keep the aim on an orbit
@@ -1071,7 +1057,8 @@ func _sim(dt: float) -> void:
 			take = b.touches(player.angle, player.orbit)
 		if take:
 			_collect(b)
-	bg.speed_mul = (1.0 + director.level(gt) * 1.5) * (1.0 + (director._grav_mul(gt) - 1.0) * 6.0)   # gravity pulse: the sky rushes
+	bg.speed_mul = (1.0 + director.level(gt) * 1.5) * (1.0 + (director._grav_mul(gt) - 1.0) * 6.0) \
+		* (2.5 if turbo_left > 0.0 else 1.0)   # gravity pulse and TURBO: the sky rushes
 
 
 ## The field at the hit for the share card: one frame drawn without the HUD, then the flash.
@@ -1159,7 +1146,7 @@ func _collect(b: Bubble) -> void:
 			fx.text("+%d" % b.value, p + Vector2(0, -10), Color8(255, 222, 70))
 		Sfx.play("coin", 1.0 + minf(0.3, 0.05 * (picked_coins % 7)), -3.0)
 		return
-	var pts := 2 + (Save.ability("bubbles") * Upgrades.BUBBLE_BONUS if duel.is_empty() else 0)
+	var pts := (2 + (Save.ability("bubbles") * Upgrades.BUBBLE_BONUS if duel.is_empty() else 0)) * _turbo_x()
 	_add_score(pts)
 	bubbles_popped += 1
 	Progress.event("bubble")
@@ -1241,9 +1228,9 @@ func _aim_stop() -> void:
 		aim_view.hide_aim()
 
 
-## Finger kept still after a tap: the ring fills, then the SLOW-MO starts.
+## Finger kept still after a tap: the ring fills, then the TURBO starts.
 func _hold_update() -> void:
-	if _touch.is_empty() or _touch["done"] or slowmo_charges <= 0 or slowmo_left > 0.0:
+	if _touch.is_empty() or _touch["done"] or turbo_charges <= 0 or turbo_left > 0.0:
 		player.hold = 0.0
 		return
 	var held: float = Time.get_ticks_msec() / 1000.0 - float(_touch["t"])
@@ -1251,14 +1238,14 @@ func _hold_update() -> void:
 	if held >= HOLD_TIME:
 		_touch["done"] = true
 		player.hold = 0.0
-		use_slowmo()
+		use_turbo()
 
 
-## The first runs with SLOW-MO / TELEPORT: a tip about their gesture (once each).
+## The first runs with TURBO / TELEPORT: a tip about their gesture (once each).
 func _ability_tip() -> void:
 	if not duel.is_empty() or _tut_step == 1:
 		return
-	for t in [["hold", slowmo_charges, "TIP_HOLD", "TIP_HOLD_SUB"], ["swipe", teleports, "TIP_SWIPE", "TIP_SWIPE_SUB"]]:
+	for t in [["turbo", turbo_charges, "TIP_HOLD", "TIP_HOLD_SUB"], ["swipe", teleports, "TIP_SWIPE", "TIP_SWIPE_SUB"]]:
 		if int(t[1]) > 0 and not Save.ability_tips.has(t[0]):
 			Save.ability_tips.append(t[0])
 			Save.save_data()
@@ -1337,16 +1324,46 @@ func _warp(dest: Array) -> void:
 	Progress.event("teleport")
 
 
-func use_slowmo() -> void:
-	if slowmo_charges <= 0 or state != S.PLAYING or slowmo_left > 0.0:
+func use_turbo() -> void:
+	if turbo_charges <= 0 or state != S.PLAYING or turbo_left > 0.0:
 		return
-	slowmo_charges -= 1
-	slowmo_left = Upgrades.SLOWMO_TIMES[clampi(Save.ability("slowmo"), 0, Upgrades.SLOWMO_TIMES.size() - 1)]
-	player.slowmo = true
-	fx.ring(player.position, Color8(150, 190, 255), 6.0, 40.0, 0.4)
-	fx.text(L.t("SLOWMO_FX"), player.position + Vector2(0, -14), Color8(170, 200, 255))
-	Sfx.play("pop", 0.7)
-	ui.set_slowmo(slowmo_charges)
+	turbo_charges -= 1
+	turbo_left = Upgrades.TURBO_TIME
+	player.turbo = true
+	_shake = maxf(_shake, 2.0)
+	fx.ring(player.position, Color8(255, 190, 70), 6.0, 44.0, 0.4)
+	fx.burst(player.position, 16, [Color8(255, 190, 70), Color.WHITE], 90.0, 0.4, 2.0)
+	fx.text(L.t("TURBO_FX", Upgrades.TURBO_POINTS), player.position + Vector2(0, -16), Color8(255, 200, 80), 1.2, 1.0)
+	Sfx.play("pop", 1.6)
+	Save.vibrate(20)
+	ui.set_turbo(turbo_charges, true)
+	Progress.ga.design("Ability:Turbo")
+
+
+func _turbo_end() -> void:
+	turbo_left = 0.0
+	player.turbo = false
+	ui.set_turbo(turbo_charges, false)
+	if state == S.PLAYING:
+		fx.ring(player.position, Color(1, 1, 1, 0.7), 30.0, 8.0, 0.3)
+
+
+## Points multiplier right now (TURBO).
+func _turbo_x() -> int:
+	return Upgrades.TURBO_POINTS if turbo_left > 0.0 else 1
+
+
+## EXPLORER: coins for the world just reached (not in duels, the daily challenge or events).
+func _explorer_pay() -> void:
+	if not duel.is_empty():
+		return
+	var c: int = Upgrades.EXPLORER_COINS[clampi(Save.ability("explorer"), 0, Upgrades.EXPLORER_COINS.size() - 1)]
+	if c <= 0:
+		return
+	picked_coins += c
+	ui.set_run_coins(picked_coins)
+	fx.text(L.t("EXPLORER_FX", c), player.position + Vector2(0, -26), Color8(255, 214, 72), 1.1, 1.2)
+	Sfx.play("coin", 1.1)
 
 
 ## SECOND LIFE ability: a fatal hit clears the field and the run goes on (once per run).
@@ -1365,9 +1382,9 @@ func _use_second_life() -> void:
 	Save.vibrate(50)
 
 
-## Coins earned this run (HEADSTART points are not paid), with the COINS+ ability.
+## Coins earned this run, with the COINS+ ability.
 func _run_coins() -> int:
-	var base := floorf((score - start_score) * MonetizationConfig.COINS_PER_SCORE) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE \
+	var base := floorf(score * MonetizationConfig.COINS_PER_SCORE) + bubbles_popped * MonetizationConfig.COINS_PER_BUBBLE \
 		+ picked_coins
 	var x2 := 2.0 if Save.owns("coins_x2") else 1.0   # COINS x2 FOREVER purchase
 	return int(floor(base * Upgrades.coin_mult(Save.ability("coins")) * x2))
@@ -1375,7 +1392,7 @@ func _run_coins() -> int:
 
 ## Pays the run's XP not given yet (a continue pays only the difference). Returns XP added now.
 func _award_xp() -> int:
-	var total_xp := Upgrades.run_xp(maxi(0, score - start_score), Save.games == 1)
+	var total_xp := Upgrades.run_xp(score, Save.games == 1)
 	var gain := total_xp - xp_awarded
 	xp_awarded = total_xp
 	Progress.award_xp(gain)
@@ -1409,7 +1426,7 @@ func _award(h) -> void:
 		Progress.event("combo", _near_streak)
 		var mult := combo_mult(_near_streak)
 		var perfect: bool = h.min_clear < PERFECT_CLEAR
-		var pts := 2 * mult + (2 if perfect else 0)
+		var pts := (2 * mult + (2 if perfect else 0)) * _turbo_x()
 		_add_score(pts)
 		var big := minf(1.0 + 0.12 * (mult - 1), 1.5)
 		var txt: String = L.t("PERFECT_FX", pts) if perfect else (L.t("CLOSE_FX") if mult == 1 else "+%d" % pts)
@@ -1438,8 +1455,8 @@ func _award(h) -> void:
 			fx.text(L.t("COMBO_END", _near_streak), player.position + Vector2(0, -24), Color(1, 1, 1, 0.8), 0.9)
 		_near_streak = 0
 		ui.set_combo(0, 1)
-		_add_score(1)
-		fx.text("+1", p, Color.WHITE)
+		_add_score(_turbo_x())
+		fx.text("+%d" % _turbo_x(), p, Color8(255, 190, 70) if turbo_left > 0.0 else Color.WHITE)
 		Sfx.play("score", 1.0, -4.0)
 
 
@@ -1503,6 +1520,7 @@ func _update_world(dt: float) -> void:
 				_world_intro_left = 1.2
 		Progress.ga.progression("Complete", _ga_mode(), "World%02d" % (world_no - 1), "", score)
 		Progress.event("world", world_no)
+		_explorer_pay()
 	if _morph_t >= 0.0:
 		_morph_t += dt
 		var k := clampf(_morph_t / MORPH_TIME, 0.0, 1.0)

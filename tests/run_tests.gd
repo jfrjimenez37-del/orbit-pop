@@ -930,16 +930,26 @@ func test_abilities(save) -> void:
 	save.save_data()
 	save.load_data()
 	ok(save.coins == 530, "boost refund only once")
-	# HEADSTART: capped by its level and by the best world reached - 1
+	# 1.0.23: SLOW-MO -> TURBO and HEADSTART -> EXPLORER keep the level bought (saves and cloud copies)
 	save.reset_all()
-	save.abilities["headstart"] = 2
-	save.stats["best_world"] = 9
-	save.start_world = 8
-	ok(save.headstart_max() == 5 and save.chosen_start_world() == 5, "headstart level 2 starts at world 5 at most")
-	save.stats["best_world"] = 4
-	ok(save.chosen_start_world() == 3, "headstart never skips past your best world - 1")
-	save.abilities["headstart"] = 0
-	ok(save.chosen_start_world() == 1, "no headstart starts at world 1")
+	cfg = ConfigFile.new()
+	cfg.set_value("player", "abilities", {"slowmo": 2, "headstart": 3, "coins": 1})
+	cfg.set_value("player", "video_up", {"id": "slowmo", "n": 1, "day": 3})
+	cfg.save(save.path)
+	save.load_data()
+	ok(save.ability("turbo") == 2 and save.ability("explorer") == 3 and save.ability("coins") == 1
+		and not save.abilities.has("slowmo") and not save.abilities.has("headstart") and save.video_up["id"] == "turbo",
+		"old saves: slow-mo level -> TURBO, headstart level -> EXPLORER")
+	save.reset_all()
+	var old_cloud: Dictionary = save.export_data()
+	old_cloud["abilities"] = {"slowmo": 3, "headstart": 1}
+	save.abilities = {"turbo": 1}
+	save.merge(old_cloud)
+	ok(save.ability("turbo") == 3 and save.ability("explorer") == 1 and not save.abilities.has("slowmo"),
+		"old cloud copies: renamed abilities merged at the higher level")
+	ok(Upgrades.find("slowmo").is_empty() and Upgrades.find("headstart").is_empty() and Upgrades.find("turbo")["unlock"] == 8
+		and Upgrades.find("explorer")["unlock"] == 12, "abilities: TURBO at level 8, EXPLORER at level 12")
+	save.reset_all()
 	ok(Stages.bounds(0) == Vector2i(0, 15) and Stages.bounds(70) == Vector2i(60, 90)
 		and Stages.bounds(850) == Vector2i(830, 890), "world progress bounds")
 	# region override
@@ -1046,26 +1056,47 @@ func test_abilities(save) -> void:
 	await process_frame
 	main.set_process(false)
 	main.ui.hide_popup()
-	save.abilities = {"headstart": 1, "slowmo": 2, "secondlife": 1}
+	save.abilities = {"explorer": 2, "turbo": 2, "secondlife": 1}
 	save.stats["best_world"] = 5
-	save.start_world = 3
+	save.ability_tips = ["turbo", "swipe"]
 	main.start_run()
-	ok(main.world_no == 3 and main.score == Stages.LIST[2]["score"] and main.start_score == main.score,
-		"headstart run begins in world 3 with its points (%d)" % main.score)
-	ok(main.slowmo_charges == 2 and main.second_life, "slowmo charges and second life armed")
+	ok(main.world_no == 1 and main.score == 0, "every run starts in world 1 with 0 points (no headstart)")
+	ok(main.turbo_charges == 2 and main.second_life, "turbo charges and second life armed")
 	main._grace = 0.0
+	main._clear_field()
+	main.director.hold = true
 	var gt0: float = main.gt
-	main.use_slowmo()
+	main.use_turbo()
+	ok(main.turbo_charges == 1 and main.turbo_left == Upgrades.TURBO_TIME and main.player.turbo and main._turbo_x() == 2,
+		"turbo: one charge spent, %.0f s, points x2" % Upgrades.TURBO_TIME)
+	main.use_turbo()
+	ok(main.turbo_charges == 1, "turbo: no second charge while one runs")
 	for f in 30:
 		main._process(1.0 / 60.0)
-	ok(main.slowmo_charges == 1 and absf(main.gt - gt0 - 0.25) < 0.02, "slowmo runs the game at half speed (%.2f)" % (main.gt - gt0))
+	ok(absf(main.gt - gt0 - 0.75) < 0.03, "turbo runs the game at 1.5x (%.2f s in 0.5 s)" % (main.gt - gt0))
+	var sc0: int = main.score
+	main._add_score(main._turbo_x())
+	ok(main.score == sc0 + 2, "turbo: a normal pass is worth 2")
+	for f in int(Upgrades.TURBO_TIME * 60.0):
+		main._process(1.0 / 60.0)
+	ok(main.turbo_left <= 0.0 and not main.player.turbo and main._turbo_x() == 1, "turbo ends after %.0f s" % Upgrades.TURBO_TIME)
+	# EXPLORER: coins for every new world reached in the run
+	var pc0: int = main.picked_coins
+	main.score = 0
+	main._explorer_pay()
+	ok(main.picked_coins == pc0 + Upgrades.EXPLORER_COINS[2], "explorer level 2: +%d coins per new world" % Upgrades.EXPLORER_COINS[2])
+	main.picked_coins = pc0
+	main.bubbles_popped = 0
+	main.score = 0
+	main.director.hold = false
 	main._die()
 	ok(main.state == main.S.PLAYING and not main.second_life and main.hazards.is_empty(), "second life revives once")
 	main._die()
 	ok(main.state == main.S.DYING, "second death ends the run")
 	for f in 60:
 		main._process(1.0 / 60.0)
-	ok(main.run_coins == int(main.bubbles_popped * Upgrades.coin_mult(0)), "headstart points don't pay coins (%d)" % main.run_coins)
+	ok(main.run_coins == int(floor((floorf(main.score * MonetizationConfig.COINS_PER_SCORE) + main.bubbles_popped + main.picked_coins) * Upgrades.coin_mult(0))),
+		"run coins: score, bubbles and picked coins (%d)" % main.run_coins)
 	main.queue_free()
 	await process_frame
 	Orbit.reset()
@@ -1173,7 +1204,7 @@ func test_duels(save) -> void:
 	# a duel run: same run for everyone, no abilities, no continue
 	save.reset_all()
 	save.level = 20
-	save.abilities = {"coins": 5, "shield": 3, "magnet": 5, "slowmo": 3, "teleport": 3, "headstart": 3, "secondlife": 1}
+	save.abilities = {"coins": 5, "shield": 3, "magnet": 5, "turbo": 3, "teleport": 3, "explorer": 3, "secondlife": 1}
 	save.stats = {"best_world": 12}
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
@@ -1182,8 +1213,8 @@ func test_duels(save) -> void:
 	main.ui.hide_popup()
 	var d2 := Duel.decode(Duel.encode(4242, 30, "KAI"))
 	main.start_duel(d2)
-	ok(main.shield_hits == 0 and main.teleports == 0 and main.slowmo_charges == 0 and not main.second_life and main.stage == 0 and main.score == 0,
-		"duel: no shield, teleport, slow-mo, second life or headstart")
+	ok(main.shield_hits == 0 and main.teleports == 0 and main.turbo_charges == 0 and not main.second_life and main.stage == 0 and main.score == 0,
+		"duel: no shield, teleport, turbo or second life")
 	var runs := []
 	for k in 2:
 		if k == 1:
@@ -1515,8 +1546,8 @@ func test_tutorial(save) -> void:
 func test_gestures(save) -> void:
 	save.reset_all()
 	save.tutorial_done = true; save.jump_tip_done = true
-	save.ability_tips = ["hold", "swipe"]
-	save.abilities = {"slowmo": 2, "teleport": 2, "bubbles": 2}
+	save.ability_tips = ["turbo", "swipe"]
+	save.abilities = {"turbo": 2, "teleport": 2, "bubbles": 2}
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
 	await process_frame
@@ -1524,19 +1555,18 @@ func test_gestures(save) -> void:
 	main.duel = {}
 	main.start_run()
 	main._clear_field()
-	ok(main.slowmo_charges == 2 and main.teleports == 2, "gestures: charges from the ability levels")
+	ok(main.turbo_charges == 2 and main.teleports == 2, "gestures: charges from the ability levels")
 	var now := Time.get_ticks_msec() / 1000.0
 	# a short press: no slow-mo
 	main._touch = {"pos": Vector2(90, 200), "t": now - 0.2, "dir": main.player.dir, "orbit": 0, "done": false, "pointer": true}
 	main._hold_update()
-	ok(main.slowmo_left <= 0.0 and main.player.hold > 0.0, "gestures: 0.2 s held: ring charging, no slow-mo yet")
+	ok(main.turbo_left <= 0.0 and main.player.hold > 0.0, "gestures: 0.2 s held: ring charging, no turbo yet")
 	main._touch["t"] = now - 0.6
 	main._hold_update()
-	ok(main.slowmo_left == Upgrades.SLOWMO_TIMES[2] and main.slowmo_charges == 1 and main.player.hold == 0.0,
-		"gestures: held 0.5 s: slow-mo for %.1f s (level 2)" % Upgrades.SLOWMO_TIMES[2])
+	ok(main.turbo_left == Upgrades.TURBO_TIME and main.turbo_charges == 1 and main.player.hold == 0.0,
+		"gestures: held 0.5 s: TURBO for %.0f s" % Upgrades.TURBO_TIME)
 	main._touch = {}
-	main.slowmo_left = 0.0
-	main.player.slowmo = false
+	main._turbo_end()
 	# swipe: the tap's flip is undone and the TELEPORT aim starts (slow game, nothing spent yet)
 	var d0: int = main.player.dir
 	main._flip()   # the swipe's own tap
@@ -1767,7 +1797,7 @@ func test_events(save) -> void:
 		var w0: int = 0
 		save.event_week_test = w0 - posmod(w0, Events.LIST.size()) + i
 		main.start_event()
-		ok(main.duel.get("kind", "") == "event" and main.teleports == 0 and main.slowmo_charges == 0, "events: %s run has no abilities" % ev["id"])
+		ok(main.duel.get("kind", "") == "event" and main.teleports == 0 and main.turbo_charges == 0, "events: %s run has no abilities" % ev["id"])
 		var bad := {}
 		var seen := {}
 		var frames := 0
@@ -1834,7 +1864,7 @@ func test_events(save) -> void:
 func test_surges(save) -> void:
 	save.reset_all()
 	save.tutorial_done = true; save.jump_tip_done = true
-	save.ability_tips = ["hold", "swipe"]
+	save.ability_tips = ["turbo", "swipe"]
 	save.seen_obstacles = Director.KINDS.map(func(kd): return kd[0])
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
@@ -1911,7 +1941,7 @@ func test_surges(save) -> void:
 func test_v120(save) -> void:
 	save.reset_all()
 	save.tutorial_done = true; save.jump_tip_done = true
-	save.ability_tips = ["hold", "swipe"]
+	save.ability_tips = ["turbo", "swipe"]
 	save.seen_obstacles = Director.KINDS.map(func(kd): return kd[0])
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)

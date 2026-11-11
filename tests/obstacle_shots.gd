@@ -17,7 +17,7 @@ func _initialize() -> void:
 	save.reset_all()
 	save.tutorial_done = true
 	save.jump_tip_done = true
-	save.ability_tips = ["hold", "swipe"]
+	save.ability_tips = ["turbo", "swipe"]
 	get_root().size = Vector2i(540, 960)
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)

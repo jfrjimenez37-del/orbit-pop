@@ -26,7 +26,6 @@ var owned_items: Array = []   # "cat:id" bought with coins
 var level := 1
 var xp := 0                   # XP inside the current level
 var abilities := {}           # ability id -> level (see Upgrades)
-var start_world := 1          # chosen HEADSTART world (1 = normal start)
 var region := ""              # leaderboard region, "" = from the device locale
 var daily_day := 0            # last claimed streak day (1..7)
 var daily_last := ""          # local date of the last claim (YYYY-MM-DD)
@@ -116,7 +115,7 @@ func load_data() -> void:
 	level = clampi(int(cfg.get_value("player", "level", 1)), 1, Upgrades.MAX_LEVEL)
 	xp = int(cfg.get_value("player", "xp", 0))
 	abilities = cfg.get_value("player", "abilities", {})
-	start_world = int(cfg.get_value("player", "start_world", 1))
+	_rename_abilities()
 	region = str(cfg.get_value("settings", "region", ""))
 	starter_seen = bool(cfg.get_value("shop", "starter_seen", false))
 	welcome_shown = bool(cfg.get_value("shop", "welcome_shown", false))
@@ -127,6 +126,8 @@ func load_data() -> void:
 	sessions = int(cfg.get_value("meta", "sessions", 0))
 	free_continue_day = int(cfg.get_value("shop", "free_continue_day", -1))
 	video_up = cfg.get_value("player", "video_up", {})
+	if Upgrades.RENAMED.has(str(video_up.get("id", ""))):
+		video_up["id"] = Upgrades.RENAMED[video_up["id"]]
 	offers = cfg.get_value("shop", "offers", {})
 	offer_live = cfg.get_value("shop", "offer_live", {})
 	duels = cfg.get_value("player", "duels", {})
@@ -188,7 +189,6 @@ func save_data() -> void:
 	cfg.set_value("player", "level", level)
 	cfg.set_value("player", "xp", xp)
 	cfg.set_value("player", "abilities", abilities)
-	cfg.set_value("player", "start_world", start_world)
 	cfg.set_value("settings", "region", region)
 	cfg.set_value("shop", "starter_seen", starter_seen)
 	cfg.set_value("shop", "welcome_shown", welcome_shown)
@@ -515,14 +515,13 @@ func video_ad_watched() -> String:
 	return ""
 
 
-## Highest world the player may start in (HEADSTART), never above a world already passed.
-func headstart_max() -> int:
-	var cap: int = Upgrades.HEADSTART_WORLD[mini(ability("headstart"), Upgrades.HEADSTART_WORLD.size() - 1)]
-	return maxi(1, mini(cap, int(stats.get("best_world", 1)) - 1))
-
-
-func chosen_start_world() -> int:
-	return clampi(start_world, 1, headstart_max())
+## 1.0.23: SLOW-MO became TURBO and HEADSTART became EXPLORER; the level bought is kept.
+func _rename_abilities() -> void:
+	for old in Upgrades.RENAMED:
+		if abilities.has(old):
+			var id: String = Upgrades.RENAMED[old]
+			abilities[id] = maxi(ability(id), int(abilities[old]))
+			abilities.erase(old)
 
 
 # ------------------------------------------------------------------ daily gift
@@ -590,6 +589,7 @@ func merge(d: Dictionary) -> bool:
 	var ab: Dictionary = d.get("abilities", {})
 	for k in ab:
 		abilities[k] = maxi(ability(k), int(ab[k]))
+	_rename_abilities()   # a cloud copy from 1.0.22 or older
 	var st: Dictionary = d.get("stats", {})
 	for k in st:
 		stats[k] = maxi(int(stats.get(k, 0)), int(st[k]))
@@ -686,7 +686,7 @@ func reset_all() -> void:
 	trail = "classic"; world = "sky"
 	recent = []; seen_unlocks = ["poppy"]; purchases = []
 	coins = 0; owned_items = []
-	level = 1; xp = 0; abilities = {}; start_world = 1; region = ""
+	level = 1; xp = 0; abilities = {}; region = ""
 	daily_day = 0; daily_last = ""; free_ads_date = ""; free_ads_used = 0
 	starter_seen = false
 	welcome_shown = false

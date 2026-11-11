@@ -182,7 +182,7 @@ func _audit_all(lang: String) -> void:
 	ui.set_altitude(99999)
 	ui.set_run_coins(9999)
 	ui.set_teleport(9)
-	ui.set_slowmo(9)
+	ui.set_turbo(9)
 	await _check(lang, "hud")
 	ui.world_banner(16, _longest_world_name(), L.t("MOVE_TIP"), L.t(Stages.LAYERS[-1][1]))
 	await _check(lang, "world banner")

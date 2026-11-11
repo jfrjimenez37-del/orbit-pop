@@ -104,7 +104,7 @@ func _initialize() -> void:
 	sv.seen_obstacles = []
 	for kd in Director.KINDS:
 		sv.seen_obstacles.append(kd[0])               # no NEW OBSTACLE tips
-	sv.ability_tips = ["hold", "swipe"]
+	sv.ability_tips = ["turbo", "swipe"]
 	sv.music = false
 	sv.skin = Catalog.find("skins", "cosmo")
 	sv.trail = "galaxy"

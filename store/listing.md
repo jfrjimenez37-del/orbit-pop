@@ -25,7 +25,7 @@ Sky, lagoon, sunset, candy, night... then twin, three and four-planet systems wh
 Boomerangs that come back, satellites, solar flares, UFOs dropping mines, asteroid belts, meteors that split in two and pulsar beams. Every one you meet joins your obstacle collection.
 
 ⚡ LEVEL UP AND GET STRONGER
-Earn XP every run and unlock 8 permanent powers: shield, coin magnet, slow-mo (hold your finger down), teleport (swipe), bubble boost, head start, second life and bonus coins. Upgrade them with the coins you collect.
+Earn XP every run and unlock 8 permanent powers: shield, coin magnet, turbo (hold your finger down for double points), teleport (swipe and aim), bubble boost, explorer coins, second life and bonus coins. Upgrade them with the coins you collect.
 
 ⚔️ DUEL YOUR FRIENDS
 Send a challenge: your friend plays the exact same run, no powers, one try. Highest score wins!
@@ -66,7 +66,7 @@ Cielo, laguna, atardecer, caramelo, noche... luego sistemas de dos, tres y cuatr
 Bumeranes que vuelven, satélites, llamaradas solares, ovnis que sueltan minas, cinturones de asteroides, meteoritos que se parten en dos y rayos púlsar. Cada uno que encuentres se suma a tu colección.
 
 ⚡ SUBE DE NIVEL Y HAZTE MÁS FUERTE
-Gana experiencia en cada partida y desbloquea 8 habilidades permanentes: escudo, imán de monedas, cámara lenta (mantén el dedo), teletransporte (desliza), burbujas+, salida avanzada, segunda vida y más monedas. Mejóralas con las monedas que recoges.
+Gana experiencia en cada partida y desbloquea 8 habilidades permanentes: escudo, imán de monedas, turbo (mantén el dedo para puntos dobles), teletransporte (desliza y apunta), burbujas+, explorador, segunda vida y más monedas. Mejóralas con las monedas que recoges.
 
 ⚔️ RETA A TUS AMIGOS
 Envía un duelo: tu amigo juega exactamente la misma partida, sin poderes y con un solo intento. ¡Gana quien haga más puntos!
