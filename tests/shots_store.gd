@@ -96,12 +96,12 @@ func _process(_dt: float) -> bool:
 			seed(4242)   # same run in every language
 			main.start_run()
 			main.player.trail_style = "rainbow"
-			world(0, 18)
+			world(0, 6)
 		# 2: night (two crossing orbits)
 		400:
 			main.player.set_skin(Catalog.find("skins", "cosmo"))
 			main.player.trail_style = "galaxy"
-			world(4, 163)
+			world(4, 98)
 		# 3: four planets (MOONS) with its solar flares
 		800:
 			main.player.set_skin(Catalog.find("skins", "magma"))

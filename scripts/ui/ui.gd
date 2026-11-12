@@ -1969,6 +1969,7 @@ func _open_popup(title: String, kind := "", h := 136) -> NinePatchRect:
 		Monetization.show_banner()
 	_menu_best_box.visible = false
 	_menu_coin_box.visible = false
+	_menu_logo.visible = false   # the title of a tall popup lands on the logo's letters
 	return p
 
 
@@ -1982,6 +1983,7 @@ func hide_popup() -> void:
 	popup.visible = false
 	_menu_best_box.visible = _mission_card == null
 	_menu_coin_box.visible = true
+	_menu_logo.visible = true
 	if menu.visible:
 		Monetization.hide_banner()
 		refresh_menu()

@@ -930,7 +930,7 @@ func test_abilities(save) -> void:
 	save.save_data()
 	save.load_data()
 	ok(save.coins == 530, "boost refund only once")
-	# 1.0.23: SLOW-MO -> TURBO and HEADSTART -> EXPLORER keep the level bought (saves and cloud copies)
+	# 1.0.24: SLOW-MO -> TURBO and HEADSTART -> EXPLORER keep the level bought (saves and cloud copies)
 	save.reset_all()
 	cfg = ConfigFile.new()
 	cfg.set_value("player", "abilities", {"slowmo": 2, "headstart": 3, "coins": 1})

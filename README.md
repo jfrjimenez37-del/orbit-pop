@@ -5,12 +5,8 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
-## 1.0.23 (código 25)
+## 1.0.24 (código 26)
 
-- **Teletransporte apuntado**: al deslizar, el juego va a cámara lenta (`AIM_SCALE` 0,15) y el
-  dedo arrastra la mira (línea de puntos + fantasma) hasta el punto más cercano de cualquier
-  órbita; al soltar, salta ahí (al sitio seguro más cercano). Volver al jugador cancela sin gastar
-  la carga; a los `AIM_MAX` 1,6 s salta solo. `AimPreview`, `Orbit.nearest_angle`.
 - **TURBO en vez de CÁMARA LENTA** y **EXPLORADOR en vez de empezar en un mundo adelantado**: las
   dos habilidades antiguas hacían el ranking menos justo (una frena el juego, la otra regala
   puntos). TURBO: mantener pulsado 0,5 s da 4 s a 1,5× de velocidad con todos los puntos ×2
@@ -18,6 +14,17 @@ revienta burbujas y supera tu récord.
   EXPLORADOR: monedas al llegar a cada mundo nuevo (`EXPLORER_COINS`), sin tocar la puntuación.
   Todas las partidas empiezan en el mundo 1 con 0 puntos. El nivel comprado se conserva
   (`Upgrades.RENAMED`, `Save._rename_abilities`, también en copias de la nube antiguas).
+- **Ventanas sobre el menú**: el logo se oculta mientras hay una ventana abierta (el título de
+  las ventanas altas, como RETOS, caía encima de las letras del logo).
+- **Tienda**: 8 capturas nuevas por idioma (`store/screenshots/en|es`) con TURBO y EXPLORADOR, y
+  texto de la ficha actualizado (`store/listing.md`).
+
+## 1.0.23 (código 25)
+
+- **Teletransporte apuntado**: al deslizar, el juego va a cámara lenta (`AIM_SCALE` 0,15) y el
+  dedo arrastra la mira (línea de puntos + fantasma) hasta el punto más cercano de cualquier
+  órbita; al soltar, salta ahí (al sitio seguro más cercano). Volver al jugador cancela sin gastar
+  la carga; a los `AIM_MAX` 1,6 s salta solo. `AimPreview`, `Orbit.nearest_angle`.
 - **Ranking HOY** = las partidas normales de hoy (tabla global, periodo diario). El ranking del
   reto diario sigue en RETOS › HOY y se titula RETO DIARIO. Cada partida envía su puntuación
   (Play Games guarda la mejor de cada jugador); el récord solo se reenvía al iniciar sesión si
@@ -357,9 +364,9 @@ de jugador y luego se mejora con monedas (300, 1200, 4000, 12000). Nada se gasta
 | MONEDAS+ | 2 | 5 | +10 % monedas por nivel |
 | ESCUDO | 3 | 3 | escudo al empezar; nv2 se recarga a los 60 s; nv3 aguanta 2 golpes |
 | IMÁN | 5 | 5 | monedas y burbujas a menos de 22/30/38/46/56 px (cualquier órbita) vuelan hacia ti |
-| TURBO (1.0.23, antes CÁMARA LENTA) | 8 | 3 | mantener pulsado: 4 s a 1,5× con todos los puntos ×2, 1 carga por nivel |
+| TURBO (1.0.24, antes CÁMARA LENTA) | 8 | 3 | mantener pulsado: 4 s a 1,5× con todos los puntos ×2, 1 carga por nivel |
 | TELEPORT | 10 | 3 | deslizar y apuntar: salta adonde sueltes, 1 carga por nivel |
-| EXPLORADOR (1.0.23, antes SALTO INICIAL) | 12 | 3 | +5/+10/+15 monedas por cada mundo nuevo alcanzado en la partida |
+| EXPLORADOR (1.0.24, antes SALTO INICIAL) | 12 | 3 | +5/+10/+15 monedas por cada mundo nuevo alcanzado en la partida |
 | SEGUNDA VIDA | 15 | 1 | revive 1 vez por partida (se compra: 10000) |
 
 Simulación anterior (1.0.9): un jugador medio (25 min/día) desbloquea todas en ~5 días, las mejora

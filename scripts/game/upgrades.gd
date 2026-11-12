@@ -21,7 +21,7 @@ const ABILITIES := [
 	{"id": "explorer", "icon": "world", "unlock": 12, "max": 3},
 	{"id": "secondlife", "icon": "heart", "unlock": 15, "max": 1, "buy": 10000},
 ]
-## Abilities replaced in 1.0.23 (old id -> new id): a save keeps the level it had.
+## Abilities replaced in 1.0.24 (old id -> new id): a save keeps the level it had.
 const RENAMED := {"slowmo": "turbo", "headstart": "explorer"}
 ## TURBO: hold the screen; TURBO_TIME real seconds at TURBO_SCALE speed with every point worth
 ## TURBO_POINTS times as much. Charges per run = ability level. Risk for reward: the patterns

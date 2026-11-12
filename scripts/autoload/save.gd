@@ -515,7 +515,7 @@ func video_ad_watched() -> String:
 	return ""
 
 
-## 1.0.23: SLOW-MO became TURBO and HEADSTART became EXPLORER; the level bought is kept.
+## 1.0.24: SLOW-MO became TURBO and HEADSTART became EXPLORER; the level bought is kept.
 func _rename_abilities() -> void:
 	for old in Upgrades.RENAMED:
 		if abilities.has(old):

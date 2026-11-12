@@ -12,9 +12,9 @@ W, H = 1080, 1920
 OUT = (38, 28, 66)
 # frame file, background top/bottom, caption per language
 SHOTS = [
-    ("g1_5", (62, 120, 214), (120, 190, 250), {"en": "ONE TAP TO FLIP YOUR ORBIT", "es": "UN TOQUE PARA GIRAR AL REVÉS"}),
-    ("g2_6", (28, 24, 70), (70, 60, 140), {"en": "DODGE, SWITCH ORBITS, SURVIVE", "es": "ESQUIVA Y CAMBIA DE ÓRBITA"}),
-    ("g3_7", (214, 110, 60), (250, 190, 110), {"en": "16 WORLDS, UP TO 4 PLANETS", "es": "16 MUNDOS, HASTA 4 PLANETAS"}),
+    ("g1_4", (62, 120, 214), (120, 190, 250), {"en": "ONE TAP TO FLIP YOUR ORBIT", "es": "UN TOQUE PARA GIRAR AL REVÉS"}),
+    ("g2_9", (28, 24, 70), (70, 60, 140), {"en": "DODGE, SWITCH ORBITS, SURVIVE", "es": "ESQUIVA Y CAMBIA DE ÓRBITA"}),
+    ("g3_6", (214, 110, 60), (250, 190, 110), {"en": "16 WORLDS, UP TO 4 PLANETS", "es": "16 MUNDOS, HASTA 4 PLANETAS"}),
     ("g4_5", (110, 60, 160), (220, 110, 170), {"en": "A NEW OBSTACLE IN EVERY WORLD", "es": "UN OBSTÁCULO NUEVO EN CADA MUNDO"}),
     ("u5_abilities", (30, 80, 150), (90, 160, 230), {"en": "LEVEL UP 8 POWERS", "es": "SUBE DE NIVEL 8 HABILIDADES"}),
     ("u6_skins", (40, 120, 90), (110, 200, 150), {"en": "29 SKINS AND 22 TRAILS", "es": "29 SKINS Y 22 ESTELAS"}),
