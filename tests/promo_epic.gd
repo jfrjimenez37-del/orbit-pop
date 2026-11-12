@@ -162,6 +162,7 @@ func _initialize() -> void:
 		"phone": _tl_phone()
 		"hard": _tl_hard()
 		"chick": _tl_chick()
+		"hooks": _tl_hooks()
 		"surges": _tl_surges()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
@@ -537,6 +538,21 @@ func _tl_chick() -> void:
 	_at(6.0, func(): _shot_near(Vector2(6.5, 7.7), 7.1, 14, 30.0); _cam(1.0, true); _zoom_to(1.8, 0.4); _flash(0.6))
 	_at(8.2, func(): _shot_play("ck4", 15, 34.0, 6.0, 704); _surge_soon("comets"); _cam(1.0, false); _flash(0.7); _punch(0.25))
 	_at(10.2, func(): bot_off = true)
+
+
+## Raw footage for the "first 3 seconds" hook tests (captions and cuts are added in the edit):
+## 5 s of world 1, a ladder through worlds 2-4, a death in world 5, then a meteor shower in
+## world 16 that ends in a death.
+func _tl_hooks() -> void:
+	end_t = 21.0
+	_at(0.0, func(): _shot_play("hk1", 0, 22.0, 6.0, 801); _cam(1.0, false))
+	_at(5.0, func(): _shot_play("hk2", 1, 22.0, 6.0, 802); _cam(1.0, false))
+	_at(6.6, func(): _shot_play("hk3", 2, 22.0, 6.0, 803); _cam(1.0, false))
+	_at(8.2, func(): _shot_play("hk4", 3, 22.0, 6.0, 804); _cam(1.0, false))
+	_at(9.8, func(): _shot_play("hk5", 4, 24.0, 6.0, 805); _cam(1.0, false))
+	_at(10.6, func(): bot_off = true)
+	_at(13.0, func(): bot_off = false; _shot_play("hk6", 15, 34.0, 6.0, 806); _surge_soon("shower"); _cam(1.0, false))
+	_at(18.2, func(): bot_off = true)
 
 
 func _surge_soon(kind: String) -> void:
