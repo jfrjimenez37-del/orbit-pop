@@ -108,6 +108,9 @@ func _initialize() -> void:
 	sv.music = false
 	sv.skin = Catalog.find("skins", "cosmo")
 	sv.trail = "galaxy"
+	if variant == "chick":
+		sv.skin = Catalog.find("skins", "goldie")
+		sv.trail = "sparkle"
 	for a in get_root().get_node("Progress").ACHIEVEMENTS:
 		sv.achievements.append(a["id"])
 	if variant == "duel":
@@ -158,6 +161,7 @@ func _initialize() -> void:
 		"stills16": _tl_stills16()
 		"phone": _tl_phone()
 		"hard": _tl_hard()
+		"chick": _tl_chick()
 		"surges": _tl_surges()
 	events.sort_custom(func(a, b): return a[0] < b[0])
 
@@ -521,6 +525,17 @@ func _tl_surges() -> void:
 	_at(3.0, func(): _shot_play("sg2", 10, 24.0, 6.0, 602); _surge_soon("nova"); _cam(1.0, false); _flash(0.7); _punch(0.25))
 	_at(6.0, func(): _shot_near(Vector2(6.5, 7.7), 7.1, 14, 30.0); _cam(1.0, true); _zoom_to(1.8, 0.4); _flash(0.6))
 	_at(8.2, func(): _shot_play("sg4", 15, 34.0, 6.0, 604); _surge_soon("comets"); _cam(1.0, false); _flash(0.7); _punch(0.25))
+	_at(10.2, func(): bot_off = true)
+
+
+## Gameplay for the "chick" story edit: the yellow skin (GOLDIE) in a one-planet night world under
+## a meteor shower, four planets with a supernova, a slow-motion near miss and a comet storm.
+func _tl_chick() -> void:
+	end_t = 13.2
+	_at(0.0, func(): _shot_play("ck1", 4, 26.0, 6.0, 701); _surge_soon("shower"); _cam(1.0, false); _punch(0.25))
+	_at(3.0, func(): _shot_play("ck2", 10, 24.0, 6.0, 702); _surge_soon("nova"); _cam(1.0, false); _flash(0.7); _punch(0.25))
+	_at(6.0, func(): _shot_near(Vector2(6.5, 7.7), 7.1, 14, 30.0); _cam(1.0, true); _zoom_to(1.8, 0.4); _flash(0.6))
+	_at(8.2, func(): _shot_play("ck4", 15, 34.0, 6.0, 704); _surge_soon("comets"); _cam(1.0, false); _flash(0.7); _punch(0.25))
 	_at(10.2, func(): bot_off = true)
 
 
