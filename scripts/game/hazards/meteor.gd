@@ -78,7 +78,7 @@ func tick(time: float) -> void:
 
 
 func _draw() -> void:
-	var warn_col := Color(1.0, 0.35, 0.3)
+	var warn_col := warn(Color(1.0, 0.35, 0.3))
 	var dir := Vector2(cos(theta), sin(theta))
 	var r := radius_at(t)
 	if t < t_danger_end:
@@ -86,7 +86,7 @@ func _draw() -> void:
 		var blink := 0.55 + 0.45 * sin(t * 30.0)
 		var d := minf(r - 8.0, R0)
 		while d > inner + 6.0:
-			draw_rect(Rect2((home_now() + dir * d).floor(), Vector2(1, 1)), Color(1, 0.55, 0.35, 0.8 * blink))
+			draw_rect(Rect2((home_now() + dir * d).floor(), Vector2(1, 1)), warn(Color(1, 0.55, 0.35, 0.8 * blink)))
 			d -= 5.0
 		var k01 := clampf((t_danger_start - t) / maxf(0.01, t_danger_start - t_spawn), 0.0, 1.0)
 		var rad := 6.0 + 8.0 * k01

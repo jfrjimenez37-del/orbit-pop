@@ -69,4 +69,4 @@ func _draw() -> void:
 		draw_circle(p + Vector2(-1, -1), s * 0.5, Color(0.95, 0.75, 0.55, al))
 		draw_rect(Rect2(p + Vector2(1, 0), Vector2(1, 1)), Color(0.45, 0.28, 0.22, al))
 		if warm:
-			draw_arc(p, 6.0 + 4.0 * (1.0 - k), 0.0, TAU, 10, Color(1, 0.45, 0.35, 0.6 * al), 1.0)
+			warn_arc(p, 6.0 + 4.0 * (1.0 - k), 0.0, TAU, 10, Color(1, 0.45, 0.35, 0.6 * al), 1.0)

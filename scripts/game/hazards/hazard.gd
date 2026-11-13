@@ -4,6 +4,14 @@ extends Node2D
 ## functions of game time, so the very same `danger()` drives both collisions and
 ## the fairness checker (Survival). Local origin = planet center.
 
+## Settings > COLORBLIND (Save sets it): warnings that are red or pink become bright yellow with a
+## dark outline, and safe-spot markers that are green become light blue, so danger and safety
+## never differ only by red / green.
+static var colorblind := false
+const CB_DANGER := Color(1.0, 0.85, 0.1)
+const CB_SAFE := Color(0.45, 0.85, 1.0)
+const CB_DARK := Color(0.12, 0.08, 0.22)
+
 var t_spawn := 0.0
 var t_danger_start := 0.0
 var t_danger_end := 0.0
@@ -18,6 +26,23 @@ var home := Vector2.ZERO     # that planet's center (world space)
 func set_home(k: int) -> void:
 	home_k = mini(k, Orbit.count() - 1)
 	home = Orbit.center(home_k)
+
+
+## A warning colour (red, pink): yellow in colorblind mode, alpha kept.
+static func warn(c: Color) -> Color:
+	return Color(CB_DANGER, c.a) if colorblind else c
+
+
+## A safe-spot colour (green): light blue in colorblind mode, alpha kept.
+static func safe(c: Color) -> Color:
+	return Color(CB_SAFE, c.a) if colorblind else c
+
+
+## A thin warning ring with, in colorblind mode, a dark outline under it (contrast on any background).
+func warn_arc(p: Vector2, r: float, a0: float, a1: float, n: int, c: Color, w: float) -> void:
+	if colorblind:
+		draw_arc(p, r, a0, a1, n, Color(CB_DARK, 0.75 * c.a), w + 2.0)
+	draw_arc(p, r, a0, a1, n, warn(c), w)
 
 
 ## The home planet's center now: it travels with the planet in moving worlds.

@@ -106,7 +106,7 @@ func _draw() -> void:
 			var p: Vector2 = (hc + c).round()
 			var on2 := fmod(t * 9.0, 1.0) < 0.6
 			draw_arc(p, 5.0, 0.0, TAU, 12, Color(0.15, 0.1, 0.25, 0.6), 3.0)
-			draw_arc(p, 5.0, 0.0, TAU, 12, Color(1, 0.4, 0.9) if on2 else Color(1, 0.9, 0.5), 1.0)
+			draw_arc(p, 5.0, 0.0, TAU, 12, warn(Color(1, 0.4, 0.9)) if on2 else Color(1, 0.9, 0.5), 1.0)
 	if t < t_launch or t > t_end:
 		return
 	var ps := pieces(t)

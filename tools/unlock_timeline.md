@@ -58,13 +58,13 @@ coin skin/trail (keeping 1000 coins). Pack items (shop) are only bought with rea
 | Skin | Rarity | Needs | casual | average | dedicated |
 |---|---|---|---|---|---|
 | POPPY | common | record 0 | start | start | start |
-| MINTY | common | record 30 | day 1 | day 1 | day 1 |
-| BERRY | common | record 70 | day 2 | day 1 | day 1 |
+| MINTY | common | record 50 | day 1 | day 1 | day 1 |
+| BERRY | common | record 100 | day 4 | day 1 | day 1 |
 | COOKIE | common | 600 coins | day 16 | day 5 | day 3 |
 | MELONY | common | 900 coins | day 17 | day 6 | day 5 |
-| FROSTY | rare | record 110 | day 5 | day 2 | day 1 |
-| EMBER | rare | record 150 | day 11 | day 3 | day 1 |
-| VOLT | rare | record 200 | day 22 | day 5 | day 2 |
+| FROSTY | rare | record 150 | day 11 | day 3 | day 1 |
+| EMBER | rare | record 200 | day 22 | day 5 | day 2 |
+| VOLT | rare | record 250 | day 43 | day 8 | day 3 |
 | PIXEL | rare | 6000 total points | day 16 | day 6 | day 3 |
 | BUBBLY | rare | 1500 coins | day 19 | day 9 | day 6 |
 | ROBO | rare | 2200 coins | day 24 | day 12 | day 6 |

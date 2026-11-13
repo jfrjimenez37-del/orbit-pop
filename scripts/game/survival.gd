@@ -162,133 +162,248 @@ static func bucket(angle: float) -> int:
 ## `cache` (same t_now, omega and margin), so their danger masks are computed only once.
 static func can_survive(hazards: Array, t_now: float, angle: float, dir: int, omega: float, first_tap := true, orbit := 0,
 		margin := MARGIN, tap_gap := TAP_GAP, tap_from := 0.0, omega_rate := 0.0, cache = null, n_cached := 0) -> bool:
-	if not Orbit.moving():
-		return _survive(hazards, t_now, angle, dir, omega, first_tap, orbit, margin, tap_gap, tap_from, omega_rate, cache, n_cached, false)
-	# moving world: the geometry follows each step's time; put the clock back afterwards
-	var keep := Orbit.time
-	Orbit.set_time(t_now)
-	var res := _survive(hazards, t_now, angle, dir, omega, first_tap, orbit, margin, tap_gap, tap_from, omega_rate, cache, n_cached, true)
-	Orbit.set_time(keep)
-	return res
+	var job := Check.new(hazards, t_now, angle, dir, omega, first_tap, orbit, margin, tap_gap, tap_from, omega_rate, cache, n_cached)
+	return job.run(0) == 1
 
 
-static func _survive(hazards: Array, t_now: float, angle: float, dir: int, omega: float, first_tap: bool, orbit: int,
-		margin: float, tap_gap: float, tap_from: float, omega_rate: float, cache, n_cached: int, moving: bool) -> bool:
-	var horizon := t_now
-	for h in hazards:
-		horizon = maxf(horizon, h.t_danger_end)
-	if horizon <= t_now:
-		return true
-	var kc := Orbit.count()
-	var dt := BW / omega
-	var gap := maxi(1, roundi(tap_gap / dt))
-	var tap0 := ceili(tap_from / dt - 0.001)
-	var b := bucket(angle)
-	# per orbit 128-bit sets of reachable buckets, split in two 64-bit words:
-	# P = moving +1 (angle increasing), M = moving -1
-	var plo := PackedInt64Array(); plo.resize(kc)
-	var phi := PackedInt64Array(); phi.resize(kc)
-	var mlo := PackedInt64Array(); mlo.resize(kc)
-	var mhi := PackedInt64Array(); mhi.resize(kc)
-	var ko := mini(orbit, kc - 1)
-	var b_lo := (1 << b) if b < 64 else 0
-	var b_hi := (1 << (b - 64)) if b >= 64 else 0
-	if dir > 0:
-		plo[ko] = b_lo; phi[ko] = b_hi
-	else:
-		mlo[ko] = b_lo; mhi[ko] = b_hi
-	var CM := cross_maps()
-	var base: Array = hazards.slice(0, n_cached) if cache != null else []
-	var rest: Array = hazards.slice(n_cached) if cache != null else hazards
-	var alive := false
-	# the masks of every step are kept for robust(), which needs exactly the same ones
-	var keep := cache != null
+## The same check as can_survive, run a slice at a time (Check.run with a time budget) so a
+## long check never freezes a frame on a phone. `run(0)` = all at once.
+static func start_check(hazards: Array, t_now: float, angle: float, dir: int, omega: float, first_tap := true, orbit := 0,
+		margin := MARGIN, tap_gap := TAP_GAP, tap_from := 0.0, omega_rate := 0.0, cache = null, n_cached := 0) -> Check:
+	return Check.new(hazards, t_now, angle, dir, omega, first_tap, orbit, margin, tap_gap, tap_from, omega_rate, cache, n_cached)
+
+
+## can_survive's state machine. Steps through the danger timeline; `run(budget_us)` stops when
+## the budget is spent and goes on from there on the next call. Result: 1 fair, 0 unfair,
+## -1 not finished yet. A hazard freed between two slices had its danger window behind it
+## (the check always runs ahead of the game clock), so it is simply left out.
+class Check extends RefCounted:
+	var hazards: Array
+	var t_now: float
+	var omega: float
+	var omega_rate: float
+	var first_tap: bool
+	var margin: float
+	var cache
+	var n_cached: int
+	var moving: bool
+	var horizon: float
+	var kc: int
+	var dt: float
+	var gap: int
+	var tap0: int
+	var plo: PackedInt64Array
+	var phi: PackedInt64Array
+	var mlo: PackedInt64Array
+	var mhi: PackedInt64Array
+	var nplo: PackedInt64Array
+	var nphi: PackedInt64Array
+	var nmlo: PackedInt64Array
+	var nmhi: PackedInt64Array
+	var CM: Array
+	var base: Array
+	var rest: Array
+	var keep: bool
 	var d_all: Array = []
-	if keep:
-		cache.erase(ALL_KEY)
-	var s_lo := PackedInt64Array(); s_lo.resize(kc)
-	var s_hi := PackedInt64Array(); s_hi.resize(kc)
-	for k in kc:
-		var d0 := _mask(base, rest, cache, t_now, -1, k, margin)
-		s_lo[k] = d0[0]; s_hi[k] = d0[1]
-		plo[k] &= ~d0[0]; phi[k] &= ~d0[1]; mlo[k] &= ~d0[0]; mhi[k] &= ~d0[1]
-		alive = alive or (plo[k] | phi[k] | mlo[k] | mhi[k]) != 0
-	if keep:
-		d_all.append([s_lo, s_hi])
-	if not alive:
-		return false
-	var nplo := PackedInt64Array(); nplo.resize(kc)
-	var nphi := PackedInt64Array(); nphi.resize(kc)
-	var nmlo := PackedInt64Array(); nmlo.resize(kc)
-	var nmhi := PackedInt64Array(); nmhi.resize(kc)
-	var t := t_now
+	var ends: Array = []      # t_danger_end of each hazard (read before any of them can be freed)
+	var t: float
 	var s := -1
-	while t < horizon + dt:
-		s += 1
+	var result := -1
+	var started := false
+	var p_angle: float
+	var p_dir: int
+	var p_orbit: int
+	var p_tap_gap: float
+	var p_tap_from: float
+
+	func _init(p_hazards: Array, p_t_now: float, angle: float, dir: int, p_omega: float, p_first_tap: bool, orbit: int,
+			p_margin: float, tap_gap: float, tap_from: float, p_omega_rate: float, p_cache, p_n_cached: int) -> void:
+		hazards = p_hazards
+		t_now = p_t_now
+		omega = p_omega
+		omega_rate = p_omega_rate
+		first_tap = p_first_tap
+		margin = p_margin
+		cache = p_cache
+		n_cached = p_n_cached
+		p_angle = angle
+		p_dir = dir
+		p_orbit = orbit
+		p_tap_gap = tap_gap
+		p_tap_from = tap_from
+
+	## Runs until done or until `budget_us` microseconds are spent (0 = no limit).
+	func run(budget_us: int) -> int:
+		if result >= 0:
+			return result
+		var u0 := Time.get_ticks_usec()
+		moving = Orbit.moving()
+		var t_keep := Orbit.time
+		if not started:
+			if moving:
+				Orbit.set_time(t_now)
+			started = true
+			_begin()
+		else:
+			_drop_freed()
+			if moving and result < 0:
+				Orbit.set_time(t)
+		if result < 0:
+			_steps(u0, budget_us)
 		if moving:
-			# transitions start from the geometry of the current step (already set: it is where
-			# the previous step's masks were taken, or t_now)
-			CM = _cm_at(cache, s)
-		# one step = the time needed to travel one bucket at the current speed
-		t += BW / (omega + omega_rate * (t - t_now))
-		var tap := s >= tap0 and (s - tap0) % gap == 0 and (s > 0 or first_tap)
+			Orbit.set_time(t_keep)
+		return result
+
+	## Hazards freed by the game between two slices (they ended): fine if their danger is behind
+	## the step reached (masks already taken keep them, the later ones do not need them); if not,
+	## the check cannot go on safely and says unfair.
+	func _drop_freed() -> void:
+		var gone := false
+		for h in hazards:
+			if not is_instance_valid(h):
+				gone = true
+				break
+		if not gone:
+			return
+		var nb := []
+		var nr := []
+		var ne := []
+		for i in hazards.size():
+			if is_instance_valid(hazards[i]):
+				(nb if i < base.size() else nr).append(hazards[i])
+				ne.append(ends[i])
+			elif ends[i] > t:
+				result = 0
+				return
+		base = nb
+		rest = nr
+		hazards = nb + nr
+		ends = ne
+		n_cached = base.size()
+
+	func _begin() -> void:
+		horizon = t_now
+		for h in hazards:
+			horizon = maxf(horizon, h.t_danger_end)
+			ends.append(h.t_danger_end)
+		if horizon <= t_now:
+			result = 1
+			return
+		kc = Orbit.count()
+		dt = BW / omega
+		gap = maxi(1, roundi(p_tap_gap / dt))
+		tap0 = ceili(p_tap_from / dt - 0.001)
+		var b := Survival.bucket(p_angle)
+		# per orbit 128-bit sets of reachable buckets, split in two 64-bit words:
+		# P = moving +1 (angle increasing), M = moving -1
+		plo = PackedInt64Array(); plo.resize(kc)
+		phi = PackedInt64Array(); phi.resize(kc)
+		mlo = PackedInt64Array(); mlo.resize(kc)
+		mhi = PackedInt64Array(); mhi.resize(kc)
+		var ko := mini(p_orbit, kc - 1)
+		var b_lo := (1 << b) if b < 64 else 0
+		var b_hi := (1 << (b - 64)) if b >= 64 else 0
+		if p_dir > 0:
+			plo[ko] = b_lo; phi[ko] = b_hi
+		else:
+			mlo[ko] = b_lo; mhi[ko] = b_hi
+		CM = Survival.cross_maps()
+		base = hazards.slice(0, n_cached) if cache != null else []
+		rest = hazards.slice(n_cached) if cache != null else hazards
+		var alive := false
+		# the masks of every step are kept for robust(), which needs exactly the same ones
+		keep = cache != null
+		if keep:
+			cache.erase(ALL_KEY)
+		var s_lo := PackedInt64Array(); s_lo.resize(kc)
+		var s_hi := PackedInt64Array(); s_hi.resize(kc)
 		for k in kc:
-			var a0 := plo[k]
-			var a1 := phi[k]
-			var c0 := mlo[k]
-			var c1 := mhi[k]
-			# move one bucket: P rotates left, M rotates right
-			var np0 := (a0 << 1) | ((a1 >> 63) & 1)
-			var np1 := (a1 << 1) | ((a0 >> 63) & 1)
-			var nm0 := ((c0 >> 1) & MAXP) | ((c1 & 1) << 63)
-			var nm1 := ((c1 >> 1) & MAXP) | ((c0 & 1) << 63)
-			if tap:
-				# outside crossings a tap reverses: P -> M (moves -1), M -> P (moves +1)
-				var X: Array = CM[k][0]
-				var r0: int = a0 & ~X[0]
-				var r1: int = a1 & ~X[1]
-				nm0 |= ((r0 >> 1) & MAXP) | ((r1 & 1) << 63)
-				nm1 |= ((r1 >> 1) & MAXP) | ((r0 & 1) << 63)
-				var q0: int = c0 & ~X[0]
-				var q1: int = c1 & ~X[1]
-				np0 |= (q0 << 1) | ((q1 >> 63) & 1)
-				np1 |= (q1 << 1) | ((q0 >> 63) & 1)
-			nplo[k] = np0; nphi[k] = np1; nmlo[k] = nm0; nmhi[k] = nm1
-		if tap:
-			# at crossings: jump to the other orbit (angle + direction remapped)
-			for k in kc:
-				for mp in CM[k][1]:
-					var b0: int = mp[0]
-					var o: int = mp[1]
-					for dd in [1, -1]:
-						var w := (plo[k] if b0 < 64 else phi[k]) if dd > 0 else (mlo[k] if b0 < 64 else mhi[k])
-						if (w >> (b0 & 63)) & 1 == 1:
-							var nd: int = dd * int(mp[3])
-							var tb := posmod(int(mp[2]) + (1 if nd > 0 else -1), N)
-							if nd > 0:
-								if tb < 64: nplo[o] |= 1 << tb
-								else: nphi[o] |= 1 << (tb - 64)
-							else:
-								if tb < 64: nmlo[o] |= 1 << tb
-								else: nmhi[o] |= 1 << (tb - 64)
-		alive = false
-		if moving:
-			Orbit.set_time(t)
-		var a_lo := PackedInt64Array(); a_lo.resize(kc)
-		var a_hi := PackedInt64Array(); a_hi.resize(kc)
-		for k in kc:
-			var d := _mask(base, rest, cache, t, s, k, margin)
-			a_lo[k] = d[0]; a_hi[k] = d[1]
-			plo[k] = nplo[k] & ~d[0]; phi[k] = nphi[k] & ~d[1]
-			mlo[k] = nmlo[k] & ~d[0]; mhi[k] = nmhi[k] & ~d[1]
+			var d0 := Survival._mask(base, rest, cache, t_now, -1, k, margin)
+			s_lo[k] = d0[0]; s_hi[k] = d0[1]
+			plo[k] &= ~d0[0]; phi[k] &= ~d0[1]; mlo[k] &= ~d0[0]; mhi[k] &= ~d0[1]
 			alive = alive or (plo[k] | phi[k] | mlo[k] | mhi[k]) != 0
 		if keep:
-			d_all.append([a_lo, a_hi])
+			d_all.append([s_lo, s_hi])
 		if not alive:
-			return false
-	if keep:
-		cache[ALL_KEY] = [t_now, hazards.size(), n_cached, d_all]
-	return true
+			result = 0
+			return
+		nplo = PackedInt64Array(); nplo.resize(kc)
+		nphi = PackedInt64Array(); nphi.resize(kc)
+		nmlo = PackedInt64Array(); nmlo.resize(kc)
+		nmhi = PackedInt64Array(); nmhi.resize(kc)
+		t = t_now
+		s = -1
+
+	func _steps(u0: int, budget_us: int) -> void:
+		while t < horizon + dt:
+			if budget_us > 0 and s >= 0 and Time.get_ticks_usec() - u0 >= budget_us:
+				return    # at least one step per slice, so a check always moves on
+			s += 1
+			if moving:
+				# transitions start from the geometry of the current step (already set: it is where
+				# the previous step's masks were taken, or t_now)
+				CM = Survival._cm_at(cache, s)
+			# one step = the time needed to travel one bucket at the current speed
+			t += BW / (omega + omega_rate * (t - t_now))
+			var tap := s >= tap0 and (s - tap0) % gap == 0 and (s > 0 or first_tap)
+			for k in kc:
+				var a0 := plo[k]
+				var a1 := phi[k]
+				var c0 := mlo[k]
+				var c1 := mhi[k]
+				# move one bucket: P rotates left, M rotates right
+				var np0 := (a0 << 1) | ((a1 >> 63) & 1)
+				var np1 := (a1 << 1) | ((a0 >> 63) & 1)
+				var nm0 := ((c0 >> 1) & MAXP) | ((c1 & 1) << 63)
+				var nm1 := ((c1 >> 1) & MAXP) | ((c0 & 1) << 63)
+				if tap:
+					# outside crossings a tap reverses: P -> M (moves -1), M -> P (moves +1)
+					var X: Array = CM[k][0]
+					var r0: int = a0 & ~X[0]
+					var r1: int = a1 & ~X[1]
+					nm0 |= ((r0 >> 1) & MAXP) | ((r1 & 1) << 63)
+					nm1 |= ((r1 >> 1) & MAXP) | ((r0 & 1) << 63)
+					var q0: int = c0 & ~X[0]
+					var q1: int = c1 & ~X[1]
+					np0 |= (q0 << 1) | ((q1 >> 63) & 1)
+					np1 |= (q1 << 1) | ((q0 >> 63) & 1)
+				nplo[k] = np0; nphi[k] = np1; nmlo[k] = nm0; nmhi[k] = nm1
+			if tap:
+				# at crossings: jump to the other orbit (angle + direction remapped)
+				for k in kc:
+					for mp in CM[k][1]:
+						var b0: int = mp[0]
+						var o: int = mp[1]
+						for dd in [1, -1]:
+							var w := (plo[k] if b0 < 64 else phi[k]) if dd > 0 else (mlo[k] if b0 < 64 else mhi[k])
+							if (w >> (b0 & 63)) & 1 == 1:
+								var nd: int = dd * int(mp[3])
+								var tb := posmod(int(mp[2]) + (1 if nd > 0 else -1), N)
+								if nd > 0:
+									if tb < 64: nplo[o] |= 1 << tb
+									else: nphi[o] |= 1 << (tb - 64)
+								else:
+									if tb < 64: nmlo[o] |= 1 << tb
+									else: nmhi[o] |= 1 << (tb - 64)
+			var alive := false
+			if moving:
+				Orbit.set_time(t)
+			var a_lo := PackedInt64Array(); a_lo.resize(kc)
+			var a_hi := PackedInt64Array(); a_hi.resize(kc)
+			for k in kc:
+				var d := Survival._mask(base, rest, cache, t, s, k, margin)
+				a_lo[k] = d[0]; a_hi[k] = d[1]
+				plo[k] = nplo[k] & ~d[0]; phi[k] = nphi[k] & ~d[1]
+				mlo[k] = nmlo[k] & ~d[0]; mhi[k] = nmhi[k] & ~d[1]
+				alive = alive or (plo[k] | phi[k] | mlo[k] | mhi[k]) != 0
+			if keep:
+				d_all.append([a_lo, a_hi])
+			if not alive:
+				result = 0
+				return
+		if keep:
+			cache[ALL_KEY] = [t_now, hazards.size(), n_cached, d_all]
+		result = 1
 
 
 # ------------------------------------------------------------------ reaction-proof check

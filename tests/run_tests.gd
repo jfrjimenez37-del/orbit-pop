@@ -57,6 +57,8 @@ func _initialize() -> void:
 	await test_surges(save)
 	await test_v120(save)
 	await test_v121(save)
+	test_v125(save)
+	await test_v125_slices(save)
 	print("\n%d checks, %d failed" % [checks, fails])
 	quit(1 if fails > 0 else 0)
 
@@ -237,15 +239,15 @@ func test_save(save) -> void:
 	ok(r1["record"], "first run is a record")
 	ok(not save.is_unlocked(minty), "MINTY still locked at 12")
 	save.best = 0; save.games = 0; save.total = 0
-	r1 = save.submit_run(30)
-	ok(r1["unlocked"].has(minty), "MINTY unlocked at 30")
+	r1 = save.submit_run(50)
+	ok(r1["unlocked"].has(minty), "MINTY unlocked at 50")
 	var r2: Dictionary = save.submit_run(5)
 	ok(not r2["record"], "lower score is not a record")
 	save.skin = minty
 	save.save_data()
 	save.best = 0; save.games = 0; save.skin = 0
 	save.load_data()
-	ok(save.best == 30 and save.games == 2 and save.total == 35, "stats persisted (%d,%d,%d)" % [save.best, save.games, save.total])
+	ok(save.best == 50 and save.games == 2 and save.total == 55, "stats persisted (%d,%d,%d)" % [save.best, save.games, save.total])
 	ok(save.skin == minty, "skin persisted")
 	# rarity catalog
 	var last_rank := 0
@@ -2047,6 +2049,120 @@ func test_v120(save) -> void:
 
 ## 1.0.21: skins and trails by score (worth more), old unlocks kept, premium aura, obstacle info,
 ## ranking help.
+## 1.0.25: the fairness check run a slice at a time (as the game does, to avoid frame spikes)
+## gives exactly the same answers as the whole check at once, also for the reaction check that
+## reuses its masks, in every world (moving ones included).
+func test_v125_slices(save) -> void:
+	save.tutorial_done = true; save.jump_tip_done = true
+	var main = load("res://scenes/main.tscn").instantiate()
+	get_root().add_child(main)
+	await process_frame
+	main.set_process(false)
+	main.ui.hide_popup()
+	main.director.slice_us = 0
+	var dt := 1.0 / 60.0
+	var cases := 0
+	var same := 0
+	var same_robust := 0
+	var fair := 0
+	var max_slices := 0
+	for si in [0, 4, 6, 7, 10, 13, 14]:     # one and several planets, uneven orbits, moving worlds
+		seed(8100 + si)
+		main.start_run()
+		main.director.offset = 50.0
+		Orbit.set_shape(Stages.LIST[si]["orbits"], true, Stages.motion(si))
+		main.stage = si
+		main.director.stage = si
+		main.world_no = 99
+		var frames := 0
+		while main.state == main.S.PLAYING and frames < 60 * 8:
+			if frames % 2 == 0 and TestBot.decide(main):
+				main._flip()
+			main._grace = 0.0
+			main._process(dt)
+			frames += 1
+			if frames % 60 != 0 or main.state != main.S.PLAYING:
+				continue
+			var d = main.director
+			var p = main.player
+			var t: float = main.gt
+			var w: float = d.omega(t)
+			var res: Dictionary = d._build(d._pick(t), t, p.angle, p.dir, w, d.level(t), 0, p.orbit)
+			var all: Array = main.hazards.duplicate()
+			all.append_array(res["hazards"])
+			var n_old: int = main.hazards.size()
+			var hm := Survival.human_margin(w)
+			var c1 := {}
+			var a1 := Survival.can_survive(all, t, p.angle, p.dir, w, true, p.orbit, hm, Survival.HUMAN_GAP, Survival.HUMAN_REACT, d.omega_rate(t), c1, n_old)
+			var c2 := {}
+			var job := Survival.start_check(all, t, p.angle, p.dir, w, true, p.orbit, hm, Survival.HUMAN_GAP, Survival.HUMAN_REACT, d.omega_rate(t), c2, n_old)
+			var r := -1
+			var slices := 0
+			while r < 0:
+				r = job.run(1 if slices % 4 == 0 else 400)   # mostly one step per slice, some longer
+				slices += 1
+			max_slices = maxi(max_slices, slices)
+			cases += 1
+			if a1 == (r == 1):
+				same += 1
+			if a1:
+				fair += 1
+				var b1 := Survival.robust(all, n_old, t, p.angle, p.dir, w, p.orbit, hm, Survival.HUMAN_GAP, Survival.HUMAN_REACT + 0.05, d.omega_rate(t), c1)
+				var b2 := Survival.robust(all, n_old, t, p.angle, p.dir, w, p.orbit, hm, Survival.HUMAN_GAP, Survival.HUMAN_REACT + 0.05, d.omega_rate(t), c2)
+				if b1 == b2:
+					same_robust += 1
+			for h in res["hazards"]:
+				h.free()
+		if main.state == main.S.DYING:
+			main._game_over()
+	print("  v125 slices: %d cases (%d fair), up to %d slices per check" % [cases, fair, max_slices])
+	ok(cases >= 40 and fair >= 10, "v125: enough checks compared (%d, %d fair)" % [cases, fair])
+	ok(same == cases, "v125: a check run in slices answers like the whole check (%d/%d)" % [same, cases])
+	ok(same_robust == fair, "v125: the reaction check agrees with either set of masks (%d/%d)" % [same_robust, fair])
+	ok(max_slices > 20, "v125: the checks really were cut in many slices (%d)" % max_slices)
+	main.queue_free()
+	await process_frame
+	Orbit.reset()
+	save.reset_all()
+
+
+func test_v125(save) -> void:
+	# the first record goals went up: MINTY 50, BERRY 100, FROSTY 150, EMBER 200, VOLT 250
+	save.reset_all()
+	var goals := {"minty": 50, "berry": 100, "frosty": 150, "ember": 200, "volt": 250}
+	var right := true
+	for id in goals:
+		var it: Dictionary = Catalog.SKINS[Catalog.find("skins", id)]
+		right = right and it["need"] == ["best", goals[id]]
+	ok(right, "v125: new record goals for the first skins")
+	save.best = 120
+	ok(save.unlocked("skins", Catalog.find("skins", "berry")) and not save.unlocked("skins", Catalog.find("skins", "frosty")),
+		"v125: a fresh save at 120 has BERRY, not FROSTY")
+	# a 1.0.24 save with a record of 160 keeps MINTY..EMBER (old goals 30..150), not VOLT (old 200)
+	var cfg := ConfigFile.new()
+	cfg.set_value("stats", "best", 160)
+	cfg.set_value("stats", "games", 30)
+	cfg.set_value("meta", "unlock_rules", 2)
+	cfg.save(save.path)
+	save.load_data()
+	var kept := true
+	for id in ["minty", "berry", "frosty", "ember"]:
+		kept = kept and save.unlocked("skins", Catalog.find("skins", id))
+	ok(kept and not save.unlocked("skins", Catalog.find("skins", "volt")) and save.unlock_rules == 3, "v125: a 1.0.24 save keeps what it had reached")
+	save.best = 0
+	save.save_data(); save.load_data()
+	ok(save.unlocked("skins", Catalog.find("skins", "ember")), "v125: kept after saving and loading again, whatever the record")
+	# a cloud copy from 1.0.24 (no unlock_rules) brings its record and the skins it had
+	save.reset_all()
+	save.merge({"best": 110, "games": 9, "saved_at": 1})
+	ok(save.unlocked("skins", Catalog.find("skins", "frosty")) and not save.unlocked("skins", Catalog.find("skins", "ember")),
+		"v125: an old cloud copy keeps its skins")
+	save.reset_all()
+	save.merge({"best": 110, "games": 9, "saved_at": 1, "unlock_rules": 3})
+	ok(not save.unlocked("skins", Catalog.find("skins", "frosty")), "v125: a new cloud copy follows the new goals")
+	save.reset_all()
+
+
 func test_v121(save) -> void:
 	# a first run to world 5 (90 points) no longer hands out a pile of skins
 	save.reset_all()
@@ -2060,7 +2176,7 @@ func test_v121(save) -> void:
 	for i in Catalog.TRAILS.size():
 		if save.unlocked("trails", i):
 			trails.append(Catalog.TRAILS[i]["id"])
-	ok(got == ["poppy", "minty", "berry"] and trails == ["classic"], "v121: 90 points unlock 2 skins, no trail (%s / %s)" % [str(got), str(trails)])
+	ok(got == ["poppy", "minty"] and trails == ["classic"], "v121/v125: 90 points unlock 1 skin, no trail (%s / %s)" % [str(got), str(trails)])
 	var by_world := 0
 	for cat in ["skins", "trails"]:
 		for it in Catalog.items(cat):
@@ -2081,7 +2197,7 @@ func test_v121(save) -> void:
 		kept = kept and save.unlocked("skins", Catalog.find("skins", id))
 	ok(kept and save.unlocked("trails", Catalog.find("trails", "galaxy")) and save.unlocked("trails", Catalog.find("trails", "smoke")),
 		"v121: an old save keeps its skins and trails")
-	ok(not save.unlocked("skins", Catalog.find("skins", "royal")) and save.unlock_rules == 2, "v121: but nothing more than it had")
+	ok(not save.unlocked("skins", Catalog.find("skins", "royal")) and save.unlock_rules == 3, "v121: but nothing more than it had")
 	save.save_data()
 	save.load_data()
 	ok(save.unlocked("skins", Catalog.find("skins", "magma")), "v121: kept after saving and loading again")

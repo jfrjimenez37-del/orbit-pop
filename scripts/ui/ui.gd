@@ -2439,7 +2439,7 @@ const SHORT := Color8(220, 40, 60)   # a coin price the player cannot pay yet
 
 
 func show_settings() -> void:
-	var p := _open_popup(L.t("SETTINGS"), "settings", 248)
+	var p := _open_popup(L.t("SETTINGS"), "settings", 268)
 	var rows := [
 		["SOUND", L.t("ON") if Save.sound else L.t("OFF"), func():
 			Save.sound = not Save.sound
@@ -2455,6 +2455,9 @@ func show_settings() -> void:
 			Save.vibrate(40)],
 		["MOTION", L.t("MOTION_REDUCED") if Save.reduce_motion else L.t("MOTION_FULL"), func():
 			Save.reduce_motion = not Save.reduce_motion
+			Save.save_data()],
+		["COLORBLIND", L.t("ON") if Save.colorblind else L.t("OFF"), func():
+			Save.colorblind = not Save.colorblind
 			Save.save_data()],
 		["LANGUAGE", L.LANG_NAMES[L.lang], func():
 			var i := (L.LANGS.find(L.lang) + 1) % L.LANGS.size()

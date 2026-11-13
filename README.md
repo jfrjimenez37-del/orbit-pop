@@ -5,6 +5,22 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.25 (código 27)
+
+- **Sin tirones en los mundos de varios planetas**: la comprobación de que cada patrón nuevo tiene
+  salida (`Survival.Check`) se reparte entre fotogramas: como mucho 4 ms por fotograma
+  (`CHECK_SLICE_US`) y sigue en el siguiente (`Director._job`). `can_survive` ejecuta el mismo
+  código de una vez (tests y bots). Peor fotograma de lógica en el servidor, 90 s × 3 por mundo
+  con el bot: de 18-62 ms (mundos 5 a 16) a ≤ 16 ms; fotogramas de más de 16,7 ms: de hasta 72 a 0.
+  Si el juego libera un obstáculo terminado entre dos fotogramas, la comprobación lo deja fuera
+  (su peligro ya pasó); la comprobación de reacción (`robust`) cubre el tiempo extra que tardó.
+- **Modo daltónico** (AJUSTES ▸ DALTONISMO, `Save.colorblind`, `Hazard.warn/safe/warn_arc`): los
+  avisos rojos y rosas pasan a amarillo con contorno oscuro y el hueco seguro del pulso pasa de
+  verde a celeste, para que peligro y seguridad nunca se distingan solo por rojo / verde.
+- **Primeras skins más difíciles**: MINTY 50, BERRY 100, FROSTY 150, EMBER 200, VOLT 250 (antes
+  30/70/110/150/200). Quien ya las había alcanzado las conserva (`Catalog.OLD_NEEDS_125`,
+  `Save._keep_125_unlocks`, también desde una copia antigua en la nube; `unlock_rules` 3).
+
 ## 1.0.24 (código 26)
 
 - **TURBO en vez de CÁMARA LENTA** y **EXPLORADOR en vez de empezar en un mundo adelantado**: las

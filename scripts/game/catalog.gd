@@ -13,13 +13,13 @@ const RARITY_COLORS := {"common": Color8(150, 160, 186), "rare": Color8(70, 150,
 ## color: trail/burst tint. fx: [kind, Color] drawn by OrbitPlayer.
 const SKINS := [
 	{"id": "poppy", "name": "POPPY", "rarity": "common", "need": ["best", 0], "color": Color8(255, 212, 60)},
-	{"id": "minty", "name": "MINTY", "rarity": "common", "need": ["best", 30], "color": Color8(110, 230, 160)},
-	{"id": "berry", "name": "BERRY", "rarity": "common", "need": ["best", 70], "color": Color8(255, 128, 178)},
+	{"id": "minty", "name": "MINTY", "rarity": "common", "need": ["best", 50], "color": Color8(110, 230, 160)},
+	{"id": "berry", "name": "BERRY", "rarity": "common", "need": ["best", 100], "color": Color8(255, 128, 178)},
 	{"id": "cookie", "name": "COOKIE", "rarity": "common", "need": ["coins", 600], "color": Color8(230, 172, 108)},
 	{"id": "melony", "name": "MELONY", "rarity": "common", "need": ["coins", 900], "color": Color8(124, 204, 96)},
-	{"id": "frosty", "name": "FROSTY", "rarity": "rare", "need": ["best", 110], "color": Color8(172, 226, 255)},
-	{"id": "ember", "name": "EMBER", "rarity": "rare", "need": ["best", 150], "color": Color8(255, 122, 58)},
-	{"id": "volt", "name": "VOLT", "rarity": "rare", "need": ["best", 200], "color": Color8(255, 214, 40), "fx": ["bolt", Color8(255, 240, 120)]},
+	{"id": "frosty", "name": "FROSTY", "rarity": "rare", "need": ["best", 150], "color": Color8(172, 226, 255)},
+	{"id": "ember", "name": "EMBER", "rarity": "rare", "need": ["best", 200], "color": Color8(255, 122, 58)},
+	{"id": "volt", "name": "VOLT", "rarity": "rare", "need": ["best", 250], "color": Color8(255, 214, 40), "fx": ["bolt", Color8(255, 240, 120)]},
 	{"id": "pixel", "name": "PIXEL", "rarity": "rare", "need": ["total", 6000], "color": Color8(240, 96, 140)},
 	{"id": "bubbly", "name": "BUBBLY", "rarity": "rare", "need": ["coins", 1500], "color": Color8(255, 172, 232)},
 	{"id": "robo", "name": "ROBO", "rarity": "rare", "need": ["coins", 2200], "color": Color8(190, 202, 220)},
@@ -123,6 +123,15 @@ const OLD_NEEDS := {
 	"trails:galaxy": ["world", 8],
 	"trails:comet": ["level", 30],
 	"trails:plasma": ["world", 15],
+}
+## 1.0.25 raised the first record goals; a skin reached under the 1.0.21-1.0.24 goals stays
+## unlocked (Save._keep_125_unlocks).
+const OLD_NEEDS_125 := {
+	"skins:minty": ["best", 30],
+	"skins:berry": ["best", 70],
+	"skins:frosty": ["best", 110],
+	"skins:ember": ["best", 150],
+	"skins:volt": ["best", 200],
 }
 ## Premium look (aura in the game and glow in the style screen): legendary / mythic skins and
 ## the expensive ones (coins from 4000, or bought in the shop).

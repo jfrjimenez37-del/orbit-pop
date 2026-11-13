@@ -17,6 +17,8 @@ const DEATH_DELAY := 0.8
 
 var state := S.MENU
 var director := Director.new()
+## Longest a fairness check may run in one frame before going on in the next (Director.slice_us).
+const CHECK_SLICE_US := 4000
 var gt := 0.0                 # gameplay clock (drives every hazard)
 var score := 0
 var best_at_start := 0
@@ -114,6 +116,7 @@ var _tween: Tween
 
 func _ready() -> void:
 	randomize()
+	director.slice_us = CHECK_SLICE_US
 	aim_view = AimPreview.new()
 	aim_view.z_index = 5
 	aim_view.visible = false

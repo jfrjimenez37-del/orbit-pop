@@ -62,7 +62,7 @@ func _draw() -> void:
 	var p := pos_at(t).round()
 	var heading := (pos_at(t + 0.02) - pos_at(t)).angle() if t >= t_danger_start else tilt + PI * 0.5
 	if t >= t_danger_start and t <= t_danger_end:
-		draw_arc(p, 8.0, 0.0, TAU, 14, Color(1, 0.4, 0.45, 0.35 + 0.25 * sin(t * 16.0)), 1.0)
+		warn_arc(p, 8.0, 0.0, TAU, 14, Color(1, 0.4, 0.45, 0.35 + 0.25 * sin(t * 16.0)), 1.0)
 	draw_set_transform(p, heading, Vector2.ONE)
 	var dk := Color(0.15, 0.1, 0.25, 0.9 * al)
 	draw_rect(Rect2(-10, -3, 6, 6), dk)
@@ -75,5 +75,5 @@ func _draw() -> void:
 	draw_rect(Rect2(-3, -3, 6, 6), Color(0.9, 0.9, 0.96, al))
 	draw_rect(Rect2(-3, 1, 6, 2), Color(0.65, 0.65, 0.75, al))
 	if fmod(t * 4.0, 1.0) < 0.5:
-		draw_rect(Rect2(-1, -1, 2, 2), Color(1, 0.3, 0.35, al))
+		draw_rect(Rect2(-1, -1, 2, 2), warn(Color(1, 0.3, 0.35, al)))
 	draw_set_transform(Vector2.ZERO)

@@ -54,10 +54,10 @@ func _draw() -> void:
 			for i in 24:
 				var aa := theta0 + span * i / 23.0
 				if on or i % 2 == 0:
-					draw_rect(Rect2(ring_pos(aa, orbit).floor(), Vector2(1, 1)), Color(1, 0.35, 0.3, 0.9))
+					draw_rect(Rect2(ring_pos(aa, orbit).floor(), Vector2(1, 1)), warn(Color(1, 0.35, 0.3, 0.9)))
 		var al := 0.35 + 0.4 * k if on else 0.2
 		var s := 0.5 + 0.5 * k
-		draw_arc(p, 9.0 + 6.0 * (1.0 - k), 0.0, TAU, 14, Color(1, 0.4, 0.85, 0.8), 1.0)
+		warn_arc(p, 9.0 + 6.0 * (1.0 - k), 0.0, TAU, 14, Color(1, 0.4, 0.85, 0.8), 1.0)
 		draw_set_transform(p, rot, Vector2(s, s))
 		draw_texture_rect_region(tex, Rect2(-8, -8, 17, 17), Rect2(0, 0, 17, 17), Color(1, 1, 1, al))
 	elif t <= t_danger_end:

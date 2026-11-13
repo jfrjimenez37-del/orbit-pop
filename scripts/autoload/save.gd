@@ -32,12 +32,16 @@ var daily_last := ""          # local date of the last claim (YYYY-MM-DD)
 var free_ads_date := ""
 var free_ads_used := 0
 var starter_seen := false
-var unlock_rules := 2         # 1 = before 1.0.21 (see _keep_old_unlocks)
+var unlock_rules := 3         # 1 = before 1.0.21, 2 = before 1.0.25 (see _keep_old_unlocks)
 var best_sent := 0             # best score already sent to the Play Games boards (sign-in sync)
 var welcome_shown := false     # (1.0.20) welcome offer already offered once
 var welcome_count := 0         # times the welcome offer (starter at -50 %) was offered
 var welcome_until := 0         # unix time its countdown ends
 var reduce_motion := false   # Settings: no ascent scroll / sway
+var colorblind := false:      # Settings: warnings never differ only by red / green (Hazard.warn / safe)
+	set(v):
+		colorblind = v
+		Hazard.colorblind = v
 var sessions := 0             # app launches (no interstitial in the very first one)
 var free_continue_day := -1   # NO ADS: one free continue a day
 var video_up := {}            # {"id": ability, "n": videos watched, "day": day of the last video level}
@@ -123,6 +127,7 @@ func load_data() -> void:
 	welcome_until = int(cfg.get_value("shop", "welcome_until", 0))
 	review_asks = int(cfg.get_value("meta", "review_asks", 0))
 	reduce_motion = bool(cfg.get_value("settings", "reduce_motion", false))
+	colorblind = bool(cfg.get_value("settings", "colorblind", false))
 	sessions = int(cfg.get_value("meta", "sessions", 0))
 	free_continue_day = int(cfg.get_value("shop", "free_continue_day", -1))
 	video_up = cfg.get_value("player", "video_up", {})
@@ -159,8 +164,11 @@ func load_data() -> void:
 			if int(kd[2]) <= mini(int(stats.get("best_world", 1)), 8) and not seen_default.has(kd[0]):
 				seen_default.append(kd[0])
 	seen_obstacles = cfg.get_value("meta", "seen_obstacles", seen_default)
-	if int(cfg.get_value("meta", "unlock_rules", 1)) < 2:
+	var rules := int(cfg.get_value("meta", "unlock_rules", 1))
+	if rules < 2:
 		_keep_old_unlocks()
+	if rules < 3:
+		_keep_125_unlocks(best)
 	achievements = cfg.get_value("progress", "achievements", [])
 	best_sent = int(cfg.get_value("meta", "best_sent", 0))
 	top_scores = clean_tops(cfg.get_value("progress", "top_scores", []))
@@ -198,6 +206,7 @@ func save_data() -> void:
 	cfg.set_value("shop", "welcome_until", welcome_until)
 	cfg.set_value("meta", "review_asks", review_asks)
 	cfg.set_value("settings", "reduce_motion", reduce_motion)
+	cfg.set_value("settings", "colorblind", colorblind)
 	cfg.set_value("meta", "sessions", sessions)
 	cfg.set_value("shop", "free_continue_day", free_continue_day)
 	cfg.set_value("player", "video_up", video_up)
@@ -331,6 +340,15 @@ func _keep_old_unlocks() -> void:
 		if ok:
 			owned_items.append(key)
 	unlock_rules = 2
+
+
+## 1.0.25: the first record goals went up; what a save had already reached stays unlocked.
+## `record` is the save's best score (the local one, or a cloud copy's when merging).
+func _keep_125_unlocks(record: int) -> void:
+	for key in Catalog.OLD_NEEDS_125:
+		if not owned_items.has(key) and record >= int(Catalog.OLD_NEEDS_125[key][1]):
+			owned_items.append(key)
+	unlock_rules = 3
 
 
 func unlocked(cat: String, i: int) -> bool:
@@ -564,6 +582,7 @@ func export_data() -> Dictionary:
 	for k in _CLOUD_KEYS:
 		d[k] = get(k)
 	d["skin"] = SKINS[skin]["id"]
+	d["unlock_rules"] = unlock_rules
 	return d
 
 
@@ -590,6 +609,8 @@ func merge(d: Dictionary) -> bool:
 	for k in ab:
 		abilities[k] = maxi(ability(k), int(ab[k]))
 	_rename_abilities()   # a cloud copy from 1.0.22 or older
+	if int(d.get("unlock_rules", 1)) < 3:
+		_keep_125_unlocks(int(d.get("best", 0)))   # a cloud copy from 1.0.24 or older
 	var st: Dictionary = d.get("stats", {})
 	for k in st:
 		stats[k] = maxi(int(stats.get(k, 0)), int(st[k]))
@@ -692,11 +713,12 @@ func reset_all() -> void:
 	welcome_shown = false
 	welcome_count = 0
 	welcome_until = 0
-	unlock_rules = 2
+	unlock_rules = 3
 	best_sent = 0
 	review_asks = 0
 	review_day = -9999
 	reduce_motion = false
+	colorblind = false
 	sessions = 0
 	free_continue_day = -1
 	video_up = {}

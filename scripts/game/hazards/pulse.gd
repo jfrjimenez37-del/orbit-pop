@@ -87,10 +87,10 @@ func _draw() -> void:
 		for k in Orbit.count():
 			for i in 9:
 				var a := gap - gap_half + gap_half * 2.0 * i / 8.0
-				draw_rect(Rect2((home + Vector2(cos(a), sin(a)) * Orbit.radius(home_k, a)).floor() - Vector2(1, 1), Vector2(2, 2)), Color(0.4, 1.0, 0.55, 0.95 if on else 0.5))
+				draw_rect(Rect2((home + Vector2(cos(a), sin(a)) * Orbit.radius(home_k, a)).floor() - Vector2(1, 1), Vector2(2, 2)), safe(Color(0.4, 1.0, 0.55, 0.95 if on else 0.5)))
 	if t < t_fire:
 		var k2 := clampf((t - t_spawn) / (t_fire - t_spawn), 0.0, 1.0)
-		draw_arc(home, _pr + 3.0 + 2.0 * sin(t * 30.0), gap + gap_half, gap + TAU - gap_half, 40, Color(1, 0.4, 0.5, 0.4 + 0.5 * k2), 2.0)
+		warn_arc(home, _pr + 3.0 + 2.0 * sin(t * 30.0), gap + gap_half, gap + TAU - gap_half, 40, Color(1, 0.4, 0.5, 0.4 + 0.5 * k2), 2.0)
 		return
 	var rw := wave_r(t)
 	if rw > _r_far + 40.0:
@@ -102,5 +102,5 @@ func _draw() -> void:
 		draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(1, 1, 0.9), 1.0)
 		return
 	draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(0.15, 0.1, 0.25, 0.8), 4.0)
-	draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(1, 0.45, 0.6), 2.0)
+	draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, warn(Color(1, 0.45, 0.6)), 2.0)
 	draw_arc(home, rw, gap + gap_half, gap + TAU - gap_half, 64, Color(1, 0.9, 0.95), 1.0)

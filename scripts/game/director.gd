@@ -57,6 +57,10 @@ var _attempt := 0          # attempts already tried for the pattern being placed
 ## A candidate that passed can_survive, waiting for the reaction-proof check on the next frame
 ## (each heavy check gets its own frame on phones). Checked from the state it was built in.
 var _pending := {}
+## A candidate whose can_survive check did not fit in one frame (Survival.Check, run a slice per
+## frame for at most `slice_us` microseconds). 0 = the whole check at once (tests, audits).
+var _job := {}
+var slice_us := 0
 
 # name, unlock time (effective seconds), base weight
 ## New kinds arrive one by one, a few seconds apart, so the first minute stays learnable.
@@ -212,7 +216,7 @@ func _surge_update(t: float, active: Array) -> bool:
 				return true
 		return false
 	if surge == "gravity":
-		var clear: bool = active.is_empty() and _pending.is_empty()
+		var clear: bool = active.is_empty() and _pending.is_empty() and _job.is_empty()
 		match surge_phase:
 			"wait_in":
 				if clear:
@@ -312,6 +316,8 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		return out
 	if not _pending.is_empty():
 		return _finish_pending(t, out)
+	if not _job.is_empty():
+		return _resume_job(t, out)
 	var w := omega(t)
 	var cache := {}   # danger masks of the hazards already on screen, shared by all attempts
 	# at most ATTEMPTS_PER_FRAME candidates per frame (phones): the search goes on next frame
@@ -340,23 +346,24 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 				h.nova = true
 		var all := active.duplicate()
 		all.append_array(hs)
-		var fair := Survival.can_survive(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP,
-			Survival.HUMAN_REACT if react_check else 0.0, omega_rate(t), cache, active.size()) \
-			if human_check else Survival.can_survive(all, t, angle, dir, w, true, k)
-		if fair and human_check and react_check:
-			# whatever the player does before they can see the new pattern must stay escapable:
-			# checked next frame (from this frame's state), see _finish_pending
-			_pending = {"t": t, "angle": angle, "dir": dir, "w": w, "k": k, "all": all, "n_old": active.size(),
-				"hs": hs, "res": res, "cache": cache, "shape": Orbit.shape_gen, "attempt": attempt}
-			return out
-		if fair:
-			_attempt = 0
-			spawned_first = true
-			committed += 1
-			next_t = t + float(res["length"]) * _overlap(t) + _gap(t)
-			out["hazards"] = hs
-			_committed(hs)
-			return out
+		if not human_check:
+			if Survival.can_survive(all, t, angle, dir, w, true, k):
+				return _commit(t, res, hs, out)
+			rejected += 1
+			for h in hs:
+				h.free()
+			continue
+		var job := Survival.start_check(all, t, angle, dir, w, true, k, Survival.human_margin(w), Survival.HUMAN_GAP,
+			Survival.HUMAN_REACT if react_check else 0.0, omega_rate(t), cache, active.size())
+		_job = {"job": job, "t": t, "angle": angle, "dir": dir, "w": w, "k": k, "hs": hs, "res": res,
+			"cache": cache, "shape": Orbit.shape_gen, "attempt": attempt}
+		var r := job.run(slice_us)
+		if r < 0:
+			return out    # goes on next frame (_resume_job)
+		var j := _job
+		_job = {}
+		if r == 1:
+			return _checked(j, out)
 		rejected += 1
 		for h in hs:
 			h.free()
@@ -365,6 +372,53 @@ func update(t: float, angle: float, dir: int, active: Array, k := 0) -> Dictiona
 		return out
 	_attempt = 0
 	next_t = t + 0.25
+	return out
+
+
+## A candidate passed can_survive. With the reaction check on, whatever the player does before
+## they can see the new pattern must stay escapable: checked next frame (from the candidate's
+## state), see _finish_pending.
+func _checked(j: Dictionary, out: Dictionary) -> Dictionary:
+	var job: Survival.Check = j["job"]
+	if react_check:
+		# the check may have left out hazards that ended meanwhile: the same list goes to robust()
+		_pending = {"t": j["t"], "angle": j["angle"], "dir": j["dir"], "w": j["w"], "k": j["k"], "all": job.hazards,
+			"n_old": job.n_cached if job.cache != null else job.hazards.size() - j["hs"].size(),
+			"hs": j["hs"], "res": j["res"], "cache": j["cache"], "shape": j["shape"], "attempt": j["attempt"]}
+		return out
+	return _commit(float(j["t"]), j["res"], j["hs"], out)
+
+
+func _commit(t0: float, res: Dictionary, hs: Array, out: Dictionary) -> Dictionary:
+	_attempt = 0
+	spawned_first = true
+	committed += 1
+	next_t = t0 + float(res["length"]) * _overlap(t0) + _gap(t0)
+	out["hazards"] = hs
+	_committed(hs)
+	return out
+
+
+## Next slice of a can_survive check that did not fit in its frame. A world change in between
+## drops it (the geometry it was checked against is gone).
+func _resume_job(t: float, out: Dictionary) -> Dictionary:
+	var j := _job
+	if j["shape"] != Orbit.shape_gen or hold:
+		_drop_pending()
+		return out
+	var r: int = j["job"].run(slice_us)
+	if r < 0:
+		return out
+	_job = {}
+	if r == 1:
+		return _checked(j, out)
+	rejected += 1
+	for h in j["hs"]:
+		h.free()
+	_attempt = int(j["attempt"]) + 1
+	if _attempt >= ATTEMPTS:
+		_attempt = 0
+		next_t = t + 0.25
 	return out
 
 
@@ -403,11 +457,13 @@ func _finish_pending(t: float, out: Dictionary) -> Dictionary:
 
 
 func _drop_pending() -> void:
-	if not _pending.is_empty():
-		for h in _pending["hs"]:
-			if is_instance_valid(h):
-				h.free()
+	for p in [_pending, _job]:
+		if not p.is_empty():
+			for h in p["hs"]:
+				if is_instance_valid(h):
+					h.free()
 	_pending = {}
+	_job = {}
 
 
 func _pick(t: float) -> String:
