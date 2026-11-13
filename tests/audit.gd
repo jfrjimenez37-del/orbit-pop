@@ -19,6 +19,7 @@ func _initialize() -> void:
 	var save = get_root().get_node("Save")
 	save.path = "user://audit_save.cfg"
 	save.reset_all()
+	save.tutorial_done = true; save.jump_tip_done = true   # the tutorial waits for a tap the bots may never make
 	var main = load("res://scenes/main.tscn").instantiate()
 	get_root().add_child(main)
 	await process_frame
