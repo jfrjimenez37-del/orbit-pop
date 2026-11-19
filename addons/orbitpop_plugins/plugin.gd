@@ -5,7 +5,8 @@ extends EditorPlugin
 ## silently turn off and the exported game would have no ads or purchases. This turns every
 ## plugin found under res://addons (and plugin folders at the project root) back on.
 ## It also keeps two permissions out of the Android build: the notification plugin declares
-## them, the game does not need them, and Play only allows them for some kinds of apps.
+## them, the game does not need them, and Play only allows them for some kinds of apps. And it
+## marks the portrait screen as optional (see PermissionFilter.OPTIONAL_FEATURES).
 
 var _export: EditorExportPlugin
 
@@ -51,6 +52,10 @@ func _plugin_cfgs() -> Array:
 class PermissionFilter extends EditorExportPlugin:
 	const REMOVE := ["android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
 		"android.permission.SCHEDULE_EXACT_ALARM"]
+	## A portrait-only activity makes Play treat a portrait screen as a required feature, which
+	## hides the game from some tablets, Chromebooks and Google Play Games on PC. The game
+	## still runs in portrait everywhere; this only stops Play from filtering those devices out.
+	const OPTIONAL_FEATURES := ["android.hardware.screen.portrait"]
 
 	func _get_name() -> String:
 		return "OrbitPopPermissionFilter"
@@ -62,4 +67,6 @@ class PermissionFilter extends EditorExportPlugin:
 		var out := ""
 		for perm in REMOVE:
 			out += '<uses-permission android:name="%s" tools:node="remove" />\n' % perm
+		for feature in OPTIONAL_FEATURES:
+			out += '<uses-feature android:name="%s" android:required="false" />\n' % feature
 		return out

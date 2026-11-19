@@ -5,6 +5,14 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.26 (código 28)
+
+- **Disponible en tablets, Chromebooks y Google Play Games en PC**: un juego con orientación
+  vertical fija hace que Play dé por obligatoria la pantalla vertical
+  (`android.hardware.screen.portrait`) y lo oculte en esos dispositivos; Play Console lo marcaba
+  como problema al enviar la 1.0.25. El complemento `orbitpop_plugins` la declara opcional
+  (`PermissionFilter.OPTIONAL_FEATURES`). El juego sigue en vertical en todos los dispositivos.
+
 ## 1.0.25 (código 27)
 
 - **Sin tirones en los mundos de varios planetas**: la comprobación de que cada patrón nuevo tiene
