@@ -1,12 +1,12 @@
 # Google Play listing — ORBIT POP
 
-**App name (max 30):** en-US `Orbit Pop: One-Tap Arcade` (25) · es-419 `Orbit Pop: Arcade de un toque` (29)
+**App name (max 30):** en-US `Orbit Pop: One-Tap Arcade` (25) · es-419 `Orbit Pop: Arcade de un toque` (29) · pt-BR `Orbit Pop: Arcade de um toque` (29)
 (the plain "ORBIT POP" is used by other apps' names; the subtitle tells it apart and adds search words.
 The name under the icon on the phone and inside the game stays ORBIT POP.)
 **Category:** Games › Arcade · **Tags:** Arcade, Casual, One-tap, Pixel art, Single player
-**Default language:** English (United States) – en-US. Translation: Spanish (Latin America) – es-419.
+**Default language:** English (United States) – en-US. Translations: Spanish (Latin America) – es-419, Portuguese (Brazil) – pt-BR.
 **Graphics:** icon `store/icon_512.png` · feature graphic `store/feature_graphic_1024x500.png` (no text, any language)
-· phone screenshots `store/screenshots/en/` (en-US) and `store/screenshots/es/` (es-419), 8 each, 1080×1920.
+· phone screenshots `store/screenshots/en/` (en-US), `store/screenshots/es/` (es-419) and `store/screenshots/pt-BR/` (pt-BR), 8 each, 1080×1920.
 
 ## English (en-US) — default
 
@@ -89,3 +89,44 @@ Cada patrón de obstáculos se comprueba antes de aparecer y te da tiempo para r
 • Gratis, con anuncios y compras opcionales
 
 ¿Hasta qué mundo llegarás?
+
+## Português (pt-BR)
+
+**Descrição breve (máx. 80):**
+Um toque para girar. Desvie, desafie amigos e conquiste 16 mundos incríveis!
+
+**Descrição completa:**
+Gire em volta do planeta e não deixe nada encostar em você!
+
+ORBIT POP é um arcade de um toque só: seu bichinho corre em órbita e cada toque inverte a direção. Desvie de meteoros, minas espinhosas, lasers e ondas de choque, pegue moedas e veja até onde você consegue chegar. Fácil de aprender, difícil de dominar.
+
+🌍 16 MUNDOS INCRÍVEIS
+Céu, lagoa, pôr do sol, doces, noite... depois sistemas de dois, três e quatro planetas onde você pula de uma órbita para outra, e planetas que dançam, balançam e pulsam enquanto você joga. Suba das nuvens até o espaço profundo!
+
+☄️ UM OBSTÁCULO NOVO EM CADA MUNDO
+Bumerangues que voltam, satélites, erupções solares, OVNIs que soltam minas, cinturões de asteroides, meteoros que se dividem em dois e raios de pulsar. Cada um que você encontra entra na sua coleção.
+
+⚡ SUBA DE NÍVEL E FIQUE MAIS FORTE
+Ganhe experiência a cada partida e desbloqueie 8 habilidades permanentes: escudo, ímã de moedas, turbo (segure o dedo para pontos em dobro), teletransporte (deslize e mire), bolhas+, explorador, segunda vida e mais moedas. Melhore todas com as moedas que você coleta.
+
+⚔️ DESAFIE SEUS AMIGOS
+Mande um duelo: seu amigo joga exatamente a mesma partida, sem poderes e com uma só tentativa. Quem fizer mais pontos ganha!
+
+📅 DESAFIO DIÁRIO E EVENTOS SEMANAIS
+Uma partida nova todo dia, igual para todo mundo. E toda semana um evento especial (tempestade de cometas, campo minado, noite dos lasers, semana veloz...) com moedas de prêmio e ranking próprio.
+
+🎨 29 SKINS E 22 RASTROS
+Personagens comuns, raros, épicos, lendários e míticos, alguns com efeitos especiais. Desbloqueie batendo seu recorde, subindo de nível ou com moedas; os mais raros brilham com uma aura especial.
+
+🏆 COMPITA
+Rankings mundiais e regionais com o Google Play Games, 34 conquistas, 3 missões diárias e um desafio semanal.
+
+✨ JUSTO DE VERDADE
+Cada padrão de obstáculos é verificado antes de aparecer e te dá tempo para reagir: sempre existe uma saída.
+
+• Partidas rápidas, perfeitas para qualquer momento
+• Pixel art e música chiptune originais
+• Funciona offline
+• Grátis, com anúncios e compras opcionais
+
+Até que mundo você consegue chegar?

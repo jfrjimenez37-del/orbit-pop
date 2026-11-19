@@ -12,14 +12,14 @@ W, H = 1080, 1920
 OUT = (38, 28, 66)
 # frame file, background top/bottom, caption per language
 SHOTS = [
-    ("g1_4", (62, 120, 214), (120, 190, 250), {"en": "ONE TAP TO FLIP YOUR ORBIT", "es": "UN TOQUE PARA GIRAR AL REVÉS"}),
-    ("g2_9", (28, 24, 70), (70, 60, 140), {"en": "DODGE, SWITCH ORBITS, SURVIVE", "es": "ESQUIVA Y CAMBIA DE ÓRBITA"}),
-    ("g3_6", (214, 110, 60), (250, 190, 110), {"en": "16 WORLDS, UP TO 4 PLANETS", "es": "16 MUNDOS, HASTA 4 PLANETAS"}),
-    ("g4_5", (110, 60, 160), (220, 110, 170), {"en": "A NEW OBSTACLE IN EVERY WORLD", "es": "UN OBSTÁCULO NUEVO EN CADA MUNDO"}),
-    ("u5_abilities", (30, 80, 150), (90, 160, 230), {"en": "LEVEL UP 8 POWERS", "es": "SUBE DE NIVEL 8 HABILIDADES"}),
-    ("u6_skins", (40, 120, 90), (110, 200, 150), {"en": "29 SKINS AND 22 TRAILS", "es": "29 SKINS Y 22 ESTELAS"}),
-    ("u7_challenges", (170, 90, 30), (240, 170, 70), {"en": "DUELS AND WEEKLY EVENTS", "es": "DUELOS Y EVENTOS SEMANALES"}),
-    ("u8_ranking", (120, 40, 90), (220, 90, 140), {"en": "CLIMB THE WORLD RANKING", "es": "SUBE EN EL RANKING MUNDIAL"}),
+    ("g1_4", (62, 120, 214), (120, 190, 250), {"en": "ONE TAP TO FLIP YOUR ORBIT", "es": "UN TOQUE PARA GIRAR AL REVÉS", "pt_BR": "UM TOQUE PARA INVERTER A ÓRBITA"}),
+    ("g2_9", (28, 24, 70), (70, 60, 140), {"en": "DODGE, SWITCH ORBITS, SURVIVE", "es": "ESQUIVA Y CAMBIA DE ÓRBITA", "pt_BR": "DESVIE E TROQUE DE ÓRBITA"}),
+    ("g3_6", (214, 110, 60), (250, 190, 110), {"en": "16 WORLDS, UP TO 4 PLANETS", "es": "16 MUNDOS, HASTA 4 PLANETAS", "pt_BR": "16 MUNDOS, ATÉ 4 PLANETAS"}),
+    ("g4_5", (110, 60, 160), (220, 110, 170), {"en": "A NEW OBSTACLE IN EVERY WORLD", "es": "UN OBSTÁCULO NUEVO EN CADA MUNDO", "pt_BR": "UM OBSTÁCULO NOVO EM CADA MUNDO"}),
+    ("u5_abilities", (30, 80, 150), (90, 160, 230), {"en": "LEVEL UP 8 POWERS", "es": "SUBE DE NIVEL 8 HABILIDADES", "pt_BR": "EVOLUA 8 HABILIDADES"}),
+    ("u6_skins", (40, 120, 90), (110, 200, 150), {"en": "29 SKINS AND 22 TRAILS", "es": "29 SKINS Y 22 ESTELAS", "pt_BR": "29 SKINS E 22 RASTROS"}),
+    ("u7_challenges", (170, 90, 30), (240, 170, 70), {"en": "DUELS AND WEEKLY EVENTS", "es": "DUELOS Y EVENTOS SEMANALES", "pt_BR": "DUELOS E EVENTOS SEMANAIS"}),
+    ("u8_ranking", (120, 40, 90), (220, 90, 140), {"en": "CLIMB THE WORLD RANKING", "es": "SUBE EN EL RANKING MUNDIAL", "pt_BR": "SUBA NO RANKING MUNDIAL"}),
 ]
 
 
