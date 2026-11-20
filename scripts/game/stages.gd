@@ -149,6 +149,29 @@ static func motion(i: int) -> Dictionary:
 	return LIST[i].get("motion", {})
 
 
+## How far world i's orbits reach above / below the playfield center (px, motion included):
+## the HUD keeps its messages outside that band so they never cover the play.
+static func reach(i: int) -> Vector2:
+	var m := motion(i)
+	var amp := float(m.get("amp", 0.0))
+	var up := 0.0
+	var down := 0.0
+	for o in LIST[i]["orbits"]:
+		var c: Vector2 = o.get("center", Vector2.ZERO)
+		var r := 0.0
+		match str(o["kind"]):
+			"circle": r = float(o["r"])
+			"ellipse": r = maxf(float(o["a"]), float(o["b"]))
+			"offset": r = float(o["r"]) + float(o["c"])
+		if m.get("kind", "") == "spin":
+			up = maxf(up, c.length() + r)
+			down = maxf(down, c.length() + r)
+		else:
+			up = maxf(up, r + amp - c.y)
+			down = maxf(down, r + amp + c.y)
+	return Vector2(up, down)
+
+
 ## Score range [start, next world) of the world the score is in (for the HUD progress bar).
 static func bounds(score: int) -> Vector2i:
 	if score >= LOOP_FROM:

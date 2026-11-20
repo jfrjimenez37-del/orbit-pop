@@ -65,6 +65,9 @@ var _tip_title: Label
 var _tip_sub: Label
 var _tip_until := -1.0
 var _banner: Control
+var _banner_low: Control   # the world's how-to line, under the orbits
+var _banner_tw: Tween
+var _field_reach := Vector2(90, 90)   # current world's orbits above / below the field center
 var _teleport_btn: Button
 var _pause_btn: Button
 var _rank_box: Control
@@ -570,7 +573,7 @@ func _build_hud() -> void:
 	_center_label(_hint, 180, 0)
 	# tutorial tips: a dark band across the middle with a big line and a small one
 	_tip = _container(hud)
-	_place(_tip, 0.78, -16, 180, 34)   # below the orbits: the player and the meteor stay in sight
+	_place(_tip, 0.5, 0, 180, 34)   # under the orbits (see _below_field): the play stays in sight
 	var band := ColorRect.new()
 	band.color = Color(0.06, 0.04, 0.16, 0.72)
 	band.size = Vector2(180, 34)
@@ -580,8 +583,11 @@ func _build_hud() -> void:
 	_tip_sub = _label(_tip, "", 1, Color.WHITE)
 	_tip.visible = false
 	_banner = _container(hud)
-	_place(_banner, 0.3, -12, 180, 40)
+	_place(_banner, 0.0, 0, 180, 30)   # between the HUD and the orbits (see world_banner)
 	_banner.visible = false
+	_banner_low = _container(hud)
+	_place(_banner_low, 0.5, 0, 180, 10)
+	_banner_low.visible = false
 	_teleport_btn = _button(hud, "pink", "", "teleport", Vector2(28, 28))
 	_teleport_btn.anchor_left = 1.0; _teleport_btn.anchor_right = 1.0
 	_teleport_btn.anchor_top = 1.0; _teleport_btn.anchor_bottom = 1.0
@@ -741,6 +747,7 @@ func show_hud(best: int, hint: bool) -> void:
 	_hint.visible = hint
 	_pause_title.visible = false
 	_banner.visible = false
+	_banner_low.visible = false
 	_pause_btn.visible = true
 	_switch(hud)
 
@@ -788,28 +795,77 @@ func blocks_tap(pos: Vector2) -> bool:
 	return false
 
 
+## Playfield center while playing, below the screen middle (keep in sync with main._layout).
+const FIELD_DY := 14.0
+const FIELD_GAP := 8.0   # clearance kept from the orbits (player sprite, near hazards)
+
+
+## Main tells the HUD how far the current world's orbits reach (Stages.reach).
+func set_field_reach(r: Vector2) -> void:
+	_field_reach = r
+	if _tip.visible:
+		_place_below_field(_tip, 34.0)
+
+
+## Puts c (h px tall) right under the orbits, or as low as the screen allows.
+func _place_below_field(c: Control, h: float) -> void:
+	var y := roundf(minf(FIELD_DY + _field_reach.y + FIELD_GAP, root.size.y * 0.5 - h - 4.0))
+	c.offset_top = y
+	c.offset_bottom = y + h
+
+
+## A new world: its number and name in the gap between the HUD and the orbits (one small line
+## when the gap is tight), and its how-to line under the orbits, so the play is never covered.
 ## layer: altitude layer just entered ("" when the world stays in the same layer).
 func world_banner(n: int, name: String, tip := "", layer := "") -> void:
 	_clear(_banner)
-	var a := _label(_banner, L.t("WORLD_N", n), 2, GOLD)
-	_center_label(a, 180, 0)
-	var b := _label(_banner, name, 1, Color.WHITE)
-	_center_label(b, 180, 20)
-	var y := 32
-	if layer != "":
-		var ly := _label(_banner, layer, 1, Color8(150, 220, 255))
-		_center_label(ly, 180, y)
-		y += 12
+	_clear(_banner_low)
+	var top := 60.0 + safe_top()   # under the world progress bar and the combo line
+	var room := root.size.y * 0.5 + FIELD_DY - _field_reach.x - FIELD_GAP - top
+	_banner.offset_top = top
+	_banner.offset_bottom = top + 30
+	var sub := name
+	if layer != "" and _text_w(name + " - " + layer) <= 166:
+		sub = name + " - " + layer
+	var title := L.t("WORLD_N", n)
+	if room >= 28.0:
+		var a := _label(_banner, title, 2, GOLD)
+		_center_label(a, 180, 0)
+		var b := _label(_banner, sub, 1, Color.WHITE)
+		_center_label(b, 180, 19)
+	elif room >= 18.0 or _text_w(title + " - " + name) > 166:
+		var a := _label(_banner, title, 1, GOLD)
+		_center_label(a, 180, 0)
+		var b := _label(_banner, sub, 1, Color.WHITE)
+		_center_label(b, 180, 10)
+	else:
+		var one := title + " - " + sub
+		if _text_w(one) > 166:
+			one = title + " - " + name
+		var c := _label(_banner, one, 1, GOLD)
+		_center_label(c, 180, maxf(0.0, roundf((room - 8.0) * 0.5)))
 	if tip != "":
-		var c := _label(_banner, tip, 1, Color8(255, 236, 140))
-		_center_label(c, 180, y)
+		var t := _label(_banner_low, tip, 1, Color8(255, 236, 140))
+		_center_label(t, 180, 0)
+		_place_below_field(_banner_low, 10.0)
+	for c in [_banner, _banner_low]:
+		c.modulate.a = 0.0
 	_banner.visible = true
-	_banner.modulate.a = 0.0
+	_banner_low.visible = tip != "" and not _tip.visible
+	if _banner_tw != null:
+		_banner_tw.kill()   # a quick second world: its banner replaces this one
 	var tw := create_tween()
-	tw.tween_property(_banner, "modulate:a", 1.0, 0.25)
-	tw.tween_interval(3.2 if tip == "" and layer == "" else 4.2)
-	tw.tween_property(_banner, "modulate:a", 0.0, 0.4)
-	tw.tween_callback(func(): _banner.visible = false)
+	_banner_tw = tw
+	tw.tween_method(func(a: float):
+		_banner.modulate.a = a
+		_banner_low.modulate.a = a, 0.0, 1.0, 0.2)
+	tw.tween_interval(2.2 if tip == "" else 3.0)
+	tw.tween_method(func(a: float):
+		_banner.modulate.a = a
+		_banner_low.modulate.a = a, 1.0, 0.0, 0.35)
+	tw.tween_callback(func():
+		_banner.visible = false
+		_banner_low.visible = false)
 
 
 ## Tutorial tip: a big title and a small line; secs > 0 hides it by itself.
@@ -819,8 +875,10 @@ func show_tip(title: String, sub := "", secs := 0.0) -> void:
 	_center_label(_tip_title, 180, 3)
 	_tip_sub.text = sub
 	_center_label(_tip_sub, 180, 23)
+	_place_below_field(_tip, 34.0)
 	_tip.visible = true
 	_tip.modulate.a = 1.0
+	_banner_low.visible = false   # same spot: the tip wins
 	_tip_until = _t + secs if secs > 0.0 else -1.0
 
 
@@ -2620,6 +2678,7 @@ func _build_pause() -> void:
 
 func show_pause() -> void:
 	_banner.visible = false
+	_banner_low.visible = false
 	pause.visible = true
 	pause.modulate.a = 1.0
 	hud.visible = true

@@ -5,6 +5,17 @@ Arcade de un solo toque para Android (Godot 4.7.2, GDScript). App para Android 7
 revienta burbujas y supera tu récord.
 
 
+## 1.0.27 (código 29)
+
+- **Los carteles ya no tapan el juego**: el de "MUNDO N" (con su nombre y la capa de altura) sale
+  en el hueco entre el marcador y las órbitas, en una o dos líneas pequeñas si ese hueco es
+  estrecho. La pista del mundo ("TOQUE ONDE SE CRUZAM", "OS PLANETAS SE MOVEM!"...) y la franja de
+  obstáculos nuevos y oleadas salen justo debajo de las órbitas. Antes el cartel del mundo quedaba
+  al 30 % de la pantalla, sobre la parte de arriba de la órbita, y la franja al 78 %, sobre los
+  planetas de abajo en los mundos de dos o tres planetas. `Stages.reach(i)` da cuánto ocupan las
+  órbitas de cada mundo (con su movimiento) y `ui.set_field_reach` coloca los textos fuera.
+  El cartel del mundo dura menos (2,2 s, o 3 s con pista).
+
 ## 1.0.26 (código 28)
 
 - **Disponible en tablets, Chromebooks y Google Play Games en PC**: un juego con orientación
